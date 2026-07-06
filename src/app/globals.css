@@ -1,26 +1,168 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: oklch(0.995 0 0);
+  --foreground: oklch(0.1 0 0);
+  --body-foreground: oklch(0.32 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --card: oklch(1 0 0);
+  --surface: oklch(0.975 0 0);
+  --border: oklch(0.91 0 0);
+  --border-strong: oklch(0.82 0 0);
+  --primary: oklch(0.1 0 0);
+  --primary-foreground: oklch(0.995 0 0);
+  --glass-background: oklab(1 0 0 / 0.7);
+  --glass-border: oklab(0 0 0 / 0.1);
+  --shadow-pill: 0 10px 40px -12px rgb(0 0 0 / 0.18),
+    0 2px 8px -2px rgb(0 0 0 / 0.06);
+}
+
+.dark {
+  --background: oklch(0.12 0 0);
+  --foreground: oklch(0.96 0 0);
+  --body-foreground: oklch(0.78 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+  --card: oklch(0.16 0 0);
+  --surface: oklch(0.16 0 0);
+  --border: oklch(0.26 0 0);
+  --border-strong: oklch(0.36 0 0);
+  --primary: oklch(0.96 0 0);
+  --primary-foreground: oklch(0.12 0 0);
+  --glass-background: oklab(0 0 0 / 0.55);
+  --glass-border: oklab(1 0 0 / 0.12);
+  --shadow-pill: 0 18px 50px -16px rgb(0 0 0 / 0.7),
+    0 2px 8px -2px rgb(0 0 0 / 0.4);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-body-foreground: var(--body-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --shadow-pill: var(--shadow-pill);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+
+@utility mono {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+@utility glass {
+  background: var(--glass-background);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
+
+@utility hairline-t {
+  border-top: 1px solid var(--border);
+}
+
+@utility hairline-b {
+  border-bottom: 1px solid var(--border);
+}
+
+@keyframes orbit-cw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-ccw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes icon-counter-cw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes icon-counter-ccw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.orbit-ring-outer {
+  animation: orbit-cw 20s linear infinite;
+  transform-origin: center center;
+}
+
+.orbit-ring-inner {
+  animation: orbit-ccw 14s linear infinite;
+  transform-origin: center center;
+}
+
+/* container-type:size enables cqmin units in child transforms */
+.orbit-ring {
+  container-type: size;
+}
+
+.orbit-icon-cw {
+  animation: icon-counter-cw 20s linear infinite;
+  transform-origin: center center;
+}
+
+.orbit-icon-ccw {
+  animation: icon-counter-ccw 14s linear infinite;
+  transform-origin: center center;
+}
+
+.hero-organic-mask {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='soft'%3E%3CfeGaussianBlur stdDeviation='32'/%3E%3C/filter%3E%3C/defs%3E%3Cpath filter='url(%23soft)' fill='black' d='M78 82 C124 34 195 48 260 42 C350 35 430 70 452 142 C475 218 438 270 456 348 C476 432 388 468 306 454 C238 443 178 478 116 430 C58 386 80 314 62 244 C44 172 38 118 78 82 Z'/%3E%3C/svg%3E");
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='soft'%3E%3CfeGaussianBlur stdDeviation='32'/%3E%3C/filter%3E%3C/defs%3E%3Cpath filter='url(%23soft)' fill='black' d='M78 82 C124 34 195 48 260 42 C350 35 430 70 452 142 C475 218 438 270 456 348 C476 432 388 468 306 454 C238 443 178 478 116 430 C58 386 80 314 62 244 C44 172 38 118 78 82 Z'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

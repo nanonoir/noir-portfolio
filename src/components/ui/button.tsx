@@ -1,0 +1,44 @@
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+
+type ButtonVariant = "primary" | "outlined" | "ghost" | "nav" | "language" | "icon";
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  children: ReactNode;
+  variant?: ButtonVariant;
+};
+
+const baseClasses =
+  "inline-flex items-center justify-center gap-2 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:pointer-events-none disabled:opacity-50";
+
+const variantClasses: Record<ButtonVariant, string> = {
+  primary:
+    "bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:opacity-90",
+  outlined:
+    "border border-foreground/20 px-5 py-2.5 text-sm font-medium text-foreground hover:bg-foreground hover:text-background",
+  ghost:
+    "px-3 py-1.5 text-sm text-foreground hover:bg-foreground/5 hover:text-foreground",
+  nav: "px-3 py-1.5 text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+  language:
+    "mono px-2.5 py-1.5 text-[11px] uppercase tracking-widest text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+  icon: "size-8 p-0 text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+};
+
+export function Button({
+  children,
+  className,
+  type = "button",
+  variant = "primary",
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      className={[baseClasses, variantClasses[variant], className]
+        .filter(Boolean)
+        .join(" ")}
+      type={type}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}

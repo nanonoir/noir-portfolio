@@ -97,6 +97,59 @@ export type Dictionary = {
     toastPlaceholder: string;
     linksLabel: string;
   };
+  forms: {
+    common: {
+      name: string;
+      namePlaceholder: string;
+      email: string;
+      emailPlaceholder: string;
+      phone: string;
+      phonePlaceholder: string;
+      message: string;
+      messagePlaceholder: string;
+      optional: string;
+      requiredFieldsMessage: string;
+      submit: string;
+      retry: string;
+      contactWhatsApp: string;
+    };
+    fields: {
+      websiteUrl: string;
+      websiteUrlPlaceholder: string;
+      projectType: string;
+      projectTypePersonal: string;
+      projectTypeBusiness: string;
+      brandName: string;
+      brandNamePlaceholder: string;
+      social: string;
+      socialPlaceholder: string;
+      automationType: string;
+      automationCustomerService: string;
+      automationBusinessProcesses: string;
+      automationOther: string;
+      business: string;
+      businessPlaceholder: string;
+      budget: string;
+      budgetPlaceholder: string;
+    };
+    errors: {
+      required: string;
+      email: string;
+      url: string;
+      messageMax: string;
+      messageMin: string;
+      brandRequired: string;
+      submission: string;
+    };
+    success: {
+      title: string;
+      message: string;
+      meeting: string;
+      meetingUnavailable: string;
+      whatsApp: string;
+      emptyMessageFallback: string;
+    };
+  };
   modals: {
     comingSoonTitle: string;
     comingSoonMessage: string;
@@ -227,6 +280,60 @@ export const dictionaries: Record<Language, Dictionary> = {
         "El formulario real estará disponible pronto. Mientras tanto, puedes escribirme por email o WhatsApp.",
       linksLabel: "Canales de contacto",
     },
+    forms: {
+      common: {
+        name: "Nombre",
+        namePlaceholder: "Tu nombre",
+        email: "Correo",
+        emailPlaceholder: "tu@email.com",
+        phone: "WhatsApp / Teléfono",
+        phonePlaceholder: "+54 9 11 1234 5678",
+        message: "Mensaje",
+        messagePlaceholder: "Contame brevemente qué necesitás…",
+        optional: "Opcional",
+        requiredFieldsMessage: "Completá los campos obligatorios para enviar tu solicitud.",
+        submit: "Enviar solicitud",
+        retry: "Reintentar",
+        contactWhatsApp: "Contactar por WhatsApp →",
+      },
+      fields: {
+        websiteUrl: "Enlace de la web",
+        websiteUrlPlaceholder: "https://tusitio.com",
+        projectType: "Tipo de proyecto",
+        projectTypePersonal: "Personal",
+        projectTypeBusiness: "Marca / empresa",
+        brandName: "Nombre de marca / empresa",
+        brandNamePlaceholder: "Nombre de tu marca o empresa",
+        social: "Red social",
+        socialPlaceholder: "https://instagram.com/tuusuario o @tuusuario",
+        automationType: "Tipo de automatización",
+        automationCustomerService: "Atención al cliente",
+        automationBusinessProcesses: "Procesos del negocio",
+        automationOther: "Otro",
+        business: "Empresa / negocio",
+        businessPlaceholder: "Nombre o rubro del negocio",
+        budget: "Presupuesto",
+        budgetPlaceholder: "$1000, USD 500, a definir…",
+      },
+      errors: {
+        required: "Este campo es obligatorio.",
+        email: "Ingresá un correo válido.",
+        url: "Ingresá una URL válida.",
+        messageMax: "El mensaje no puede superar los 500 caracteres.",
+        messageMin: "El mensaje debe tener al menos 10 caracteres.",
+        brandRequired: "Indicá el nombre de la marca o empresa.",
+        submission: "No se pudo enviar la solicitud. Intentá nuevamente o contactame por WhatsApp.",
+      },
+      success: {
+        title: "Solicitud enviada",
+        message:
+          "Recibí tu consulta. Para avanzar más rápido y no perder el contacto, podés continuar la conversación por WhatsApp.",
+        meeting: "Agendar reunión",
+        meetingUnavailable: "La agenda estará disponible en una próxima versión.",
+        whatsApp: "Continuar por WhatsApp →",
+        emptyMessageFallback: "Sin mensaje adicional",
+      },
+    },
     modals: {
       comingSoonTitle: "Próximamente",
       comingSoonMessage: "Este flujo estará disponible en una próxima versión.",
@@ -352,6 +459,60 @@ export const dictionaries: Record<Language, Dictionary> = {
       toastPlaceholder:
         "The real form will be available soon. In the meantime, you can contact me by email or WhatsApp.",
       linksLabel: "Contact channels",
+    },
+    forms: {
+      common: {
+        name: "Name",
+        namePlaceholder: "Your name",
+        email: "Email",
+        emailPlaceholder: "you@email.com",
+        phone: "WhatsApp / Phone",
+        phonePlaceholder: "+1 555 123 4567",
+        message: "Message",
+        messagePlaceholder: "Tell me briefly what you need…",
+        optional: "Optional",
+        requiredFieldsMessage: "Complete the required fields to send your request.",
+        submit: "Send request",
+        retry: "Retry",
+        contactWhatsApp: "Contact via WhatsApp →",
+      },
+      fields: {
+        websiteUrl: "Website URL",
+        websiteUrlPlaceholder: "https://yoursite.com",
+        projectType: "Project type",
+        projectTypePersonal: "Personal",
+        projectTypeBusiness: "Brand / company",
+        brandName: "Brand / company name",
+        brandNamePlaceholder: "Your brand or company name",
+        social: "Social profile",
+        socialPlaceholder: "https://instagram.com/youruser or @youruser",
+        automationType: "Automation type",
+        automationCustomerService: "Customer service",
+        automationBusinessProcesses: "Business processes",
+        automationOther: "Other",
+        business: "Company / business",
+        businessPlaceholder: "Business name or industry",
+        budget: "Budget",
+        budgetPlaceholder: "$1000, USD 500, to define…",
+      },
+      errors: {
+        required: "This field is required.",
+        email: "Enter a valid email address.",
+        url: "Enter a valid URL.",
+        messageMax: "The message cannot exceed 500 characters.",
+        messageMin: "The message must be at least 10 characters.",
+        brandRequired: "Enter the brand or company name.",
+        submission: "The request could not be sent. Try again or contact me on WhatsApp.",
+      },
+      success: {
+        title: "Request sent",
+        message:
+          "I received your request. To move faster and keep the conversation going, you can continue on WhatsApp.",
+        meeting: "Schedule meeting",
+        meetingUnavailable: "Scheduling will be available in a future version.",
+        whatsApp: "Continue on WhatsApp →",
+        emptyMessageFallback: "No additional message",
+      },
     },
     modals: {
       comingSoonTitle: "Coming soon",

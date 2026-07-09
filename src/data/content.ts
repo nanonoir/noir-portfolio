@@ -31,6 +31,15 @@ export type Service = {
   title: LocalizedString;
   description: LocalizedString;
   features: LocalizedString[];
+  details: {
+    intro: LocalizedString;
+    idealFor: LocalizedString;
+    result: LocalizedString;
+    reviewIncludes: LocalizedString[];
+    deliverables: LocalizedString[];
+    examples?: LocalizedString[];
+    expandableScope?: LocalizedString[];
+  };
   icon: string;
 };
 
@@ -392,6 +401,33 @@ export const services: Service[] = [
       { es: "Oportunidades de UX/UI y conversión", en: "UX/UI and conversion opportunities" },
       { es: "Reporte priorizado de mejoras", en: "Prioritized improvement report" },
     ],
+    details: {
+      intro: {
+        es: "Una revisión técnica y visual para detectar qué está frenando la confianza, la velocidad y la conversión de tu sitio.",
+        en: "A technical and visual review to identify what is slowing down trust, speed, and conversion on your site.",
+      },
+      idealFor: {
+        es: "Negocios con una web existente que necesitan claridad antes de rediseñar, invertir en campañas o priorizar mejoras.",
+        en: "Businesses with an existing website that need clarity before redesigning, investing in campaigns, or prioritizing improvements.",
+      },
+      result: {
+        es: "Recibís un diagnóstico priorizado con acciones concretas para mejorar performance, UX/UI, SEO técnico y conversión.",
+        en: "You receive a prioritized diagnosis with concrete actions to improve performance, UX/UI, technical SEO, and conversion.",
+      },
+      reviewIncludes: [
+        { es: "Performance, accesibilidad y buenas prácticas técnicas.", en: "Performance, accessibility, and technical best practices." },
+        { es: "Claridad de propuesta, jerarquía visual y puntos de fricción.", en: "Offer clarity, visual hierarchy, and friction points." },
+        { es: "SEO técnico básico y oportunidades de conversión.", en: "Basic technical SEO and conversion opportunities." },
+      ],
+      deliverables: [
+        { es: "Reporte accionable con prioridades por impacto.", en: "Actionable report prioritized by impact." },
+        { es: "Lista de mejoras rápidas y recomendaciones estructurales.", en: "Quick-win list and structural recommendations." },
+      ],
+      expandableScope: [
+        { es: "Implementación posterior de las mejoras detectadas.", en: "Follow-up implementation of the detected improvements." },
+        { es: "Rediseño de secciones críticas o medición de eventos.", en: "Redesign of critical sections or event tracking setup." },
+      ],
+    },
     icon: "/handwritten-icons/audit.svg",
   },
   {
@@ -406,6 +442,35 @@ export const services: Service[] = [
       { es: "Implementación responsive y bilingüe", en: "Responsive and bilingual implementation" },
       { es: "Base lista para medir y optimizar", en: "Measurement-ready foundation" },
     ],
+    details: {
+      intro: {
+        es: "Un sitio claro, rápido y profesional para presentar tu negocio, servicio o marca personal con foco en conversión.",
+        en: "A clear, fast, professional site to present your business, service, or personal brand with a conversion focus.",
+      },
+      idealFor: {
+        es: "Profesionales, marcas y empresas que necesitan presencia digital sólida sin construir una plataforma completa.",
+        en: "Professionals, brands, and companies that need a strong digital presence without building a full platform.",
+      },
+      result: {
+        es: "Obtenés una landing o web institucional responsive, bilingüe si hace falta, y preparada para medir resultados.",
+        en: "You get a responsive landing or business website, bilingual if needed, and ready to measure results.",
+      },
+      reviewIncludes: [
+        { es: "Estructura de secciones y recorrido del usuario.", en: "Section structure and user journey." },
+        { es: "Diseño responsive alineado a la identidad de la marca.", en: "Responsive design aligned with the brand identity." },
+        { es: "Copy base, llamadas a la acción y canales de contacto.", en: "Base copy, calls to action, and contact channels." },
+      ],
+      deliverables: [
+        { es: "Sitio publicado y optimizado para dispositivos modernos.", en: "Published site optimized for modern devices." },
+        { es: "Base técnica preparada para analítica y futuras iteraciones.", en: "Technical foundation ready for analytics and future iterations." },
+      ],
+      examples: [
+        { es: "Landing de servicio, portfolio profesional o web institucional simple.", en: "Service landing page, professional portfolio, or simple business website." },
+      ],
+      expandableScope: [
+        { es: "Blog, múltiples páginas, integraciones o formularios avanzados.", en: "Blog, multiple pages, integrations, or advanced forms." },
+      ],
+    },
     icon: "/handwritten-icons/landing.svg",
   },
   {
@@ -420,6 +485,32 @@ export const services: Service[] = [
       { es: "Checkout y medios de pago", en: "Checkout and payment flows" },
       { es: "Panel o base administrable", en: "Admin-ready foundation" },
     ],
+    details: {
+      intro: {
+        es: "Una tienda online enfocada en mostrar productos con claridad y reducir fricción hasta la compra.",
+        en: "An online store focused on presenting products clearly and reducing friction until purchase.",
+      },
+      idealFor: {
+        es: "Marcas y comercios que quieren vender online con catálogo, carrito y un flujo preparado para crecer.",
+        en: "Brands and stores that want to sell online with a catalog, cart, and a flow ready to grow.",
+      },
+      result: {
+        es: "Un e-commerce funcional con experiencia de compra ordenada, base administrable y camino claro hacia pagos e integraciones.",
+        en: "A functional e-commerce experience with organized purchasing, an admin-ready foundation, and a clear path to payments and integrations.",
+      },
+      reviewIncludes: [
+        { es: "Catálogo, detalle de producto y navegación de compra.", en: "Catalog, product detail, and shopping navigation." },
+        { es: "Carrito, checkout y estructura para medios de pago.", en: "Cart, checkout, and payment-provider structure." },
+        { es: "Base de administración o integración con sistemas existentes.", en: "Admin foundation or integration with existing systems." },
+      ],
+      deliverables: [
+        { es: "Tienda responsive lista para cargar productos y operar.", en: "Responsive store ready to load products and operate." },
+        { es: "Arquitectura preparada para pagos, stock y analítica.", en: "Architecture ready for payments, stock, and analytics." },
+      ],
+      expandableScope: [
+        { es: "Cupones, envíos, cuentas de usuario o panel administrativo completo.", en: "Coupons, shipping, user accounts, or a full admin dashboard." },
+      ],
+    },
     icon: "/handwritten-icons/store.svg",
   },
   {
@@ -434,6 +525,32 @@ export const services: Service[] = [
       { es: "Flujos internos repetibles", en: "Repeatable internal workflows" },
       { es: "Automatizaciones con IA cuando aporta valor", en: "AI automation where it adds value" },
     ],
+    details: {
+      intro: {
+        es: "Automatizaciones para conectar herramientas, reducir tareas manuales y ordenar procesos internos repetitivos.",
+        en: "Automations to connect tools, reduce manual work, and organize repetitive internal processes.",
+      },
+      idealFor: {
+        es: "Equipos o negocios que ya tienen procesos definidos pero pierden tiempo copiando datos o respondiendo lo mismo.",
+        en: "Teams or businesses with defined processes that lose time copying data or repeating the same responses.",
+      },
+      result: {
+        es: "Un flujo automatizado, documentado y fácil de mantener que conecta formularios, APIs, notificaciones o IA cuando tiene sentido.",
+        en: "An automated, documented, maintainable flow that connects forms, APIs, notifications, or AI when it makes sense.",
+      },
+      reviewIncludes: [
+        { es: "Mapeo del proceso y puntos manuales repetidos.", en: "Process mapping and repeated manual points." },
+        { es: "Integraciones con APIs, webhooks o herramientas existentes.", en: "Integrations with APIs, webhooks, or existing tools." },
+        { es: "Validación de errores y trazabilidad básica.", en: "Error validation and basic traceability." },
+      ],
+      deliverables: [
+        { es: "Flujo automatizado y documentación de uso.", en: "Automated flow and usage documentation." },
+        { es: "Recomendaciones para escalar o monitorear el proceso.", en: "Recommendations to scale or monitor the process." },
+      ],
+      examples: [
+        { es: "Leads a CRM, alertas internas, generación de reportes o asistentes con IA.", en: "Leads to CRM, internal alerts, report generation, or AI assistants." },
+      ],
+    },
     icon: "/handwritten-icons/automation.svg",
   },
 ];

@@ -10,7 +10,7 @@ const phone = z
   .string()
   .trim()
   .min(1, "forms.errors.required")
-  .regex(/^\+?[0-9()\s-]{6,}$/, "forms.errors.phone");
+  .regex(/^\+?[0-9]+$/, "forms.errors.phone");
 const optionalText = z.string().trim().optional().or(z.literal(""));
 const optionalMessage = z.string().trim().max(500, "forms.errors.messageMax").optional().or(z.literal(""));
 

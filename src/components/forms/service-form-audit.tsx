@@ -37,7 +37,6 @@ export function ServiceFormAudit({ dictionary, formId, onSubmit }: ServiceFormPr
           wrapperClassName="col-span-full"
         />
         <TextField
-          autoComplete="name"
           dictionary={dictionary}
           error={errors.name?.message}
           label={dictionary.forms.common.name}
@@ -45,6 +44,7 @@ export function ServiceFormAudit({ dictionary, formId, onSubmit }: ServiceFormPr
           placeholder={dictionary.forms.common.namePlaceholder}
           registration={form.register("name")}
           required
+          variant="name"
         />
         <TextField
           autoComplete="email"
@@ -58,7 +58,6 @@ export function ServiceFormAudit({ dictionary, formId, onSubmit }: ServiceFormPr
           type="email"
         />
         <TextField
-          autoComplete="tel"
           dictionary={dictionary}
           error={errors.phone?.message}
           label={dictionary.forms.common.phone}
@@ -67,6 +66,7 @@ export function ServiceFormAudit({ dictionary, formId, onSubmit }: ServiceFormPr
           registration={form.register("phone")}
           required
           type="tel"
+          variant="phone"
           wrapperClassName="col-span-full"
         />
         <TextAreaField

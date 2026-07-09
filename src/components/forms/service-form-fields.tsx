@@ -2,6 +2,8 @@ import type { FieldErrors, FieldValues, Path, UseFormRegisterReturn } from "reac
 import type { Dictionary } from "@/lib/i18n";
 import { Button, FormError, Input, Label, Radio, Textarea } from "@/components/ui";
 
+type FieldVariant = "name" | "phone";
+
 type FieldProps = {
   dictionary: Dictionary;
   error?: string;
@@ -10,6 +12,7 @@ type FieldProps = {
   name: string;
   registration: UseFormRegisterReturn;
   required?: boolean;
+  variant?: FieldVariant;
   wrapperClassName?: string;
 };
 
@@ -22,6 +25,29 @@ function translateError(dictionary: Dictionary, message?: string) {
   return dictionary.forms.errors[key] ?? message;
 }
 
+const NAME_CHAR_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿÑñ' -]$/;
+const PHONE_CHAR_REGEX = /^[+0-9]$/;
+
+function handleNameBeforeInput(event: React.FormEvent<HTMLInputElement>) {
+  const e = event as React.FormEvent<HTMLInputElement> & { data: string | null };
+  if (e.data && !NAME_CHAR_REGEX.test(e.data)) {
+    event.preventDefault();
+  }
+}
+
+function handlePhoneBeforeInput(event: React.FormEvent<HTMLInputElement>) {
+  const e = event as React.FormEvent<HTMLInputElement> & { data: string | null };
+  if (!e.data) return;
+  if (!PHONE_CHAR_REGEX.test(e.data)) {
+    event.preventDefault();
+    return;
+  }
+  // Allow "+" only at the start (when the current value is empty)
+  if (e.data === "+" && (event.currentTarget as HTMLInputElement).value.length > 0) {
+    event.preventDefault();
+  }
+}
+
 export function TextField({
   dictionary,
   error,
@@ -30,12 +56,20 @@ export function TextField({
   name,
   registration,
   required = false,
+  variant,
   wrapperClassName,
   ...props
 }: FieldProps & React.InputHTMLAttributes<HTMLInputElement>) {
   const errorId = `${name}-error`;
   const helperId = `${name}-helper`;
   const translatedError = translateError(dictionary, error);
+
+  const variantProps =
+    variant === "name"
+      ? { autoComplete: "name" as const, inputMode: "text" as const, onBeforeInput: handleNameBeforeInput }
+      : variant === "phone"
+        ? { autoComplete: "tel" as const, inputMode: "tel" as const, onBeforeInput: handlePhoneBeforeInput }
+        : {};
 
   return (
     <div className={["space-y-2", wrapperClassName].filter(Boolean).join(" ")}>
@@ -44,6 +78,7 @@ export function TextField({
         aria-describedby={translatedError ? errorId : helper ? helperId : undefined}
         aria-invalid={Boolean(translatedError)}
         id={name}
+        {...variantProps}
         {...registration}
         {...props}
       />

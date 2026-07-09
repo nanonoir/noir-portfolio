@@ -101,3 +101,37 @@ Chain strategy: pending
 - **Verify**: Click every trigger in both languages.
 - **Expected**: Correct modal opens; labels switch language; no console errors; build passes.
 - **Regression detection**: Wrong modal, missing translations, or build failure blocks archive.
+
+## Slice 9A: Modal & Form UI Corrections
+
+> Focused QA pass to fix 12 confirmed UI/UX issues. Does not add new features.
+
+### A. Modal Info
+
+- [x] 9A.1 Set `Accordion` in `informational-modal.tsx` to open with all panels collapsed.
+- [x] 9A.2 Reorder `informational-modal.tsx` body: Intro → Ideal para → Accordion → Resultado → CTA.
+- [x] 9A.3 Reduce internal modal padding in `informational-modal.tsx` (e.g., `p-6` → `p-4`) and tighten block gaps.
+
+### B. Modal Solicitar
+
+- [x] 9A.4 Remove helper texts (e.g., "Ejemplo:...", "Se acepta URL...") from all service form components.
+- [x] 9A.5 Replace field placeholders in service forms with instructive format ("Coloca tu nombre completo", "Coloca tu mail principal", etc.).
+- [x] 9A.6 Reduce input/textarea/select height by trimming vertical padding in `form-controls.tsx`.
+- [x] 9A.7 Implement a 2-column grid on desktop for service forms (`Nombre | Correo`, `WhatsApp | Tipo de proyecto`; full-width fields use `col-span-full`).
+- [x] 9A.8 Reduce internal modal padding in `service-request-modal.tsx` (e.g., `p-6` → `p-4`) and tighten block gaps.
+
+### C. Both Modals
+
+- [x] 9A.9 Restructure `Modal` so footer buttons are sticky at the bottom while body scrolls.
+- [x] 9A.10 Restructure `Modal` so header (title + close button) is sticky at the top while body scrolls.
+- [x] 9A.11 Add a scoped styled scrollbar to the modal scroll container (thin, rounded, subtle, dark/light aware).
+
+### D. General Inputs
+
+- [x] 9A.12 Add `min-font-size: 16px` to all interactive form fields (`input`, `textarea`, `select`) for iOS zoom prevention.
+
+### Checkpoint 9A
+
+- **Verify**: Open both modals on mobile and desktop.
+- **Expected**: Info modal shows closed accordion and correct order; request form shows instructive placeholders, no helpers, compact 2-column layout; both modals have sticky header/footer and styled scrollbar; inputs render at 16px minimum.
+- **Regression detection**: Broken layout, missing sticky behavior, or iOS zoom regression blocks apply completion.

@@ -10,6 +10,7 @@ type FieldProps = {
   name: string;
   registration: UseFormRegisterReturn;
   required?: boolean;
+  wrapperClassName?: string;
 };
 
 function translateError(dictionary: Dictionary, message?: string) {
@@ -29,6 +30,7 @@ export function TextField({
   name,
   registration,
   required = false,
+  wrapperClassName,
   ...props
 }: FieldProps & React.InputHTMLAttributes<HTMLInputElement>) {
   const errorId = `${name}-error`;
@@ -36,7 +38,7 @@ export function TextField({
   const translatedError = translateError(dictionary, error);
 
   return (
-    <div className="space-y-2">
+    <div className={["space-y-2", wrapperClassName].filter(Boolean).join(" ")}>
       <Label htmlFor={name} required={required}>{label}</Label>
       <Input
         aria-describedby={translatedError ? errorId : helper ? helperId : undefined}
@@ -62,6 +64,7 @@ export function TextAreaField({
   name,
   registration,
   required = false,
+  wrapperClassName,
   ...props
 }: FieldProps & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const errorId = `${name}-error`;
@@ -69,7 +72,7 @@ export function TextAreaField({
   const translatedError = translateError(dictionary, error);
 
   return (
-    <div className="space-y-2">
+    <div className={["space-y-2", wrapperClassName].filter(Boolean).join(" ")}>
       <Label htmlFor={name} required={required}>{label}</Label>
       <Textarea
         aria-describedby={translatedError ? errorId : helper ? helperId : undefined}
@@ -96,6 +99,7 @@ type RadioGroupProps = {
   options: Array<{ label: string; value: string }>;
   registration: UseFormRegisterReturn;
   required?: boolean;
+  wrapperClassName?: string;
 };
 
 export function RadioGroup({
@@ -107,13 +111,14 @@ export function RadioGroup({
   options,
   registration,
   required = false,
+  wrapperClassName,
 }: RadioGroupProps) {
   const errorId = `${name}-error`;
   const helperId = `${name}-helper`;
   const translatedError = translateError(dictionary, error);
 
   return (
-    <fieldset aria-describedby={translatedError ? errorId : helper ? helperId : undefined} className="space-y-2">
+    <fieldset aria-describedby={translatedError ? errorId : helper ? helperId : undefined} className={["space-y-2", wrapperClassName].filter(Boolean).join(" ")}>
       <legend className="text-base font-medium text-foreground md:text-sm">
         {legend}
         {required ? <span className="ml-1 text-muted-foreground" aria-hidden="true">*</span> : null}

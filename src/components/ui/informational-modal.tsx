@@ -60,25 +60,19 @@ export function ServiceInfoModal({
       size="lg"
       title={service.title[language]}
     >
-      <div className="space-y-8">
-        <div className="space-y-4 text-sm leading-6 text-body-foreground">
+      <div className="space-y-5">
+        <div className="space-y-3 text-sm leading-6 text-body-foreground">
           {details.intro.map((paragraph) => (
             <p key={paragraph[language]}>{paragraph[language]}</p>
           ))}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{idealForTitle}</p>
-            <p className="mt-3 text-sm leading-6 text-body-foreground">{details.idealFor[language]}</p>
-          </div>
-          <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{resultTitle}</p>
-            <p className="mt-3 text-sm leading-6 text-body-foreground">{details.result[language]}</p>
-          </div>
+        <div className="rounded-2xl border border-border bg-surface/50 p-4">
+          <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{idealForTitle}</p>
+          <p className="mt-2 text-sm leading-6 text-body-foreground">{details.idealFor[language]}</p>
         </div>
 
-        <Accordion defaultValue="review-includes">
+        <Accordion>
           <AccordionItem title={details.reviewTitle[language]} value="review-includes">
             <LocalizedList items={details.reviewIncludes} language={language} />
           </AccordionItem>
@@ -96,6 +90,11 @@ export function ServiceInfoModal({
             </AccordionItem>
           ) : null}
         </Accordion>
+
+        <div className="rounded-2xl border border-border bg-surface/50 p-4">
+          <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{resultTitle}</p>
+          <p className="mt-2 text-sm leading-6 text-body-foreground">{details.result[language]}</p>
+        </div>
 
         <div className="flex justify-center sm:justify-start">
           <Button onClick={handleRequest}>{details.ctaLabel[language]}</Button>

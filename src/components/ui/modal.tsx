@@ -89,14 +89,14 @@ export function Modal({
       <div
         aria-labelledby={titleId}
         aria-modal="true"
-        className={`relative max-h-full w-full overflow-auto rounded-[20px] border border-border bg-card p-6 text-foreground shadow-pill outline-none motion-safe:animate-[fade-in_240ms_ease-out_both] ${
+        className={`relative max-h-full w-full overflow-auto rounded-[20px] border border-border bg-card p-4 text-foreground shadow-pill outline-none motion-safe:animate-[fade-in_240ms_ease-out_both] ${
           size === "xl" ? "max-w-5xl" : size === "lg" ? "max-w-3xl" : "max-w-2xl"
         }`}
         ref={dialogRef}
         role="dialog"
         tabIndex={-1}
       >
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-4 flex items-start justify-between gap-4">
           <h2 className="text-2xl font-semibold tracking-tight" id={titleId}>{title}</h2>
           <button
             aria-label={closeLabel}

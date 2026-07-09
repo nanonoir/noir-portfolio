@@ -135,7 +135,7 @@ export function ServiceRequestModal({
         <SuccessState dictionary={dictionary} language={language} service={currentService} values={submittedValues} />
       ) : (
         <>
-          <div className="mb-6 space-y-2">
+          <div className="mb-4 space-y-2">
             <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{currentService.description[language]}</p>
             <p className="text-base text-muted-foreground md:text-sm">{dictionary.forms.common.requiredFieldsMessage}</p>
           </div>

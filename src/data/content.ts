@@ -32,12 +32,17 @@ export type Service = {
   description: LocalizedString;
   features: LocalizedString[];
   details: {
-    intro: LocalizedString;
+    intro: LocalizedString[];
+    ctaLabel: LocalizedString;
     idealFor: LocalizedString;
     result: LocalizedString;
+    reviewTitle: LocalizedString;
     reviewIncludes: LocalizedString[];
+    deliverablesTitle: LocalizedString;
     deliverables: LocalizedString[];
+    examplesTitle?: LocalizedString;
     examples?: LocalizedString[];
+    expandableScopeTitle?: LocalizedString;
     expandableScope?: LocalizedString[];
   };
   icon: string;
@@ -402,30 +407,46 @@ export const services: Service[] = [
       { es: "Reporte priorizado de mejoras", en: "Prioritized improvement report" },
     ],
     details: {
-      intro: {
-        es: "Una revisión técnica y visual para detectar qué está frenando la confianza, la velocidad y la conversión de tu sitio.",
-        en: "A technical and visual review to identify what is slowing down trust, speed, and conversion on your site.",
-      },
+      intro: [
+        {
+          es: "Reviso tu web para detectar qué está frenando que las personas entiendan tu negocio, confíen en tu marca y te contacten.",
+          en: "I review your website to detect what is stopping people from understanding your business, trusting your brand and contacting you.",
+        },
+        {
+          es: "El objetivo es ayudarte a mejorar cómo se presenta tu web, qué tan clara resulta para tus clientes y qué cambios pueden aumentar las consultas, ventas o contactos desde tu sitio.",
+          en: "The goal is to help you improve how your website presents your business, how clear it feels to your customers and what changes can increase inquiries, sales or contacts from your site.",
+        },
+      ],
+      ctaLabel: { es: "Solicitar auditoría →", en: "Request audit →" },
       idealFor: {
-        es: "Negocios con una web existente que necesitan claridad antes de rediseñar, invertir en campañas o priorizar mejoras.",
-        en: "Businesses with an existing website that need clarity before redesigning, investing in campaigns, or prioritizing improvements.",
+        es: "Negocios, marcas personales, profesionales o emprendimientos que ya tienen una web, pero sienten que no está generando suficientes consultas, ventas o confianza.",
+        en: "Businesses, personal brands, professionals or entrepreneurs who already have a website, but feel it is not generating enough inquiries, sales or trust.",
       },
       result: {
-        es: "Recibís un diagnóstico priorizado con acciones concretas para mejorar performance, UX/UI, SEO técnico y conversión.",
-        en: "You receive a prioritized diagnosis with concrete actions to improve performance, UX/UI, technical SEO, and conversion.",
+        es: "Al finalizar, vas a saber qué está frenando tu web, qué deberías mejorar primero y qué cambios pueden ayudarte a convertir más visitas en consultas, ventas o clientes.",
+        en: "By the end, you will know what is holding your website back, what you should improve first and what changes can help you turn more visits into inquiries, sales or customers.",
       },
+      reviewTitle: { es: "Qué reviso", en: "What I review" },
       reviewIncludes: [
-        { es: "Performance, accesibilidad y buenas prácticas técnicas.", en: "Performance, accessibility, and technical best practices." },
-        { es: "Claridad de propuesta, jerarquía visual y puntos de fricción.", en: "Offer clarity, visual hierarchy, and friction points." },
-        { es: "SEO técnico básico y oportunidades de conversión.", en: "Basic technical SEO and conversion opportunities." },
+        { es: "Si tu negocio se entiende rápido al entrar a la web", en: "If your business is easy to understand as soon as someone enters your website" },
+        { es: "Si la página transmite confianza y profesionalismo", en: "If the website feels trustworthy and professional" },
+        { es: "Si el recorrido para contactarte o comprar es claro", en: "If the path to contact you or buy from you is clear" },
+        { es: "Si hay textos, secciones o botones que pueden mejorarse", en: "If there are texts, sections or buttons that can be improved" },
+        { es: "Si tu web está preparada para verse bien en celular", en: "If your website is ready to look good on mobile" },
+        { es: "Si carga de forma rápida y cómoda para el usuario", en: "If it loads fast and feels comfortable to use" },
+        { es: "Si está mejor preparada para aparecer en Google", en: "If it is better prepared to appear on Google" },
+        { es: "Si está mejor preparada para ser entendida por IAs como ChatGPT, Gemini o Claude", en: "If it is better prepared to be understood by AIs like ChatGPT, Gemini or Claude" },
       ],
+      deliverablesTitle: { es: "Qué entrego", en: "What I deliver" },
       deliverables: [
-        { es: "Reporte accionable con prioridades por impacto.", en: "Actionable report prioritized by impact." },
-        { es: "Lista de mejoras rápidas y recomendaciones estructurales.", en: "Quick-win list and structural recommendations." },
-      ],
-      expandableScope: [
-        { es: "Implementación posterior de las mejoras detectadas.", en: "Follow-up implementation of the detected improvements." },
-        { es: "Rediseño de secciones críticas o medición de eventos.", en: "Redesign of critical sections or event tracking setup." },
+        { es: "Documento formal de auditoría", en: "Formal website audit document" },
+        { es: "Resumen general con los puntos más importantes", en: "General summary with the most important points" },
+        { es: "Diagnóstico por áreas: claridad, confianza, navegación, celular, velocidad y visibilidad", en: "Diagnosis by area: clarity, trust, navigation, mobile, speed and visibility" },
+        { es: "Lista de mejoras recomendadas", en: "List of recommended improvements" },
+        { es: "Prioridad sugerida para cada cambio", en: "Suggested priority for each change" },
+        { es: "Nivel de impacto estimado: alto, medio o bajo", en: "Estimated impact level: high, medium or low" },
+        { es: "Checklist de acciones rápidas", en: "Quick action checklist" },
+        { es: "Ideas concretas para mejorar consultas, ventas o contactos", en: "Concrete ideas to improve inquiries, sales or contacts" },
       ],
     },
     icon: "/handwritten-icons/audit.svg",
@@ -443,32 +464,49 @@ export const services: Service[] = [
       { es: "Base lista para medir y optimizar", en: "Measurement-ready foundation" },
     ],
     details: {
-      intro: {
-        es: "Un sitio claro, rápido y profesional para presentar tu negocio, servicio o marca personal con foco en conversión.",
-        en: "A clear, fast, professional site to present your business, service, or personal brand with a conversion focus.",
-      },
+      intro: [
+        {
+          es: "Construyo una web profesional para que tu negocio se vea confiable, se entienda rápido y convierta visitas en contactos reales.",
+          en: "I build a professional website so your business looks trustworthy, is easy to understand and turns visits into real contacts.",
+        },
+        {
+          es: "La web se desarrolla con estructura, contenido y configuración pensada para posicionar tu marca en Google y en respuestas de inteligencias artificiales como ChatGPT, Gemini o Claude.",
+          en: "The website is built with structure, content and configuration designed to position your brand on Google and in AI-powered answers from tools like ChatGPT, Gemini or Claude.",
+        },
+      ],
+      ctaLabel: { es: "Solicitar web →", en: "Request website →" },
       idealFor: {
-        es: "Profesionales, marcas y empresas que necesitan presencia digital sólida sin construir una plataforma completa.",
-        en: "Professionals, brands, and companies that need a strong digital presence without building a full platform.",
+        es: "Profesionales, marcas personales, emprendimientos, estudios, negocios locales o empresas que necesitan una presencia digital seria, moderna y orientada a generar consultas, clientes o ventas.",
+        en: "Professionals, personal brands, entrepreneurs, studios, local businesses or companies that need a serious, modern digital presence focused on generating inquiries, customers or sales.",
       },
       result: {
-        es: "Obtenés una landing o web institucional responsive, bilingüe si hace falta, y preparada para medir resultados.",
-        en: "You get a responsive landing or business website, bilingual if needed, and ready to measure results.",
+        es: "Al finalizar, vas a tener una web profesional, lista para compartir y pensada para atraer más consultas, generar confianza y posicionar mejor tu negocio en internet.",
+        en: "By the end, you will have a professional website ready to share, designed to attract more inquiries, build trust and position your business better online.",
       },
+      reviewTitle: { es: "Qué incluye", en: "What is included" },
       reviewIncludes: [
-        { es: "Estructura de secciones y recorrido del usuario.", en: "Section structure and user journey." },
-        { es: "Diseño responsive alineado a la identidad de la marca.", en: "Responsive design aligned with the brand identity." },
-        { es: "Copy base, llamadas a la acción y canales de contacto.", en: "Base copy, calls to action, and contact channels." },
+        { es: "Diseño y desarrollo de la web", en: "Website design and development" },
+        { es: "Versión adaptada para celular, tablet y computadora", en: "Version adapted for mobile, tablet and desktop" },
+        { es: "Secciones claras para presentar tu negocio, servicios y contacto", en: "Clear sections to present your business, services and contact options" },
+        { es: "Textos base orientados a comunicar mejor y convertir más consultas", en: "Base copy focused on better communication and more inquiries" },
+        { es: "Botones de contacto por WhatsApp, email, formulario o redes", en: "Contact buttons for WhatsApp, email, form or social media" },
+        { es: "Optimización SEO para buscadores como Google", en: "SEO optimization to help your business rank better on Google" },
+        { es: "Optimización AEO/GEO para respuestas de inteligencias artificiales", en: "AEO/GEO optimization so your brand can appear better in AI-powered answers" },
+        { es: "Configuración para compartir correctamente el link en redes y WhatsApp", en: "Configuration so your link looks good when shared on social media and WhatsApp" },
+        { es: "Publicación final de la web", en: "Final website publication" },
       ],
+      deliverablesTitle: { es: "Qué entrego", en: "What I deliver" },
       deliverables: [
-        { es: "Sitio publicado y optimizado para dispositivos modernos.", en: "Published site optimized for modern devices." },
-        { es: "Base técnica preparada para analítica y futuras iteraciones.", en: "Technical foundation ready for analytics and future iterations." },
+        { es: "Web publicada y funcionando", en: "Published and working website" },
+        { es: "Código fuente del proyecto", en: "Project source code" },
+        { es: "Documentación completa del sistema", en: "Complete system documentation" },
+        { es: "Funcionalidades implementadas", en: "Implemented features" },
+        { es: "Arquitectura general", en: "General architecture" },
+        { es: "Recomendaciones para mantener o escalar la web", en: "Recommendations to maintain or scale the website" },
       ],
-      examples: [
-        { es: "Landing de servicio, portfolio profesional o web institucional simple.", en: "Service landing page, professional portfolio, or simple business website." },
-      ],
+      expandableScopeTitle: { es: "Alcance ampliable", en: "Expandable scope" },
       expandableScope: [
-        { es: "Blog, múltiples páginas, integraciones o formularios avanzados.", en: "Blog, multiple pages, integrations, or advanced forms." },
+        { es: "El servicio puede extenderse con automatización de turnos, integración con WhatsApp, formularios avanzados, paneles internos, pagos, bases de datos, emails automáticos u otras funcionalidades a medida.", en: "The service can be extended with appointment automation, WhatsApp integration, advanced forms, internal panels, payments, databases, automatic emails or other custom features." },
       ],
     },
     icon: "/handwritten-icons/landing.svg",
@@ -486,29 +524,53 @@ export const services: Service[] = [
       { es: "Panel o base administrable", en: "Admin-ready foundation" },
     ],
     details: {
-      intro: {
-        es: "Una tienda online enfocada en mostrar productos con claridad y reducir fricción hasta la compra.",
-        en: "An online store focused on presenting products clearly and reducing friction until purchase.",
-      },
+      intro: [
+        {
+          es: "Construyo una tienda online profesional para que tu negocio pueda vender productos de forma clara, confiable y ordenada.",
+          en: "I build a professional online store so your business can sell products in a clear, trustworthy and organized way.",
+        },
+        {
+          es: "No se trata solo de subir productos a internet. La tienda se desarrolla para mostrar mejor lo que vendés, facilitar el proceso de compra y convertir visitas en pedidos reales.",
+          en: "This is not just about uploading products to the internet. The store is built to showcase what you sell, make the buying process easier and turn visits into real orders.",
+        },
+      ],
+      ctaLabel: { es: "Solicitar tienda →", en: "Request store →" },
       idealFor: {
-        es: "Marcas y comercios que quieren vender online con catálogo, carrito y un flujo preparado para crecer.",
-        en: "Brands and stores that want to sell online with a catalog, cart, and a flow ready to grow.",
+        es: "Marcas, emprendimientos, negocios locales o empresas que quieren vender online con una tienda propia, profesional y preparada para crecer más allá de Instagram, WhatsApp o marketplaces.",
+        en: "Brands, entrepreneurs, local businesses or companies that want to sell online with their own professional store, ready to grow beyond Instagram, WhatsApp or marketplaces.",
       },
       result: {
-        es: "Un e-commerce funcional con experiencia de compra ordenada, base administrable y camino claro hacia pagos e integraciones.",
-        en: "A functional e-commerce experience with organized purchasing, an admin-ready foundation, and a clear path to payments and integrations.",
+        es: "Al finalizar, vas a tener una tienda online profesional, lista para vender, pensada para generar confianza, mostrar mejor tus productos y convertir visitas en pedidos reales.",
+        en: "By the end, you will have a professional online store ready to sell, designed to build trust, present your products better and turn visits into real orders.",
       },
+      reviewTitle: { es: "Qué incluye", en: "What is included" },
       reviewIncludes: [
-        { es: "Catálogo, detalle de producto y navegación de compra.", en: "Catalog, product detail, and shopping navigation." },
-        { es: "Carrito, checkout y estructura para medios de pago.", en: "Cart, checkout, and payment-provider structure." },
-        { es: "Base de administración o integración con sistemas existentes.", en: "Admin foundation or integration with existing systems." },
+        { es: "Diseño y desarrollo de la tienda online", en: "Online store design and development" },
+        { es: "Catálogo de productos organizado por categorías", en: "Product catalog organized by categories" },
+        { es: "Páginas individuales para cada producto", en: "Individual pages for each product" },
+        { es: "Carrito de compras", en: "Shopping cart" },
+        { es: "Flujo de checkout", en: "Checkout flow" },
+        { es: "Integración con medio de pago", en: "Payment method integration" },
+        { es: "Configuración de métodos de envío o entrega", en: "Shipping or delivery method setup" },
+        { es: "Gestión de datos del cliente para completar pedidos", en: "Customer data collection to complete orders" },
+        { es: "Diseño adaptado para celular, tablet y computadora", en: "Design adapted for mobile, tablet and desktop" },
+        { es: "Botones de contacto por WhatsApp, email o formulario", en: "Contact buttons for WhatsApp, email or form" },
+        { es: "Optimización para que tus productos y categorías puedan posicionarse mejor en Google", en: "Optimization so your products and categories can rank better on Google" },
+        { es: "Optimización para que tu tienda, productos y marca puedan ser mejor encontrados por IAs como ChatGPT, Gemini, Claude y otros asistentes", en: "Optimization so your store, products and brand can be found better by AIs like ChatGPT, Gemini, Claude and other assistants" },
+        { es: "Configuración para que tus productos se compartan correctamente en redes y WhatsApp", en: "Configuration so your products look good when shared on social media and WhatsApp" },
+        { es: "Publicación final de la tienda", en: "Final store publication" },
       ],
+      deliverablesTitle: { es: "Qué entrego", en: "What I deliver" },
       deliverables: [
-        { es: "Tienda responsive lista para cargar productos y operar.", en: "Responsive store ready to load products and operate." },
-        { es: "Arquitectura preparada para pagos, stock y analítica.", en: "Architecture ready for payments, stock, and analytics." },
+        { es: "Tienda publicada y funcionando", en: "Published and working online store" },
+        { es: "Código fuente del proyecto", en: "Project source code" },
+        { es: "Documentación completa del sistema", en: "Complete system documentation" },
+        { es: "Guía para administrar o mantener la tienda", en: "Simple guide to manage or maintain the store" },
+        { es: "Recomendaciones para mejorar ventas, carga de productos y crecimiento futuro", en: "Recommendations to improve sales, product loading and future growth" },
       ],
+      expandableScopeTitle: { es: "Alcance ampliable", en: "Expandable scope" },
       expandableScope: [
-        { es: "Cupones, envíos, cuentas de usuario o panel administrativo completo.", en: "Coupons, shipping, user accounts, or a full admin dashboard." },
+        { es: "La tienda puede extenderse con panel administrativo, gestión avanzada de stock, cupones, descuentos, emails automáticos, recuperación de carritos, integración con WhatsApp, CRM, reportes de ventas, automatizaciones internas u otras funcionalidades a medida.", en: "The store can be extended with an admin panel, advanced stock management, coupons, discounts, automatic emails, abandoned cart recovery, WhatsApp integration, CRM, sales reports, internal automations or other custom features." },
       ],
     },
     icon: "/handwritten-icons/store.svg",
@@ -526,29 +588,54 @@ export const services: Service[] = [
       { es: "Automatizaciones con IA cuando aporta valor", en: "AI automation where it adds value" },
     ],
     details: {
-      intro: {
-        es: "Automatizaciones para conectar herramientas, reducir tareas manuales y ordenar procesos internos repetitivos.",
-        en: "Automations to connect tools, reduce manual work, and organize repetitive internal processes.",
-      },
+      intro: [
+        {
+          es: "Automatizo procesos repetitivos para que tu negocio pueda atender más rápido, ordenar consultas, recibir pedidos, agendar turnos y ahorrar tiempo todos los días.",
+          en: "I automate repetitive processes so your business can respond faster, organize inquiries, receive orders, schedule appointments and save time every day.",
+        },
+        {
+          es: "Procesos funcionando solos: respuestas a clientes, toma de pedidos, agenda de turnos, filtros de consultas, avisos automáticos, registro de datos y derivación de información a la persona correcta.",
+          en: "Processes working on their own: customer replies, order taking, appointment scheduling, inquiry filtering, automatic notifications, data registration and sending the right information to the right person.",
+        },
+      ],
+      ctaLabel: { es: "Solicitar automatización →", en: "Request automation →" },
       idealFor: {
-        es: "Equipos o negocios que ya tienen procesos definidos pero pierden tiempo copiando datos o respondiendo lo mismo.",
-        en: "Teams or businesses with defined processes that lose time copying data or repeating the same responses.",
+        es: "Negocios, profesionales o equipos que pierden tiempo respondiendo siempre lo mismo, anotando pedidos a mano, coordinando turnos, filtrando clientes o pasando información entre WhatsApp, planillas, emails y sistemas.",
+        en: "Businesses, professionals or teams that waste time answering the same questions, writing down orders manually, scheduling appointments, filtering customers or moving information between WhatsApp, spreadsheets, emails and systems.",
       },
       result: {
-        es: "Un flujo automatizado, documentado y fácil de mantener que conecta formularios, APIs, notificaciones o IA cuando tiene sentido.",
-        en: "An automated, documented, maintainable flow that connects forms, APIs, notifications, or AI when it makes sense.",
+        es: "Al finalizar, vas a tener un proceso más rápido y ordenado, pensado para atender mejor, perder menos oportunidades y convertir más consultas en clientes, pedidos o turnos reales.",
+        en: "By the end, you will have a faster and more organized process, designed to help you serve customers better, lose fewer opportunities and turn more inquiries into real customers, orders or appointments.",
       },
+      reviewTitle: { es: "Qué incluye", en: "What is included" },
       reviewIncludes: [
-        { es: "Mapeo del proceso y puntos manuales repetidos.", en: "Process mapping and repeated manual points." },
-        { es: "Integraciones con APIs, webhooks o herramientas existentes.", en: "Integrations with APIs, webhooks, or existing tools." },
-        { es: "Validación de errores y trazabilidad básica.", en: "Error validation and basic traceability." },
+        { es: "Revisión del proceso que querés mejorar", en: "Review of the process you want to improve" },
+        { es: "Diseño del flujo ideal para tu negocio", en: "Design of the ideal flow for your business" },
+        { es: "Automatización de respuestas, pedidos, turnos, avisos o registros", en: "Automation of replies, orders, appointments, notifications or records" },
+        { es: "Integración con WhatsApp, formularios, emails, planillas, calendarios o herramientas que ya uses", en: "Integration with WhatsApp, forms, emails, spreadsheets, calendars or tools you already use" },
+        { es: "Uso de inteligencia artificial cuando ayude a responder, clasificar, ordenar o filtrar consultas", en: "Use of artificial intelligence when it helps reply, classify, organize or filter inquiries" },
+        { es: "Pruebas con casos reales antes de entregar", en: "Testing with real cases before delivery" },
+        { es: "Ajustes para que el flujo sea claro y fácil de usar", en: "Adjustments so the flow is clear and easy to use" },
       ],
+      deliverablesTitle: { es: "Qué entrego", en: "What I deliver" },
       deliverables: [
-        { es: "Flujo automatizado y documentación de uso.", en: "Automated flow and usage documentation." },
-        { es: "Recomendaciones para escalar o monitorear el proceso.", en: "Recommendations to scale or monitor the process." },
+        { es: "Automatización funcionando", en: "Working automation" },
+        { es: "Documentación clara del flujo", en: "Clear documentation of the flow" },
+        { es: "Guía simple de uso", en: "Simple usage guide" },
+        { es: "Explicación de cómo funciona el proceso", en: "Explanation of how the process works" },
+        { es: "Recomendaciones para mejorar atención, ventas o seguimiento", en: "Recommendations to improve customer service, sales or follow-up" },
       ],
+      examplesTitle: { es: "Ejemplos de lo que se puede automatizar", en: "Examples of what can be automated" },
       examples: [
-        { es: "Leads a CRM, alertas internas, generación de reportes o asistentes con IA.", en: "Leads to CRM, internal alerts, report generation, or AI assistants." },
+        { es: "Un local de comida puede recibir pedidos pagados y enviarlos automáticamente a cocina", en: "A food business can receive paid orders and send them automatically to the kitchen" },
+        { es: "Una barbería puede responder consultas y agendar turnos sin depender todo el tiempo del celular", en: "A barber shop can answer questions and schedule appointments without depending on the phone all day" },
+        { es: "Una inmobiliaria puede filtrar interesados, pedir datos clave y separar consultas reales de curiosos", en: "A real estate business can filter interested people, ask for key information and separate real prospects from casual inquiries" },
+        { es: "Una tienda puede enviar avisos de pedido, pagos, entregas o carritos abandonados", en: "A store can send order, payment, delivery or abandoned cart notifications" },
+        { es: "Un profesional puede recibir formularios ordenados y responder más rápido a potenciales clientes", en: "A professional can receive organized forms and respond faster to potential clients" },
+      ],
+      expandableScopeTitle: { es: "Alcance ampliable", en: "Expandable scope" },
+      expandableScope: [
+        { es: "El servicio puede extenderse con asistentes por WhatsApp, gestión de turnos, pedidos automáticos, cobros, emails automáticos, seguimiento de clientes, reportes, integración con CRM, paneles internos o flujos más avanzados con inteligencia artificial.", en: "The service can be extended with WhatsApp assistants, appointment management, automatic orders, payments, automatic emails, customer follow-up, reports, CRM integration, internal panels or more advanced AI-powered flows." },
       ],
     },
     icon: "/handwritten-icons/automation.svg",

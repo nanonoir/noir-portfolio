@@ -9,4 +9,5 @@ export { Modal } from "./modal";
 export { PdfModal } from "./pdf-modal";
 export { SectionHeading } from "./section-heading";
 export { SectionShell } from "./section-shell";
+export { ServiceInfoModal } from "./informational-modal";
 export { Toast } from "./toast";

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { useLanguage } from "@/components/providers/language-provider";
 import { assets, aboutOrbitTech, contactLinks, services, stackCategories, type Service } from "@/data/content";
-import { Button, CardSurface, Chip, Input, Modal, PdfModal, SectionHeading, SectionShell, Textarea, Toast } from "@/components/ui";
+import { Button, CardSurface, Chip, Input, Modal, PdfModal, SectionHeading, SectionShell, ServiceInfoModal, Textarea, Toast } from "@/components/ui";
 
 // Outer orbit ring: 7 icons, clockwise rotation.
 // Each icon counter-rotates so it stays upright.
@@ -297,7 +297,8 @@ function ServicePlaceholderModal({
 function ServicesSection() {
   const { dictionary, language } = useLanguage();
   const t = dictionary.services;
-  const [selectedService, setSelectedService] = useState<ServiceModalContent | null>(null);
+  const [infoService, setInfoService] = useState<Service | null>(null);
+  const [requestService, setRequestService] = useState<ServiceModalContent | null>(null);
   const customService: ServiceModalContent = {
     title: { es: t.customTitle, en: t.customTitle },
     description: { es: t.customDescription, en: t.customDescription },
@@ -307,6 +308,11 @@ function ServicesSection() {
       { es: "Flujos que no encajan en plantillas", en: "Flows that do not fit templates" },
     ],
   };
+
+  function handleRequestFromInfo(service: Service) {
+    setInfoService(null);
+    setRequestService(service);
+  }
 
   return (
     <SectionShell className="hairline-t hairline-b bg-surface/40" id="services">
@@ -330,7 +336,7 @@ function ServicesSection() {
             <div className="hairline-t mt-6 pt-4 flex items-center justify-between gap-4">
               <button
                 className="mono inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => setSelectedService(service)}
+                onClick={() => setInfoService(service)}
                 type="button"
               >
                 <Image
@@ -345,7 +351,7 @@ function ServicesSection() {
               </button>
               <button
                 className="mono inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => setSelectedService(service)}
+                onClick={() => setRequestService(service)}
                 type="button"
               >
                 {t.request}
@@ -372,7 +378,7 @@ function ServicesSection() {
         <button
           aria-label={t.request}
           className="group inline-flex items-center justify-center gap-2 rounded-full border border-background/30 px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
-          onClick={() => setSelectedService(customService)}
+          onClick={() => setRequestService(customService)}
           type="button"
         >
           {t.request}
@@ -386,7 +392,15 @@ function ServicesSection() {
           />
         </button>
       </div>
-      <ServicePlaceholderModal onClose={() => setSelectedService(null)} service={selectedService} />
+      <ServiceInfoModal
+        closeLabel={dictionary.modals.closeLabel}
+        isOpen={Boolean(infoService)}
+        language={language}
+        onClose={() => setInfoService(null)}
+        onRequest={handleRequestFromInfo}
+        service={infoService}
+      />
+      <ServicePlaceholderModal onClose={() => setRequestService(null)} service={requestService} />
     </SectionShell>
   );
 }

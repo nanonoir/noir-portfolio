@@ -41,9 +41,9 @@ Chain strategy: pending
 
 ## Phase 2: Informational Modals
 
-- [ ] 2.1 Create `src/components/ui/informational-modal.tsx` using `Modal` + `Accordion`.
-- [ ] 2.2 Populate service detail content in `src/data/content.ts`.
-- [ ] 2.3 Wire "Más info" buttons in `src/components/sections/static-sections.tsx` to `InformationalModal`.
+- [x] 2.1 Create `src/components/ui/informational-modal.tsx` using `Modal` + `Accordion`.
+- [x] 2.2 Populate service detail content in `src/data/content.ts`.
+- [x] 2.3 Wire "Más info" buttons in `src/components/sections/static-sections.tsx` to `InformationalModal`.
 
 ### Checkpoint 2
 

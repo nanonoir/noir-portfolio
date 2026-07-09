@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
+import { createCustomServiceRequestTarget, ServiceRequestModal, type ServiceRequestTarget } from "@/components/forms/service-request-modal";
 import { useLanguage } from "@/components/providers/language-provider";
 import { assets, aboutOrbitTech, contactLinks, services, stackCategories, type Service } from "@/data/content";
-import { Button, CardSurface, Chip, Input, Modal, PdfModal, SectionHeading, SectionShell, ServiceInfoModal, Textarea, Toast } from "@/components/ui";
+import { Button, CardSurface, Chip, Input, PdfModal, SectionHeading, SectionShell, ServiceInfoModal, Textarea, Toast } from "@/components/ui";
 
 // Outer orbit ring: 7 icons, clockwise rotation.
 // Each icon counter-rotates so it stays upright.
@@ -13,7 +14,6 @@ const OUTER_RING = aboutOrbitTech.slice(0, 4);
 const INNER_RING = aboutOrbitTech.slice(4);
 
 const DARK_INVERT_STACK_ICON_NAMES = new Set(["Railway", "VPS", "CI/CD", "n8n", "MCP", "Webhooks"]);
-type ServiceModalContent = Pick<Service, "description" | "features" | "title">;
 
 function AboutDesktopIllustration({ profileAlt }: { profileAlt: string }) {
   return (
@@ -251,63 +251,12 @@ function AboutSection() {
   );
 }
 
-function ServicePlaceholderModal({
-  onClose,
-  service,
-}: {
-  onClose: () => void;
-  service: ServiceModalContent | null;
-}) {
-  const { dictionary, language } = useLanguage();
-
-  return (
-    <Modal
-      closeLabel={dictionary.modals.closeLabel}
-      isOpen={Boolean(service)}
-      onClose={onClose}
-      title={dictionary.modals.comingSoonTitle}
-    >
-      {service ? (
-        <div className="space-y-6">
-          <div>
-            <p className="mono text-xs tracking-[0.18em] text-muted-foreground uppercase">{service.title[language]}</p>
-            <p className="mt-4 text-sm leading-6 text-body-foreground">{service.description[language]}</p>
-            <p className="mt-4 text-sm leading-6 text-foreground">{dictionary.modals.comingSoonMessage}</p>
-          </div>
-          <ul className="grid gap-2 sm:grid-cols-3">
-            {service.features.map((feature) => (
-              <li className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-foreground" key={feature[language]}>
-                {feature[language]}
-              </li>
-            ))}
-          </ul>
-          <a
-            className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-            href="#contact"
-            onClick={onClose}
-          >
-            {dictionary.modals.contactCta}
-          </a>
-        </div>
-      ) : null}
-    </Modal>
-  );
-}
-
 function ServicesSection() {
   const { dictionary, language } = useLanguage();
   const t = dictionary.services;
   const [infoService, setInfoService] = useState<Service | null>(null);
-  const [requestService, setRequestService] = useState<ServiceModalContent | null>(null);
-  const customService: ServiceModalContent = {
-    title: { es: t.customTitle, en: t.customTitle },
-    description: { es: t.customDescription, en: t.customDescription },
-    features: [
-      { es: "MVPs y herramientas internas", en: "MVPs and internal tools" },
-      { es: "Paneles administrativos", en: "Admin dashboards" },
-      { es: "Flujos que no encajan en plantillas", en: "Flows that do not fit templates" },
-    ],
-  };
+  const [requestService, setRequestService] = useState<ServiceRequestTarget | null>(null);
+  const customService = createCustomServiceRequestTarget(t.customTitle, t.customDescription);
 
   function handleRequestFromInfo(service: Service) {
     setInfoService(null);
@@ -400,7 +349,14 @@ function ServicesSection() {
         onRequest={handleRequestFromInfo}
         service={infoService}
       />
-      <ServicePlaceholderModal onClose={() => setRequestService(null)} service={requestService} />
+      <ServiceRequestModal
+        closeLabel={dictionary.modals.closeLabel}
+        dictionary={dictionary}
+        isOpen={Boolean(requestService)}
+        language={language}
+        onClose={() => setRequestService(null)}
+        service={requestService}
+      />
     </SectionShell>
   );
 }

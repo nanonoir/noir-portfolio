@@ -53,12 +53,12 @@ Chain strategy: pending
 
 ## Phase 3: Service Request Forms
 
-- [ ] 3.1 Create `src/components/forms/service-request-modal.tsx` shell (form or success).
-- [ ] 3.2 Create `src/components/forms/service-form-audit.tsx`.
-- [ ] 3.3 Create `src/components/forms/service-form-landing.tsx` with conditional `brandName`.
-- [ ] 3.4 Create `src/components/forms/service-form-ecommerce.tsx`.
-- [ ] 3.5 Create `src/components/forms/service-form-automation.tsx`.
-- [ ] 3.6 Create `src/components/forms/service-form-custom.tsx`.
+- [x] 3.1 Create `src/components/forms/service-request-modal.tsx` shell (form or success).
+- [x] 3.2 Create `src/components/forms/service-form-audit.tsx`.
+- [x] 3.3 Create `src/components/forms/service-form-landing.tsx` with conditional `brandName`.
+- [x] 3.4 Create `src/components/forms/service-form-ecommerce.tsx`.
+- [x] 3.5 Create `src/components/forms/service-form-automation.tsx`.
+- [x] 3.6 Create `src/components/forms/service-form-custom.tsx`.
 
 ### Checkpoint 3
 

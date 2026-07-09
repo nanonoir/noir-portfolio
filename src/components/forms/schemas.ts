@@ -1,13 +1,23 @@
 import { z } from "zod";
 
 const requiredText = z.string().trim().min(1, "forms.errors.required");
+const requiredNameLike = z
+  .string()
+  .trim()
+  .min(1, "forms.errors.required")
+  .regex(/^[A-Za-zÀ-ÖØ-öø-ÿÑñ' -]+$/, "forms.errors.name");
+const phone = z
+  .string()
+  .trim()
+  .min(1, "forms.errors.required")
+  .regex(/^\+?[0-9()\s-]{6,}$/, "forms.errors.phone");
 const optionalText = z.string().trim().optional().or(z.literal(""));
 const optionalMessage = z.string().trim().max(500, "forms.errors.messageMax").optional().or(z.literal(""));
 
 const contactFields = {
-  name: requiredText,
+  name: requiredNameLike,
   email: z.string().trim().email("forms.errors.email"),
-  phone: requiredText,
+  phone,
 };
 
 export const auditFormSchema = z.object({

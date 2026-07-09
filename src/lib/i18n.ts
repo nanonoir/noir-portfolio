@@ -104,8 +104,10 @@ export type Dictionary = {
       email: string;
       emailPlaceholder: string;
       phone: string;
+      phoneHelper: string;
       phonePlaceholder: string;
       message: string;
+      messageMaxHelper: string;
       messagePlaceholder: string;
       optional: string;
       requiredFieldsMessage: string;
@@ -115,6 +117,7 @@ export type Dictionary = {
     };
     fields: {
       websiteUrl: string;
+      websiteUrlHelper: string;
       websiteUrlPlaceholder: string;
       projectType: string;
       projectTypePersonal: string;
@@ -122,6 +125,7 @@ export type Dictionary = {
       brandName: string;
       brandNamePlaceholder: string;
       social: string;
+      socialHelper: string;
       socialPlaceholder: string;
       automationType: string;
       automationCustomerService: string;
@@ -135,6 +139,8 @@ export type Dictionary = {
     errors: {
       required: string;
       email: string;
+      name: string;
+      phone: string;
       url: string;
       messageMax: string;
       messageMin: string;
@@ -287,8 +293,10 @@ export const dictionaries: Record<Language, Dictionary> = {
         email: "Correo",
         emailPlaceholder: "tu@email.com",
         phone: "WhatsApp / Teléfono",
+        phoneHelper: "Ejemplo: +54 9 11 1234 5678",
         phonePlaceholder: "+54 9 11 1234 5678",
         message: "Mensaje",
+        messageMaxHelper: "Máximo 500 caracteres.",
         messagePlaceholder: "Contame brevemente qué necesitás…",
         optional: "Opcional",
         requiredFieldsMessage: "Completá los campos obligatorios para enviar tu solicitud.",
@@ -298,6 +306,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       },
       fields: {
         websiteUrl: "Enlace de la web",
+        websiteUrlHelper: "Ejemplo: https://tusitio.com",
         websiteUrlPlaceholder: "https://tusitio.com",
         projectType: "Tipo de proyecto",
         projectTypePersonal: "Personal",
@@ -305,6 +314,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         brandName: "Nombre de marca / empresa",
         brandNamePlaceholder: "Nombre de tu marca o empresa",
         social: "Red social",
+        socialHelper: "Se acepta URL o usuario.",
         socialPlaceholder: "https://instagram.com/tuusuario o @tuusuario",
         automationType: "Tipo de automatización",
         automationCustomerService: "Atención al cliente",
@@ -318,6 +328,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       errors: {
         required: "Este campo es obligatorio.",
         email: "Ingresá un correo válido.",
+        name: "Ingresá un nombre válido.",
+        phone: "Ingresá un teléfono válido.",
         url: "Ingresá una URL válida.",
         messageMax: "El mensaje no puede superar los 500 caracteres.",
         messageMin: "El mensaje debe tener al menos 10 caracteres.",
@@ -467,8 +479,10 @@ export const dictionaries: Record<Language, Dictionary> = {
         email: "Email",
         emailPlaceholder: "you@email.com",
         phone: "WhatsApp / Phone",
+        phoneHelper: "Example: +1 555 123 4567",
         phonePlaceholder: "+1 555 123 4567",
         message: "Message",
+        messageMaxHelper: "Maximum 500 characters.",
         messagePlaceholder: "Tell me briefly what you need…",
         optional: "Optional",
         requiredFieldsMessage: "Complete the required fields to send your request.",
@@ -478,6 +492,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       },
       fields: {
         websiteUrl: "Website URL",
+        websiteUrlHelper: "Example: https://yoursite.com",
         websiteUrlPlaceholder: "https://yoursite.com",
         projectType: "Project type",
         projectTypePersonal: "Personal",
@@ -485,6 +500,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         brandName: "Brand / company name",
         brandNamePlaceholder: "Your brand or company name",
         social: "Social profile",
+        socialHelper: "URL or username is accepted.",
         socialPlaceholder: "https://instagram.com/youruser or @youruser",
         automationType: "Automation type",
         automationCustomerService: "Customer service",
@@ -498,6 +514,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       errors: {
         required: "This field is required.",
         email: "Enter a valid email address.",
+        name: "Enter a valid name.",
+        phone: "Enter a valid phone number.",
         url: "Enter a valid URL.",
         messageMax: "The message cannot exceed 500 characters.",
         messageMin: "The message must be at least 10 characters.",

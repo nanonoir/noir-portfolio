@@ -7,9 +7,9 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 ## Workload / PR Boundary
 
 - Delivery strategy in task forecast: `ask-on-risk`
-- Current completed slice: Phase 1 Foundation + Phase 2 Informational Modals + Phase 3 Service Request Forms
-- Boundary: dependencies, localized form keys, service detail data contracts, Zod schemas, UI primitives, informational modal wiring, and service request form rendering/validation
-- Next slice: Phase 4 Success State & WhatsApp Integration
+- Current completed slice: Phase 1 Foundation + Phase 2 Informational Modals + Phase 3 Service Request Forms + Phase 4 Success State & WhatsApp Integration
+- Boundary: dependencies, localized form keys, service detail data contracts, Zod schemas, UI primitives, informational modal wiring, service request form rendering/validation, success state, and WhatsApp URL generation
+- Next slice: Phase 5 General Contact Form
 
 ## Completed Tasks
 
@@ -28,6 +28,8 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] 3.4 Created the E-commerce request form.
 - [x] 3.5 Created the Automations request form.
 - [x] 3.6 Created the Custom Service request form for the dark banner.
+- [x] 4.1 Created `src/components/forms/whatsapp-link.ts` to build encoded WhatsApp URLs from submitted service request data.
+- [x] 4.2 Implemented `SuccessState` inside `ServiceRequestModal` and wired valid form submissions to transition into success without closing the modal.
 
 ## Checkpoint 1 Results
 
@@ -59,6 +61,18 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] ES and EN labels, helpers, and validation messages smoke-tested in the browser.
 - [x] No TypeScript errors in the codebase (`pnpm build` passed).
 
+## Checkpoint 4 Results
+
+- [x] Success state renders after valid form submission.
+- [x] `Agendar reunión` renders disabled with tooltip text `Agendá una reunión directamente desde el portfolio — próximamente`.
+- [x] `Continuar por WhatsApp →` opens a WhatsApp URL with an encoded pre-filled message.
+- [x] WhatsApp message includes contact fields and service-specific fields.
+- [x] Empty optional message uses `Sin mensaje adicional` in the WhatsApp message.
+- [x] Modal does not auto-close after successful submission.
+- [x] X close button still closes the modal from success state.
+- [x] Success state and request forms work in ES and EN.
+- [x] No TypeScript errors in the codebase (`pnpm build` passed).
+
 ## Files Created
 
 - `src/components/forms/schemas.ts` — Zod schemas and inferred form value types.
@@ -72,26 +86,28 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - `src/components/forms/service-form-ecommerce.tsx` — E-commerce request form.
 - `src/components/forms/service-form-automation.tsx` — Automations request form.
 - `src/components/forms/service-form-custom.tsx` — Custom Service request form.
+- `src/components/forms/whatsapp-link.ts` — WhatsApp message and URL generation utility.
 
 ## Files Modified
 
 - `package.json` — added form validation dependencies.
 - `pnpm-lock.yaml` — locked installed dependencies.
-- `src/lib/i18n.ts` — added typed ES/EN form labels, placeholders, errors, and success copy.
+- `src/lib/i18n.ts` — added typed ES/EN form labels, placeholders, errors, success copy, meeting tooltip copy, and WhatsApp empty-message fallback.
 - `src/components/forms/schemas.ts` — tightened name and phone schema primitives for request form validation.
 - `src/components/ui/form-field.tsx` — adjusted input and textarea text sizing to avoid iOS input zoom.
 - `src/components/ui/form-controls.tsx` — adjusted label, error, and radio text sizing to avoid iOS input zoom.
 - `src/data/content.ts` — added localized service detail data fields.
 - `src/components/sections/static-sections.tsx` — wired service request state to `ServiceRequestModal` and info-modal handoff.
+- `src/components/forms/service-request-modal.tsx` — added success state and submit-to-success transition.
 - `src/components/ui/index.ts` — exported new UI primitives.
-- `openspec/changes/service-forms/tasks.md` — marked Phase 1, Phase 2, and Phase 3 tasks complete.
+- `openspec/changes/service-forms/tasks.md` — marked Phase 1, Phase 2, Phase 3, and Phase 4 tasks complete.
 
 ## Deviations from Design
 
-None — implementation matches the completed Phase 1, Phase 2, and Phase 3 scopes. Phase 3 logs valid submissions locally and keeps the modal open; success/WhatsApp behavior remains for Phase 4.
+None — implementation matches the completed Phase 1, Phase 2, Phase 3, and Phase 4 scopes. Backend/API submission remains out of scope.
 
 ## Issues / Notes
 
-- The task forecast still says the full change requires a chain strategy decision. This apply batch intentionally stayed within the assigned Phase 3 service-request-form slice.
-- Phase 3 intentionally logs valid submissions with `console.log` only. Success state and WhatsApp generation remain Phase 4.
+- The task forecast still says the full change requires a chain strategy decision. This apply batch intentionally stayed within the assigned Phase 4 success/WhatsApp slice.
+- Phase 4 keeps local `console.log` for accepted requests and transitions to success state; real backend/API submission remains out of scope.
 - `openspec/servicesInfo.md` only provides informational modal copy for the four current service cards. The custom dark-banner service now opens the custom request form directly and still has no `Más info` entry.

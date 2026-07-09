@@ -341,7 +341,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         message:
           "Recibí tu consulta. Para avanzar más rápido y no perder el contacto, podés continuar la conversación por WhatsApp.",
         meeting: "Agendar reunión",
-        meetingUnavailable: "La agenda estará disponible en una próxima versión.",
+        meetingUnavailable: "Agendá una reunión directamente desde el portfolio — próximamente",
         whatsApp: "Continuar por WhatsApp →",
         emptyMessageFallback: "Sin mensaje adicional",
       },
@@ -527,9 +527,9 @@ export const dictionaries: Record<Language, Dictionary> = {
         message:
           "I received your request. To move faster and keep the conversation going, you can continue on WhatsApp.",
         meeting: "Schedule meeting",
-        meetingUnavailable: "Scheduling will be available in a future version.",
+        meetingUnavailable: "Schedule a meeting directly from the portfolio — coming soon",
         whatsApp: "Continue on WhatsApp →",
-        emptyMessageFallback: "No additional message",
+        emptyMessageFallback: "Sin mensaje adicional",
       },
     },
     modals: {

@@ -68,8 +68,8 @@ Chain strategy: pending
 
 ## Phase 4: Success State & WhatsApp Integration
 
-- [ ] 4.1 Create `src/components/forms/whatsapp-link.ts` to encode pre-filled WhatsApp URL.
-- [ ] 4.2 Implement `SuccessState` inside `service-request-modal.tsx` and wire `onSubmit` transition.
+- [x] 4.1 Create `src/components/forms/whatsapp-link.ts` to encode pre-filled WhatsApp URL.
+- [x] 4.2 Implement `SuccessState` inside `service-request-modal.tsx` and wire `onSubmit` transition.
 
 ### Checkpoint 4
 

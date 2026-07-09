@@ -7,9 +7,9 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 ## Workload / PR Boundary
 
 - Delivery strategy in task forecast: `ask-on-risk`
-- Current completed slice: Phase 1 Foundation + Phase 2 Informational Modals + Phase 3 Service Request Forms + Phase 4 Success State & WhatsApp Integration
-- Boundary: dependencies, localized form keys, service detail data contracts, Zod schemas, UI primitives, informational modal wiring, service request form rendering/validation, success state, and WhatsApp URL generation
-- Next slice: Phase 5 General Contact Form
+- Current completed slice: Phase 1 Foundation + Phase 2 Informational Modals + Phase 3 Service Request Forms + Phase 4 Success State & WhatsApp Integration + Phase 5 General Contact Form
+- Boundary: dependencies, localized form keys, service detail data contracts, Zod schemas, UI primitives, informational modal wiring, service request form rendering/validation, success state, WhatsApp URL generation, and general contact form validation/toast behavior
+- Next slice: Phase 6 Integration & i18n
 
 ## Completed Tasks
 
@@ -30,6 +30,8 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] 3.6 Created the Custom Service request form for the dark banner.
 - [x] 4.1 Created `src/components/forms/whatsapp-link.ts` to build encoded WhatsApp URLs from submitted service request data.
 - [x] 4.2 Implemented `SuccessState` inside `ServiceRequestModal` and wired valid form submissions to transition into success without closing the modal.
+- [x] 5.1 Refactored `ContactSection` in `src/components/sections/static-sections.tsx` to React Hook Form + Zod using `mode: "onBlur"`.
+- [x] 5.2 Preserved the existing toast behavior on valid contact form submit and reset the form after success.
 
 ## Checkpoint 1 Results
 
@@ -73,6 +75,18 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] Success state and request forms work in ES and EN.
 - [x] No TypeScript errors in the codebase (`pnpm build` passed).
 
+## Checkpoint 5 Results
+
+- [x] Contact form uses React Hook Form with `zodResolver(generalContactFormSchema)`.
+- [x] Email validation uses the existing Zod `.email()` rule from `generalContactFormSchema`.
+- [x] Message validation uses the existing Zod minimum 10-character rule from `generalContactFormSchema`.
+- [x] Inline localized error messages render below fields after blur or invalid submit.
+- [x] Native validation is disabled with `noValidate`, avoiding browser validation popups.
+- [x] Valid submit keeps the existing localized `Toast` behavior and does not render an inline success state or WhatsApp CTA.
+- [x] Form resets after successful submission via React Hook Form `reset()`.
+- [x] ES and EN labels/placeholders/error messages are covered by the typed dictionary keys.
+- [x] No TypeScript errors in the codebase (`pnpm build` passed).
+
 ## Files Created
 
 - `src/components/forms/schemas.ts` — Zod schemas and inferred form value types.
@@ -99,15 +113,16 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - `src/data/content.ts` — added localized service detail data fields.
 - `src/components/sections/static-sections.tsx` — wired service request state to `ServiceRequestModal` and info-modal handoff.
 - `src/components/forms/service-request-modal.tsx` — added success state and submit-to-success transition.
+- `src/components/sections/static-sections.tsx` — refactored `ContactSection` to React Hook Form + Zod validation while preserving toast UX.
 - `src/components/ui/index.ts` — exported new UI primitives.
-- `openspec/changes/service-forms/tasks.md` — marked Phase 1, Phase 2, Phase 3, and Phase 4 tasks complete.
+- `openspec/changes/service-forms/tasks.md` — marked Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 tasks complete.
 
 ## Deviations from Design
 
-None — implementation matches the completed Phase 1, Phase 2, Phase 3, and Phase 4 scopes. Backend/API submission remains out of scope.
+None — implementation matches the completed Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 scopes. Backend/API submission remains out of scope.
 
 ## Issues / Notes
 
-- The task forecast still says the full change requires a chain strategy decision. This apply batch intentionally stayed within the assigned Phase 4 success/WhatsApp slice.
+- The task forecast still says the full change requires a chain strategy decision. This apply batch intentionally stayed within the assigned Phase 5 general contact form slice.
 - Phase 4 keeps local `console.log` for accepted requests and transitions to success state; real backend/API submission remains out of scope.
 - `openspec/servicesInfo.md` only provides informational modal copy for the four current service cards. The custom dark-banner service now opens the custom request form directly and still has no `Más info` entry.

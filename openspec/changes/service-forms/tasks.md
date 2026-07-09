@@ -79,8 +79,8 @@ Chain strategy: pending
 
 ## Phase 5: General Contact Form
 
-- [ ] 5.1 Refactor `ContactSection` in `src/components/sections/static-sections.tsx` to `react-hook-form` + Zod.
-- [ ] 5.2 Keep existing toast behavior on valid submit.
+- [x] 5.1 Refactor `ContactSection` in `src/components/sections/static-sections.tsx` to `react-hook-form` + Zod.
+- [x] 5.2 Keep existing toast behavior on valid submit.
 
 ### Checkpoint 5
 

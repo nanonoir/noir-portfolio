@@ -1,11 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { generalContactFormSchema, type GeneralContactFormValues } from "@/components/forms/schemas";
 import { createCustomServiceRequestTarget, ServiceRequestModal, type ServiceRequestTarget } from "@/components/forms/service-request-modal";
 import { useLanguage } from "@/components/providers/language-provider";
 import { assets, aboutOrbitTech, contactLinks, services, stackCategories, type Service } from "@/data/content";
-import { Button, CardSurface, Chip, Input, PdfModal, SectionHeading, SectionShell, ServiceInfoModal, Textarea, Toast } from "@/components/ui";
+import { Button, CardSurface, Chip, FormError, Input, Label, PdfModal, SectionHeading, SectionShell, ServiceInfoModal, Textarea, Toast } from "@/components/ui";
 
 // Outer orbit ring: 7 icons, clockwise rotation.
 // Each icon counter-rotates so it stays upright.
@@ -14,6 +17,15 @@ const OUTER_RING = aboutOrbitTech.slice(0, 4);
 const INNER_RING = aboutOrbitTech.slice(4);
 
 const DARK_INVERT_STACK_ICON_NAMES = new Set(["Railway", "VPS", "CI/CD", "n8n", "MCP", "Webhooks"]);
+
+function translateFormError(dictionary: ReturnType<typeof useLanguage>["dictionary"], message?: string) {
+  if (!message) {
+    return undefined;
+  }
+
+  const key = message.replace("forms.errors.", "") as keyof typeof dictionary.forms.errors;
+  return dictionary.forms.errors[key] ?? message;
+}
 
 function AboutDesktopIllustration({ profileAlt }: { profileAlt: string }) {
   return (
@@ -401,6 +413,17 @@ function ContactSection() {
   const { dictionary } = useLanguage();
   const contact = dictionary.contact;
   const [toastVisible, setToastVisible] = useState(false);
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+    reset,
+  } = useForm<GeneralContactFormValues>({
+    mode: "onBlur",
+    resolver: zodResolver(generalContactFormSchema),
+  });
+  const emailError = translateFormError(dictionary, errors.email?.message);
+  const messageError = translateFormError(dictionary, errors.message?.message);
 
   useEffect(() => {
     if (!toastVisible) {
@@ -411,9 +434,9 @@ function ContactSection() {
     return () => window.clearTimeout(timeout);
   }, [toastVisible]);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function onSubmit() {
     setToastVisible(true);
+    reset();
   }
 
   return (
@@ -421,15 +444,30 @@ function ContactSection() {
       {/* Pass empty description so SectionHeading stays centered without noisy copy */}
       <SectionHeading className="text-center lg:block" description={contact.description} label={contact.label} title={contact.title} />
       <div className="grid gap-10 lg:grid-cols-5 lg:gap-14">
-        <form className="space-y-5 lg:col-span-3" onSubmit={onSubmit}>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-foreground">{contact.emailLabel}</span>
-            <Input name="email" placeholder={contact.emailPlaceholder} required type="email" />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-foreground">{contact.messageLabel}</span>
-            <Textarea name="message" placeholder={contact.messagePlaceholder} required />
-          </label>
+        <form className="space-y-5 lg:col-span-3" noValidate onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-2">
+            <Label htmlFor="contact-email" required>{contact.emailLabel}</Label>
+            <Input
+              aria-describedby={emailError ? "contact-email-error" : undefined}
+              aria-invalid={Boolean(emailError)}
+              id="contact-email"
+              placeholder={contact.emailPlaceholder}
+              type="email"
+              {...register("email")}
+            />
+            <FormError id="contact-email-error">{emailError}</FormError>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="contact-message" required>{contact.messageLabel}</Label>
+            <Textarea
+              aria-describedby={messageError ? "contact-message-error" : undefined}
+              aria-invalid={Boolean(messageError)}
+              id="contact-message"
+              placeholder={contact.messagePlaceholder}
+              {...register("message")}
+            />
+            <FormError id="contact-message-error">{messageError}</FormError>
+          </div>
           {/* Submit button centered below the form */}
           <div className="flex justify-center">
             <Button type="submit">

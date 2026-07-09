@@ -157,10 +157,7 @@ export type Dictionary = {
     };
   };
   modals: {
-    comingSoonTitle: string;
-    comingSoonMessage: string;
     closeLabel: string;
-    contactCta: string;
     diplomaTitle: string;
     resumeTitle: string;
   };
@@ -347,10 +344,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       },
     },
     modals: {
-      comingSoonTitle: "Próximamente",
-      comingSoonMessage: "Este flujo estará disponible en una próxima versión.",
       closeLabel: "Cerrar modal",
-      contactCta: "Ir a contacto",
       diplomaTitle: "Título",
       resumeTitle: "Resumen",
     },
@@ -529,14 +523,11 @@ export const dictionaries: Record<Language, Dictionary> = {
         meeting: "Schedule meeting",
         meetingUnavailable: "Schedule a meeting directly from the portfolio — coming soon",
         whatsApp: "Continue on WhatsApp →",
-        emptyMessageFallback: "Sin mensaje adicional",
+        emptyMessageFallback: "No additional message",
       },
     },
     modals: {
-      comingSoonTitle: "Coming soon",
-      comingSoonMessage: "This flow will be available in a future version.",
       closeLabel: "Close modal",
-      contactCta: "Go to contact",
       diplomaTitle: "Diploma",
       resumeTitle: "Resume",
     },

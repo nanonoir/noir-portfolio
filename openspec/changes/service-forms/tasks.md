@@ -90,11 +90,11 @@ Chain strategy: pending
 
 ## Phase 6: Integration & i18n
 
-- [ ] 6.1 Split `ServicesSection` state into `infoService` and `requestService`.
-- [ ] 6.2 Wire "Solicitar" buttons on cards, dark banner, and info CTA to `ServiceRequestModal`.
-- [ ] 6.3 Remove `ServicePlaceholderModal`.
-- [ ] 6.4 Add complete ES/EN translations for all new keys.
-- [ ] 6.5 Run `pnpm build` and smoke test ES/EN.
+- [x] 6.1 Split `ServicesSection` state into `infoService` and `requestService`.
+- [x] 6.2 Wire "Solicitar" buttons on cards, dark banner, and info CTA to `ServiceRequestModal`.
+- [x] 6.3 Remove `ServicePlaceholderModal`.
+- [x] 6.4 Add complete ES/EN translations for all new keys.
+- [x] 6.5 Run `pnpm build` and smoke test ES/EN.
 
 ### Checkpoint 6
 

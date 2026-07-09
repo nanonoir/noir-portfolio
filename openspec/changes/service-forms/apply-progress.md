@@ -7,9 +7,9 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 ## Workload / PR Boundary
 
 - Delivery strategy in task forecast: `ask-on-risk`
-- Current completed slice: Phase 1 Foundation + Phase 2 Informational Modals + Phase 3 Service Request Forms + Phase 4 Success State & WhatsApp Integration + Phase 5 General Contact Form
-- Boundary: dependencies, localized form keys, service detail data contracts, Zod schemas, UI primitives, informational modal wiring, service request form rendering/validation, success state, WhatsApp URL generation, and general contact form validation/toast behavior
-- Next slice: Phase 6 Integration & i18n
+- Current completed slice: Phase 1 Foundation + Phase 2 Informational Modals + Phase 3 Service Request Forms + Phase 4 Success State & WhatsApp Integration + Phase 5 General Contact Form + Phase 6 Integration & i18n
+- Boundary: full service form flow from service cards and informational modals through request forms, success state, WhatsApp handoff, contact validation, complete ES/EN copy, and final cleanup
+- Next slice: None — all apply phases are complete
 
 ## Completed Tasks
 
@@ -21,7 +21,7 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] 1.6 Created a strict single-panel `Accordion` primitive.
 - [x] 2.1 Created `ServiceInfoModal` in `src/components/ui/informational-modal.tsx` using `Modal` and `Accordion`.
 - [x] 2.2 Populated localized service detail content in `src/data/content.ts` from `openspec/servicesInfo.md`.
-- [x] 2.3 Wired `Más info` / `More info` buttons to `ServiceInfoModal`; CTA closes info modal and opens the existing request placeholder.
+- [x] 2.3 Wired `Más info` / `More info` buttons to `ServiceInfoModal`; CTA closes info modal and opens the matching request modal.
 - [x] 3.1 Created `ServiceRequestModal` and shared request form shell using React Hook Form with `mode: "onBlur"`.
 - [x] 3.2 Created the Auditoría Web request form.
 - [x] 3.3 Created the Landing Page request form with conditional brand/company field.
@@ -32,6 +32,11 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] 4.2 Implemented `SuccessState` inside `ServiceRequestModal` and wired valid form submissions to transition into success without closing the modal.
 - [x] 5.1 Refactored `ContactSection` in `src/components/sections/static-sections.tsx` to React Hook Form + Zod using `mode: "onBlur"`.
 - [x] 5.2 Preserved the existing toast behavior on valid contact form submit and reset the form after success.
+- [x] 6.1 Confirmed `ServicesSection` uses separate `infoService` and `requestService` state.
+- [x] 6.2 Confirmed service card request buttons, dark banner CTA, and info-modal CTA open `ServiceRequestModal`.
+- [x] 6.3 Confirmed `ServicePlaceholderModal` is removed from the implementation.
+- [x] 6.4 Completed ES/EN copy cleanup for new form keys.
+- [x] 6.5 Ran `pnpm run lint` and `pnpm build`; both pass.
 
 ## Checkpoint 1 Results
 
@@ -47,7 +52,7 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] Accordion behavior keeps only one detail section open at a time.
 - [x] Always-visible intro, ideal-for, result, and CTA sections are not collapsible.
 - [x] `Más info` / `More info` opens `ServiceInfoModal` instead of the placeholder modal.
-- [x] CTA closes `ServiceInfoModal` and opens the existing request placeholder modal for now.
+- [x] CTA closes `ServiceInfoModal` and opens the matching request modal.
 - [x] ES and EN content smoke-tested in the browser.
 - [x] No TypeScript errors in the codebase (`pnpm build` passed).
 
@@ -87,6 +92,17 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - [x] ES and EN labels/placeholders/error messages are covered by the typed dictionary keys.
 - [x] No TypeScript errors in the codebase (`pnpm build` passed).
 
+## Checkpoint 6 Results
+
+- [x] `ServicesSection` keeps separate state for informational and request modals.
+- [x] Service card `Solicitar` / `Request` buttons open the matching `ServiceRequestModal`.
+- [x] The dark custom software banner opens the custom request form.
+- [x] `ServiceInfoModal` CTA closes the info modal and opens the matching request modal.
+- [x] No `ServicePlaceholderModal`, `console.log`, or `debugger` references remain in `src/`.
+- [x] ES and EN form success empty-message fallback strings are localized correctly.
+- [x] `pnpm run lint` passed.
+- [x] `pnpm build` passed.
+
 ## Files Created
 
 - `src/components/forms/schemas.ts` — Zod schemas and inferred form value types.
@@ -115,14 +131,21 @@ Standard mode. Strict TDD is disabled for this project (`strict_tdd: false`); ch
 - `src/components/forms/service-request-modal.tsx` — added success state and submit-to-success transition.
 - `src/components/sections/static-sections.tsx` — refactored `ContactSection` to React Hook Form + Zod validation while preserving toast UX.
 - `src/components/ui/index.ts` — exported new UI primitives.
-- `openspec/changes/service-forms/tasks.md` — marked Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 tasks complete.
+- `src/lib/i18n.ts` — corrected the EN WhatsApp empty-message fallback copy.
+- `openspec/changes/service-forms/tasks.md` — marked Phase 1 through Phase 6 tasks complete.
 
 ## Deviations from Design
 
-None — implementation matches the completed Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 scopes. Backend/API submission remains out of scope.
+None — implementation matches all completed Phase 1 through Phase 6 scopes. Backend/API submission remains out of scope.
 
 ## Issues / Notes
 
-- The task forecast still says the full change requires a chain strategy decision. This apply batch intentionally stayed within the assigned Phase 5 general contact form slice.
-- Phase 4 keeps local `console.log` for accepted requests and transitions to success state; real backend/API submission remains out of scope.
+- The task forecast still says the full change requires a chain strategy decision, but this final apply batch stayed within the assigned Phase 6 Integration & i18n slice.
+- Phase 6 removed local request logging; real backend/API submission remains out of scope.
 - `openspec/servicesInfo.md` only provides informational modal copy for the four current service cards. The custom dark-banner service now opens the custom request form directly and still has no `Más info` entry.
+
+## Final Status
+
+- [x] All implementation phases are complete.
+- [x] OpenSpec task checklist is fully complete.
+- [x] Ready for `sdd-verify`.

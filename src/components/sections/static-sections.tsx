@@ -361,14 +361,17 @@ function ServicesSection() {
         onRequest={handleRequestFromInfo}
         service={infoService}
       />
-      <ServiceRequestModal
-        closeLabel={dictionary.modals.closeLabel}
-        dictionary={dictionary}
-        isOpen={Boolean(requestService)}
-        language={language}
-        onClose={() => setRequestService(null)}
-        service={requestService}
-      />
+      {requestService ? (
+        <ServiceRequestModal
+          closeLabel={dictionary.modals.closeLabel}
+          dictionary={dictionary}
+          isOpen={Boolean(requestService)}
+          key={requestService.id}
+          language={language}
+          onClose={() => setRequestService(null)}
+          service={requestService}
+        />
+      ) : null}
     </SectionShell>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Dictionary, Language, LocalizedString } from "@/lib/i18n";
 import type { Service } from "@/data/content";
 import { Modal } from "@/components/ui";
@@ -110,41 +110,36 @@ export function ServiceRequestModal({
   onClose,
   service,
 }: ServiceRequestModalProps) {
-  const [submittedValues, setSubmittedValues] = useState<ServiceRequestValues | null>(null);
+  const [submittedRequest, setSubmittedRequest] = useState<{
+    serviceId: ServiceFormId;
+    values: ServiceRequestValues;
+  } | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setSubmittedValues(null);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    setSubmittedValues(null);
-  }, [service?.id]);
-
-  if (!service) {
+  if (!isOpen || !service) {
     return null;
   }
 
+  const currentService = service;
+  const submittedValues = submittedRequest?.serviceId === currentService.id ? submittedRequest.values : null;
+
   function handleSubmit(values: ServiceRequestValues) {
-    console.log("Service request submitted", {
-      service: service?.id,
+    setSubmittedRequest({
+      serviceId: currentService.id,
       values,
     });
-    setSubmittedValues(values);
   }
 
   return (
-    <Modal closeLabel={closeLabel} isOpen={isOpen} onClose={onClose} size="lg" title={service.title[language]}>
+    <Modal closeLabel={closeLabel} isOpen={isOpen} onClose={onClose} size="lg" title={currentService.title[language]}>
       {submittedValues ? (
-        <SuccessState dictionary={dictionary} language={language} service={service} values={submittedValues} />
+        <SuccessState dictionary={dictionary} language={language} service={currentService} values={submittedValues} />
       ) : (
         <>
           <div className="mb-6 space-y-2">
-            <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{service.description[language]}</p>
+            <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{currentService.description[language]}</p>
             <p className="text-base text-muted-foreground md:text-sm">{dictionary.forms.common.requiredFieldsMessage}</p>
           </div>
-          <ServiceRequestForm dictionary={dictionary} onSubmit={handleSubmit} serviceId={service.id} />
+          <ServiceRequestForm dictionary={dictionary} onSubmit={handleSubmit} serviceId={currentService.id} />
         </>
       )}
     </Modal>

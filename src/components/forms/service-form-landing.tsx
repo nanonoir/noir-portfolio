@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import type { Dictionary } from "@/lib/i18n";
 import { landingFormSchema, type LandingFormValues } from "./schemas";
 import { RadioGroup, RequestFormShell, scrollToFirstError, TextAreaField, TextField } from "./service-form-fields";
@@ -14,7 +14,7 @@ type ServiceFormProps<TValues> = {
 export function ServiceFormLanding({ dictionary, onSubmit }: ServiceFormProps<LandingFormValues>) {
   const form = useForm<LandingFormValues>({ mode: "onBlur", resolver: zodResolver(landingFormSchema) });
   const errors = form.formState.errors;
-  const projectType = form.watch("projectType");
+  const projectType = useWatch({ control: form.control, name: "projectType" });
 
   return (
     <RequestFormShell

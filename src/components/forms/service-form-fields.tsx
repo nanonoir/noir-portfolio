@@ -140,29 +140,33 @@ export function RadioGroup({
 export function RequestFormShell({
   children,
   dictionary,
+  formId,
   hasErrors,
   isSubmitting,
   onSubmit,
 }: {
   children: React.ReactNode;
   dictionary: Dictionary;
+  formId?: string;
   hasErrors: boolean;
   isSubmitting: boolean;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
 }) {
   return (
-    <form className="space-y-5" noValidate onSubmit={onSubmit}>
+    <form id={formId} className="space-y-5" noValidate onSubmit={onSubmit}>
       {hasErrors ? (
         <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-base text-red-500 md:text-sm" role="alert">
           {dictionary.forms.common.requiredFieldsMessage}
         </div>
       ) : null}
       {children}
-      <div className="flex justify-center sm:justify-start">
-        <Button disabled={isSubmitting} type="submit">
-          {dictionary.forms.common.submit}
-        </Button>
-      </div>
+      {!formId ? (
+        <div className="flex justify-center sm:justify-start">
+          <Button disabled={isSubmitting} type="submit">
+            {dictionary.forms.common.submit}
+          </Button>
+        </div>
+      ) : null}
     </form>
   );
 }

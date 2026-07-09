@@ -27,24 +27,26 @@ type ServiceRequestModalProps = {
 
 function ServiceRequestForm({
   dictionary,
+  formId,
   onSubmit,
   serviceId,
 }: {
   dictionary: Dictionary;
+  formId: string;
   onSubmit: (values: ServiceRequestValues) => void;
   serviceId: ServiceFormId;
 }) {
   switch (serviceId) {
     case "web-audit":
-      return <ServiceFormAudit dictionary={dictionary} onSubmit={onSubmit} />;
+      return <ServiceFormAudit dictionary={dictionary} formId={formId} onSubmit={onSubmit} />;
     case "landing":
-      return <ServiceFormLanding dictionary={dictionary} onSubmit={onSubmit} />;
+      return <ServiceFormLanding dictionary={dictionary} formId={formId} onSubmit={onSubmit} />;
     case "ecommerce":
-      return <ServiceFormEcommerce dictionary={dictionary} onSubmit={onSubmit} />;
+      return <ServiceFormEcommerce dictionary={dictionary} formId={formId} onSubmit={onSubmit} />;
     case "automation":
-      return <ServiceFormAutomation dictionary={dictionary} onSubmit={onSubmit} />;
+      return <ServiceFormAutomation dictionary={dictionary} formId={formId} onSubmit={onSubmit} />;
     case "custom":
-      return <ServiceFormCustom dictionary={dictionary} onSubmit={onSubmit} />;
+      return <ServiceFormCustom dictionary={dictionary} formId={formId} onSubmit={onSubmit} />;
   }
 }
 
@@ -69,13 +71,10 @@ function SuccessState({
   const whatsAppUrl = createWhatsAppUrl(whatsAppMessage);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{service.title[language]}</p>
-        <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">{dictionary.forms.success.title}</h3>
-        <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{dictionary.forms.success.message}</p>
-      </div>
-
+    <div className="space-y-4">
+      <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{service.title[language]}</p>
+      <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">{dictionary.forms.success.title}</h3>
+      <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{dictionary.forms.success.message}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <span className="inline-flex" title={dictionary.forms.success.meetingUnavailable}>
           <button
@@ -120,6 +119,7 @@ export function ServiceRequestModal({
   }
 
   const currentService = service;
+  const formId = `service-form-${currentService.id}`;
   const submittedValues = submittedRequest?.serviceId === currentService.id ? submittedRequest.values : null;
 
   function handleSubmit(values: ServiceRequestValues) {
@@ -129,8 +129,20 @@ export function ServiceRequestModal({
     });
   }
 
+  const modalFooter = submittedValues ? null : (
+    <div className="flex justify-center sm:justify-start">
+      <button
+        className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-base font-medium text-primary-foreground transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+        form={formId}
+        type="submit"
+      >
+        {dictionary.forms.common.submit}
+      </button>
+    </div>
+  );
+
   return (
-    <Modal closeLabel={closeLabel} isOpen={isOpen} onClose={onClose} size="lg" title={currentService.title[language]}>
+    <Modal closeLabel={closeLabel} footer={modalFooter} isOpen={isOpen} onClose={onClose} size="lg" title={currentService.title[language]}>
       {submittedValues ? (
         <SuccessState dictionary={dictionary} language={language} service={currentService} values={submittedValues} />
       ) : (
@@ -139,7 +151,7 @@ export function ServiceRequestModal({
             <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{currentService.description[language]}</p>
             <p className="text-base text-muted-foreground md:text-sm">{dictionary.forms.common.requiredFieldsMessage}</p>
           </div>
-          <ServiceRequestForm dictionary={dictionary} onSubmit={handleSubmit} serviceId={currentService.id} />
+          <ServiceRequestForm dictionary={dictionary} formId={formId} onSubmit={handleSubmit} serviceId={currentService.id} />
         </>
       )}
     </Modal>

@@ -8,16 +8,18 @@ import { RequestFormShell, scrollToFirstError, TextAreaField, TextField } from "
 
 type ServiceFormProps<TValues> = {
   dictionary: Dictionary;
+  formId?: string;
   onSubmit: (values: TValues) => void;
 };
 
-export function ServiceFormAudit({ dictionary, onSubmit }: ServiceFormProps<AuditFormValues>) {
+export function ServiceFormAudit({ dictionary, formId, onSubmit }: ServiceFormProps<AuditFormValues>) {
   const form = useForm<AuditFormValues>({ mode: "onBlur", resolver: zodResolver(auditFormSchema) });
   const errors = form.formState.errors;
 
   return (
     <RequestFormShell
       dictionary={dictionary}
+      formId={formId}
       hasErrors={Object.keys(errors).length > 0 && form.formState.isSubmitted}
       isSubmitting={form.formState.isSubmitting}
       onSubmit={form.handleSubmit(onSubmit, scrollToFirstError)}

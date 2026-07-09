@@ -8,15 +8,16 @@ import { RequestFormShell, scrollToFirstError, TextAreaField, TextField } from "
 
 type ServiceFormProps<TValues> = {
   dictionary: Dictionary;
+  formId?: string;
   onSubmit: (values: TValues) => void;
 };
 
-export function ServiceFormEcommerce({ dictionary, onSubmit }: ServiceFormProps<EcommerceFormValues>) {
+export function ServiceFormEcommerce({ dictionary, formId, onSubmit }: ServiceFormProps<EcommerceFormValues>) {
   const form = useForm<EcommerceFormValues>({ mode: "onBlur", resolver: zodResolver(ecommerceFormSchema) });
   const errors = form.formState.errors;
 
   return (
-    <RequestFormShell dictionary={dictionary} hasErrors={Object.keys(errors).length > 0 && form.formState.isSubmitted} isSubmitting={form.formState.isSubmitting} onSubmit={form.handleSubmit(onSubmit, scrollToFirstError)}>
+    <RequestFormShell dictionary={dictionary} formId={formId} hasErrors={Object.keys(errors).length > 0 && form.formState.isSubmitted} isSubmitting={form.formState.isSubmitting} onSubmit={form.handleSubmit(onSubmit, scrollToFirstError)}>
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField dictionary={dictionary} error={errors.name?.message} label={dictionary.forms.common.name} name="name" placeholder={dictionary.forms.common.namePlaceholder} registration={form.register("name")} required />
         <TextField dictionary={dictionary} error={errors.email?.message} label={dictionary.forms.common.email} name="email" placeholder={dictionary.forms.common.emailPlaceholder} registration={form.register("email")} required type="email" />

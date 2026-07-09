@@ -166,3 +166,33 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Scoped scrollbar for modal scroll container (Task 9A.11) */
+.modal-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.modal-scroll-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modal-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+}
+
+.dark .modal-scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+}
+
+/* Minimum font-size 16px for form fields — prevents iOS zoom (Task 9A.12) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea,
+select {
+  font-size: max(1rem, 16px);
+}

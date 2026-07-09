@@ -55,6 +55,7 @@ export function ServiceInfoModal({
   return (
     <Modal
       closeLabel={closeLabel}
+      footer={<Button onClick={handleRequest}>{details.ctaLabel[language]}</Button>}
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
@@ -94,10 +95,6 @@ export function ServiceInfoModal({
         <div className="rounded-2xl border border-border bg-surface/50 p-4">
           <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{resultTitle}</p>
           <p className="mt-2 text-sm leading-6 text-body-foreground">{details.result[language]}</p>
-        </div>
-
-        <div className="flex justify-center sm:justify-start">
-          <Button onClick={handleRequest}>{details.ctaLabel[language]}</Button>
         </div>
       </div>
     </Modal>

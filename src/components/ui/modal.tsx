@@ -24,21 +24,36 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  // Stable ref for onClose so the keydown handler never closes over a stale copy
+  const onCloseRef = useRef(onClose);
   const titleId = `modal-title-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+  // Keep the ref in sync without triggering the focus effect
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
-    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Capture the element that opened the modal for focus return on close
+    openerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    // Focus the modal container once on open — subsequent renders must NOT
+    // steal focus from inputs inside the modal.
     dialogRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -74,7 +89,9 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       openerRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+    // Only re-run when isOpen changes — intentionally excluding onClose
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;

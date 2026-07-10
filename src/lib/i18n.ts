@@ -118,7 +118,9 @@ export type Dictionary = {
     };
     actions: {
       confirm: string;
+      loading: string;
       back: string;
+      backToForm: string;
       close: string;
       retry: string;
       whatsapp: string;
@@ -141,6 +143,16 @@ export type Dictionary = {
       title: string;
       subtitle: string;
       cta: string;
+    };
+    whatsapp: {
+      intro: string;
+      service: string;
+      name: string;
+      email: string;
+      phone: string;
+      reason: string;
+      schedule: string;
+      message: string;
     };
   };
   forms: {
@@ -357,7 +369,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       },
       actions: {
         confirm: "Confirmar solicitud",
+        loading: "Solicitando reunión...",
         back: "Volver",
+        backToForm: "Volver al formulario",
         close: "Cerrar",
         retry: "Reintentar",
         whatsapp: "Continuar por WhatsApp →",
@@ -382,6 +396,16 @@ export const dictionaries: Record<Language, Dictionary> = {
         title: "¿Te interesa mi perfil o alguno de mis servicios?",
         subtitle: "Agendemos una llamada breve para conversar próximos pasos.",
         cta: "Agendar llamada",
+      },
+      whatsapp: {
+        intro: "Hola Nahuel, quiero solicitar una reunión.",
+        service: "Servicio",
+        name: "Nombre",
+        email: "Correo",
+        phone: "WhatsApp",
+        reason: "Motivo",
+        schedule: "Horario solicitado",
+        message: "Mensaje",
       },
     },
     forms: {
@@ -443,7 +467,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         title: "Solicitud enviada",
         message:
           "Recibí tu consulta. Para avanzar más rápido y no perder el contacto, podés continuar la conversación por WhatsApp.",
-        meeting: "Agendar reunión",
+        meeting: "Agendar llamada",
         meetingUnavailable: "Agendá una reunión directamente desde el portfolio — próximamente",
         whatsApp: "Continuar por WhatsApp →",
         emptyMessageFallback: "Sin mensaje adicional",
@@ -595,7 +619,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       },
       actions: {
         confirm: "Confirm request",
+        loading: "Requesting meeting...",
         back: "Back",
+        backToForm: "Back to form",
         close: "Close",
         retry: "Retry",
         whatsapp: "Continue on WhatsApp →",
@@ -619,6 +645,16 @@ export const dictionaries: Record<Language, Dictionary> = {
         title: "Interested in my profile or services?",
         subtitle: "Let's schedule a brief call to discuss next steps.",
         cta: "Schedule a call",
+      },
+      whatsapp: {
+        intro: "Hi Nahuel, I want to request a meeting.",
+        service: "Service",
+        name: "Name",
+        email: "Email",
+        phone: "WhatsApp",
+        reason: "Reason",
+        schedule: "Requested time",
+        message: "Message",
       },
     },
     forms: {
@@ -680,7 +716,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         title: "Request sent",
         message:
           "I received your request. To move faster and keep the conversation going, you can continue on WhatsApp.",
-        meeting: "Schedule meeting",
+        meeting: "Schedule a call",
         meetingUnavailable: "Schedule a meeting directly from the portfolio — coming soon",
         whatsApp: "Continue on WhatsApp →",
         emptyMessageFallback: "No additional message",

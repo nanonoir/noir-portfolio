@@ -39,12 +39,6 @@ type MeetingModalProps = {
 
 const INITIAL_AVAILABILITY: AvailabilityState = { status: "idle", slots: [] };
 
-const CONTACT_REASON_LABELS: Record<MeetingFromContactValues["reason"], string> = {
-  project: "Proyecto / servicio",
-  job: "Oportunidad laboral",
-  general: "Consulta general",
-};
-
 type ContactMeetingPayload = {
   type: "meeting_request";
   origin: "Contacto";
@@ -106,6 +100,12 @@ type MeetingPayload = ContactMeetingPayload | ServiceMeetingPayload | CustomSoft
 
 type MeetingFormValues = MeetingFromServiceValues & Partial<Omit<MeetingFromContactValues, keyof MeetingFromServiceValues>>;
 
+type MeetingApiError = {
+  error?: string;
+  message?: string;
+  success?: false;
+};
+
 function translateError(dictionary: Dictionary, message?: string) {
   if (!message) return undefined;
 
@@ -113,21 +113,55 @@ function translateError(dictionary: Dictionary, message?: string) {
   return dictionary.forms.errors[key] ?? message;
 }
 
-function createMeetingWhatsAppMessage(values: Partial<MeetingFormValues>, dictionary: Dictionary) {
-  const reason = values.reason ? dictionary.meeting.reasons[values.reason] : dictionary.forms.success.emptyMessageFallback;
-  const message = values.message?.trim() || dictionary.forms.success.emptyMessageFallback;
-  const schedule = values.date && values.time ? `${values.date} ${values.time}` : dictionary.forms.success.emptyMessageFallback;
+function createMeetingWhatsAppMessage({
+  dictionary,
+  language,
+  origin,
+  previousValues,
+  service,
+  values,
+}: {
+  dictionary: Dictionary;
+  language: Language;
+  origin: MeetingModalProps["origin"];
+  previousValues?: ServiceRequestValues | null;
+  service?: ServiceRequestTarget | null;
+  values: Partial<MeetingFormValues>;
+}) {
+  const empty = dictionary.forms.success.emptyMessageFallback;
+  const contactName = values.name || previousValues?.name || empty;
+  const contactEmail = values.email || previousValues?.email || empty;
+  const contactPhone = values.phone || previousValues?.phone || empty;
+  const reason = values.reason
+    ? dictionary.meeting.reasons[values.reason]
+    : service?.title[language] || dictionary.meeting.title;
+  const message = values.message?.trim() || previousValues?.message?.trim() || empty;
+  const schedule = values.date && values.time ? `${values.date} ${values.time}` : empty;
+
+  if (origin === "contact") {
+    return [
+      dictionary.meeting.whatsapp.intro,
+      "",
+      `${dictionary.meeting.whatsapp.name}: ${contactName}`,
+      `${dictionary.meeting.whatsapp.email}: ${contactEmail}`,
+      `${dictionary.meeting.whatsapp.phone}: ${contactPhone}`,
+      `${dictionary.meeting.whatsapp.reason}: ${reason}`,
+      `${dictionary.meeting.whatsapp.schedule}: ${schedule}`,
+      "",
+      `${dictionary.meeting.whatsapp.message}: ${message}`,
+    ].join("\n");
+  }
 
   return [
-    "Hola Nahuel, quiero solicitar una reunión.",
+    dictionary.meeting.whatsapp.intro,
     "",
-    `Nombre: ${values.name || dictionary.forms.success.emptyMessageFallback}`,
-    `Correo: ${values.email || dictionary.forms.success.emptyMessageFallback}`,
-    `WhatsApp: ${values.phone || dictionary.forms.success.emptyMessageFallback}`,
-    `Motivo: ${reason}`,
-    `Horario solicitado: ${schedule}`,
+    `${dictionary.meeting.whatsapp.service}: ${reason}`,
+    `${dictionary.meeting.whatsapp.name}: ${contactName}`,
+    `${dictionary.meeting.whatsapp.email}: ${contactEmail}`,
+    `${dictionary.meeting.whatsapp.phone}: ${contactPhone}`,
+    `${dictionary.meeting.whatsapp.schedule}: ${schedule}`,
     "",
-    `Mensaje: ${message}`,
+    `${dictionary.meeting.whatsapp.message}: ${message}`,
   ].join("\n");
 }
 
@@ -137,13 +171,13 @@ function trimmedOptional(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
-function buildContactMeetingPayload(values: MeetingFromContactValues): ContactMeetingPayload {
+function buildContactMeetingPayload(values: MeetingFromContactValues, dictionary: Dictionary): ContactMeetingPayload {
   const message = values.message?.trim();
 
   return {
     type: "meeting_request",
     origin: "Contacto",
-    reason: CONTACT_REASON_LABELS[values.reason],
+    reason: dictionary.meeting.reasons[values.reason],
     name: values.name.trim(),
     email: values.email.trim().toLowerCase(),
     phone: values.phone.trim(),
@@ -306,9 +340,10 @@ export function MeetingModal({
   const watchedValues = useWatch({ control: form.control });
   const selectedDate = watchedValues.date || "";
   const selectedTime = watchedValues.time || "";
+  const isSubmittingMeeting = step === "loading";
   const whatsAppMessage = useMemo(
-    () => createMeetingWhatsAppMessage(watchedValues, dictionary),
-    [dictionary, watchedValues],
+    () => createMeetingWhatsAppMessage({ dictionary, language, origin, previousValues, service, values: watchedValues }),
+    [dictionary, language, origin, previousValues, service, watchedValues],
   );
   const whatsAppUrl = useMemo(() => createWhatsAppUrl(whatsAppMessage), [whatsAppMessage]);
 
@@ -348,7 +383,7 @@ export function MeetingModal({
 
   function buildPayload(values: MeetingFormValues): MeetingPayload {
     if (isContactOrigin) {
-      return buildContactMeetingPayload(values as MeetingFromContactValues);
+      return buildContactMeetingPayload(values as MeetingFromContactValues, dictionary);
     }
 
     if (!service || !previousValues) {
@@ -383,7 +418,12 @@ export function MeetingModal({
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || dictionary.meeting.error.message);
+        const apiError = data as MeetingApiError;
+        throw new Error(
+          apiError.error === "SLOT_UNAVAILABLE" || apiError.message === "forms.errors.slotUnavailable"
+            ? dictionary.meeting.error.slotUnavailable
+            : apiError.message || dictionary.meeting.error.message,
+        );
       }
 
       setStep("success");
@@ -395,6 +435,11 @@ export function MeetingModal({
 
   function handleRetry() {
     void form.handleSubmit(handleSubmit, scrollToFirstError)();
+  }
+
+  function handleBackToForm() {
+    setSubmitError(undefined);
+    setStep("form");
   }
 
   function handleClose() {
@@ -409,7 +454,7 @@ export function MeetingModal({
   const footer = step === "form" ? (
     <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
       <Button variant="outlined" onClick={handleClose}>{dictionary.meeting.actions.close}</Button>
-      <Button disabled={availability.status === "loading"} form={formId} type="submit">
+      <Button disabled={availability.status === "loading" || isSubmittingMeeting} form={formId} type="submit">
         {dictionary.meeting.actions.confirm}
       </Button>
     </div>
@@ -425,9 +470,9 @@ export function MeetingModal({
       title={dictionary.meeting.title}
     >
       {step === "success" ? (
-        <MeetingSuccess dictionary={dictionary} onClose={handleClose} />
+        <MeetingSuccess dictionary={dictionary} onClose={handleClose} whatsappUrl={isContactOrigin ? undefined : whatsAppUrl} />
       ) : step === "error" ? (
-        <MeetingError dictionary={dictionary} message={submitError} onRetry={handleRetry} whatsappMessage={whatsAppMessage} />
+        <MeetingError dictionary={dictionary} message={submitError} onBackToForm={handleBackToForm} onRetry={handleRetry} whatsappMessage={whatsAppMessage} />
       ) : (
         <form
           className="space-y-5"
@@ -445,14 +490,14 @@ export function MeetingModal({
           </div>
 
           {Object.keys(errors).length > 0 && form.formState.isSubmitted ? (
-            <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-base text-red-500 md:text-sm" role="alert">
+            <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-base text-red-500 md:text-sm" role="alert" aria-live="assertive">
               {dictionary.forms.common.requiredFieldsMessage}
             </div>
           ) : null}
 
           {step === "loading" ? (
-            <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm" role="status">
-              {dictionary.meeting.actions.confirm}
+            <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm" role="status" aria-live="polite">
+              {dictionary.meeting.actions.loading}
             </div>
           ) : null}
 
@@ -461,25 +506,25 @@ export function MeetingModal({
               <>
                 <div className="space-y-2">
                   <Label htmlFor="name" required>{dictionary.meeting.fields.name}</Label>
-                  <Input id="name" autoComplete="name" aria-invalid={Boolean(errors.name)} {...form.register("name")} />
+                  <Input id="name" autoComplete="name" aria-describedby={errors.name ? "name-error" : undefined} aria-invalid={Boolean(errors.name)} {...form.register("name")} />
                   <FieldError dictionary={dictionary} id="name-error" message={errors.name?.message} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email" required>{dictionary.meeting.fields.email}</Label>
-                  <Input id="email" autoComplete="email" type="email" aria-invalid={Boolean(errors.email)} {...form.register("email")} />
+                  <Input id="email" autoComplete="email" type="email" aria-describedby={errors.email ? "email-error" : undefined} aria-invalid={Boolean(errors.email)} {...form.register("email")} />
                   <FieldError dictionary={dictionary} id="email-error" message={errors.email?.message} />
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="phone" required>{dictionary.meeting.fields.phone}</Label>
-                  <Input id="phone" autoComplete="tel" inputMode="tel" type="tel" aria-invalid={Boolean(errors.phone)} {...form.register("phone")} />
+                  <Input id="phone" autoComplete="tel" inputMode="tel" type="tel" aria-describedby={errors.phone ? "phone-error" : undefined} aria-invalid={Boolean(errors.phone)} {...form.register("phone")} />
                   <FieldError dictionary={dictionary} id="phone-error" message={errors.phone?.message} />
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="reason" required>{dictionary.meeting.fields.reason}</Label>
-                  <Select id="reason" aria-invalid={Boolean(errors.reason)} {...form.register("reason")}>
+                  <Select id="reason" aria-describedby={errors.reason ? "reason-error" : undefined} aria-invalid={Boolean(errors.reason)} {...form.register("reason")}>
                     <option value="">{dictionary.meeting.fields.reason}</option>
                     <option value="project">{dictionary.meeting.reasons.project}</option>
                     <option value="job">{dictionary.meeting.reasons.job}</option>
@@ -492,7 +537,7 @@ export function MeetingModal({
 
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="message">{dictionary.meeting.fields.message}</Label>
-              <Textarea id="message" aria-invalid={Boolean(errors.message)} {...form.register("message")} />
+              <Textarea id="message" aria-describedby={errors.message ? "message-error" : undefined} aria-invalid={Boolean(errors.message)} {...form.register("message")} />
               <FieldError dictionary={dictionary} id="message-error" message={errors.message?.message} />
             </div>
 

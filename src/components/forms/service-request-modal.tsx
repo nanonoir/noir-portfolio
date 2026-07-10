@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import type { Dictionary, Language, LocalizedString } from "@/lib/i18n";
 import type { Service } from "@/data/content";
 import { Modal } from "@/components/ui";
@@ -79,11 +80,19 @@ function SuccessState({
       <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{dictionary.forms.success.message}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
-          className="inline-flex items-center justify-center rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+          className="group inline-flex items-center justify-center gap-2 rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
           onClick={() => setMeetingOpen(true)}
           type="button"
         >
-          {dictionary.forms.success.meeting}
+          {dictionary.meeting.contact.cta}
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
+            height={16}
+            src="/handwritten-icons/calendar.svg"
+            width={16}
+          />
         </button>
         <a
           className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-base font-medium text-primary-foreground transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"

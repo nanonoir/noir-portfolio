@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
+
+/** Minimum lead time in milliseconds — must match the client-side constant. */
+const MIN_LEAD_TIME_MS = 12 * 60 * 60 * 1000;
+
 const ERROR_RESPONSE = {
   success: false,
   error: "AVAILABILITY_ERROR",
@@ -103,7 +107,7 @@ function isValidDate(date: string, now = new Date()) {
   return baseTimes.some((time) => {
     const slotDate = getSlotDate(date, time);
 
-    return slotDate ? slotDate.getTime() >= now.getTime() + 24 * 60 * 60 * 1000 : false;
+    return slotDate ? slotDate.getTime() >= now.getTime() + MIN_LEAD_TIME_MS : false;
   });
 }
 
@@ -118,7 +122,7 @@ function generateSlots(date: string, now = new Date()): AvailabilitySlot[] {
     .filter((slot) => {
       const slotDate = getSlotDate(date, slot.time);
 
-      return slot.available && slotDate && slotDate.getTime() >= now.getTime() + 24 * 60 * 60 * 1000;
+      return slot.available && slotDate && slotDate.getTime() >= now.getTime() + MIN_LEAD_TIME_MS;
     })
     .map(({ time }) => ({ time, available: true }));
 }

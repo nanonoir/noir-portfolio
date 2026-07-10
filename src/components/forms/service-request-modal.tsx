@@ -10,6 +10,7 @@ import { ServiceFormAutomation } from "./service-form-automation";
 import { ServiceFormCustom } from "./service-form-custom";
 import { ServiceFormEcommerce } from "./service-form-ecommerce";
 import { ServiceFormLanding } from "./service-form-landing";
+import { MeetingModal } from "./meeting-modal";
 import { createWhatsAppMessage, createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
 
 export type ServiceRequestTarget = Pick<Service, "description" | "features" | "title"> & {
@@ -61,6 +62,7 @@ function SuccessState({
   service: ServiceRequestTarget;
   values: ServiceRequestValues;
 }) {
+  const [meetingOpen, setMeetingOpen] = useState(false);
   const whatsAppMessage = createWhatsAppMessage({
     emptyMessageFallback: dictionary.forms.success.emptyMessageFallback,
     language,
@@ -76,18 +78,13 @@ function SuccessState({
       <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">{dictionary.forms.success.title}</h3>
       <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{dictionary.forms.success.message}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <span className="inline-flex" title={dictionary.forms.success.meetingUnavailable}>
-          <button
-            aria-describedby="meeting-unavailable-tooltip"
-            className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-muted-foreground opacity-60 md:text-sm"
-            disabled
-            title={dictionary.forms.success.meetingUnavailable}
-            type="button"
-          >
-            {dictionary.forms.success.meeting}
-          </button>
-        </span>
-        <p className="sr-only" id="meeting-unavailable-tooltip">{dictionary.forms.success.meetingUnavailable}</p>
+        <button
+          className="inline-flex items-center justify-center rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+          onClick={() => setMeetingOpen(true)}
+          type="button"
+        >
+          {dictionary.forms.success.meeting}
+        </button>
         <a
           className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-base font-medium text-primary-foreground transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
           href={whatsAppUrl}
@@ -97,6 +94,16 @@ function SuccessState({
           {dictionary.forms.success.whatsApp}
         </a>
       </div>
+      <MeetingModal
+        closeLabel={dictionary.modals.closeLabel}
+        dictionary={dictionary}
+        isOpen={meetingOpen}
+        language={language}
+        onClose={() => setMeetingOpen(false)}
+        origin={service.id === "custom" ? "custom" : "service"}
+        previousValues={values}
+        service={service}
+      />
     </div>
   );
 }

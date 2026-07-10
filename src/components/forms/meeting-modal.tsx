@@ -2,16 +2,27 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { type Resolver, useForm, useWatch } from "react-hook-form";
 import type { Dictionary, Language } from "@/lib/i18n";
 import { Button, FormError, Input, Label, Modal, Select, Textarea } from "@/components/ui";
 import { MeetingCalendar, type AvailabilityState } from "./meeting-calendar";
 import { MeetingError } from "./meeting-error";
 import { MeetingSlots } from "./meeting-slots";
 import { MeetingSuccess } from "./meeting-success";
-import { createWhatsAppUrl } from "./whatsapp-link";
-import { meetingFromContactSchema, type MeetingFromContactValues } from "./schemas";
+import { createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
+import {
+  meetingFromContactSchema,
+  meetingFromServiceSchema,
+  type AutomationFormValues,
+  type AuditFormValues,
+  type CustomServiceFormValues,
+  type EcommerceFormValues,
+  type LandingFormValues,
+  type MeetingFromContactValues,
+  type MeetingFromServiceValues,
+} from "./schemas";
 import { scrollToFirstError } from "./service-form-fields";
+import type { ServiceRequestTarget } from "./service-request-modal";
 
 type MeetingStep = "form" | "loading" | "success" | "error";
 
@@ -21,8 +32,9 @@ type MeetingModalProps = {
   isOpen: boolean;
   language: Language;
   onClose: () => void;
-  service?: unknown | null;
-  values?: Record<string, unknown> | null;
+  origin?: "contact" | "service" | "custom";
+  previousValues?: ServiceRequestValues | null;
+  service?: ServiceRequestTarget | null;
 };
 
 const INITIAL_AVAILABILITY: AvailabilityState = { status: "idle", slots: [] };
@@ -47,6 +59,53 @@ type ContactMeetingPayload = {
   };
 };
 
+type ServiceMeetingPayload = {
+  type: "meeting_request";
+  origin: "Solicitud de servicio";
+  relatedService: string;
+  name: string;
+  email: string;
+  phone: string;
+  company?: string;
+  message?: string;
+  meeting: {
+    date: string;
+    time: string;
+  };
+  previousRequest: {
+    service: string;
+    details: Record<string, unknown>;
+  };
+};
+
+type CustomSoftwareMeetingPayload = {
+  type: "meeting_request";
+  origin: "Software a medida";
+  relatedService: "Software a medida";
+  name: string;
+  email: string;
+  phone: string;
+  company?: string;
+  message?: string;
+  meeting: {
+    date: string;
+    time: string;
+  };
+  previousRequest: {
+    reason: "Software a medida";
+    details: {
+      projectIdea?: string;
+      currentProblem?: string;
+      priority?: string;
+      budget?: string;
+    };
+  };
+};
+
+type MeetingPayload = ContactMeetingPayload | ServiceMeetingPayload | CustomSoftwareMeetingPayload;
+
+type MeetingFormValues = MeetingFromServiceValues & Partial<Omit<MeetingFromContactValues, keyof MeetingFromServiceValues>>;
+
 function translateError(dictionary: Dictionary, message?: string) {
   if (!message) return undefined;
 
@@ -54,7 +113,7 @@ function translateError(dictionary: Dictionary, message?: string) {
   return dictionary.forms.errors[key] ?? message;
 }
 
-function createMeetingWhatsAppMessage(values: Partial<MeetingFromContactValues>, dictionary: Dictionary) {
+function createMeetingWhatsAppMessage(values: Partial<MeetingFormValues>, dictionary: Dictionary) {
   const reason = values.reason ? dictionary.meeting.reasons[values.reason] : dictionary.forms.success.emptyMessageFallback;
   const message = values.message?.trim() || dictionary.forms.success.emptyMessageFallback;
   const schedule = values.date && values.time ? `${values.date} ${values.time}` : dictionary.forms.success.emptyMessageFallback;
@@ -70,6 +129,12 @@ function createMeetingWhatsAppMessage(values: Partial<MeetingFromContactValues>,
     "",
     `Mensaje: ${message}`,
   ].join("\n");
+}
+
+function trimmedOptional(value?: string) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : undefined;
 }
 
 function buildContactMeetingPayload(values: MeetingFromContactValues): ContactMeetingPayload {
@@ -90,15 +155,141 @@ function buildContactMeetingPayload(values: MeetingFromContactValues): ContactMe
   };
 }
 
+function getServiceCompany(service: ServiceRequestTarget | null | undefined, values: ServiceRequestValues) {
+  if (service?.id === "landing" || service?.id === "ecommerce" || service?.id === "automation") {
+    return trimmedOptional((values as LandingFormValues | EcommerceFormValues | AutomationFormValues).brandName);
+  }
+
+  if (service?.id === "custom") {
+    return trimmedOptional((values as CustomServiceFormValues).business);
+  }
+
+  return undefined;
+}
+
+function getServiceDetails(service: ServiceRequestTarget, values: ServiceRequestValues): Record<string, unknown> {
+  switch (service.id) {
+    case "web-audit": {
+      const data = values as AuditFormValues;
+      return { websiteUrl: data.websiteUrl };
+    }
+    case "landing": {
+      const data = values as LandingFormValues;
+      return {
+        projectType: data.projectType,
+        brandName: trimmedOptional(data.brandName),
+        social: trimmedOptional(data.social),
+      };
+    }
+    case "ecommerce": {
+      const data = values as EcommerceFormValues;
+      return {
+        brandName: data.brandName,
+        social: trimmedOptional(data.social),
+      };
+    }
+    case "automation": {
+      const data = values as AutomationFormValues;
+      return {
+        brandName: data.brandName,
+        automationType: data.automationType,
+      };
+    }
+    case "custom": {
+      const data = values as CustomServiceFormValues;
+      return {
+        business: trimmedOptional(data.business),
+        social: trimmedOptional(data.social),
+        budget: trimmedOptional(data.budget),
+      };
+    }
+  }
+}
+
+function buildServiceMeetingPayload({
+  language,
+  service,
+  schedule,
+  values,
+}: {
+  language: Language;
+  service: ServiceRequestTarget;
+  schedule: MeetingFromServiceValues;
+  values: ServiceRequestValues;
+}): ServiceMeetingPayload {
+  const message = trimmedOptional(schedule.message) || trimmedOptional(values.message);
+  const company = getServiceCompany(service, values);
+  const serviceName = service.title[language];
+
+  return {
+    type: "meeting_request",
+    origin: "Solicitud de servicio",
+    relatedService: serviceName,
+    name: values.name.trim(),
+    email: values.email.trim().toLowerCase(),
+    phone: values.phone.trim(),
+    ...(company ? { company } : {}),
+    ...(message ? { message } : {}),
+    meeting: {
+      date: schedule.date,
+      time: schedule.time,
+    },
+    previousRequest: {
+      service: serviceName,
+      details: getServiceDetails(service, values),
+    },
+  };
+}
+
+function buildCustomSoftwareMeetingPayload(schedule: MeetingFromServiceValues, values: ServiceRequestValues): CustomSoftwareMeetingPayload {
+  const data = values as CustomServiceFormValues;
+  const message = trimmedOptional(schedule.message) || trimmedOptional(data.message);
+  const company = trimmedOptional(data.business);
+
+  return {
+    type: "meeting_request",
+    origin: "Software a medida",
+    relatedService: "Software a medida",
+    name: data.name.trim(),
+    email: data.email.trim().toLowerCase(),
+    phone: data.phone.trim(),
+    ...(company ? { company } : {}),
+    ...(message ? { message } : {}),
+    meeting: {
+      date: schedule.date,
+      time: schedule.time,
+    },
+    previousRequest: {
+      reason: "Software a medida",
+      details: {
+        projectIdea: trimmedOptional(data.message),
+        currentProblem: company,
+        priority: trimmedOptional(data.social),
+        budget: trimmedOptional(data.budget),
+      },
+    },
+  };
+}
+
 function FieldError({ dictionary, id, message }: { dictionary: Dictionary; id: string; message?: string }) {
   return <FormError id={id}>{translateError(dictionary, message)}</FormError>;
 }
 
-export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: MeetingModalProps) {
+export function MeetingModal({
+  closeLabel,
+  dictionary,
+  isOpen,
+  language,
+  onClose,
+  origin = "contact",
+  previousValues,
+  service,
+}: MeetingModalProps) {
+  const isContactOrigin = origin === "contact";
   const [step, setStep] = useState<MeetingStep>("form");
   const [availability, setAvailability] = useState<AvailabilityState>(INITIAL_AVAILABILITY);
   const [submitError, setSubmitError] = useState<string>();
-  const form = useForm<MeetingFromContactValues>({
+  const form = useForm<MeetingFormValues>({
     defaultValues: {
       name: "",
       email: "",
@@ -109,7 +300,7 @@ export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: Meetin
       time: "",
     },
     mode: "onBlur",
-    resolver: zodResolver(meetingFromContactSchema),
+    resolver: zodResolver(isContactOrigin ? meetingFromContactSchema : meetingFromServiceSchema) as Resolver<MeetingFormValues>,
   });
   const errors = form.formState.errors;
   const watchedValues = useWatch({ control: form.control });
@@ -155,13 +346,35 @@ export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: Meetin
       });
   }, [dictionary.meeting.availability.error, selectedDate]);
 
-  async function handleSubmit(values: MeetingFromContactValues) {
+  function buildPayload(values: MeetingFormValues): MeetingPayload {
+    if (isContactOrigin) {
+      return buildContactMeetingPayload(values as MeetingFromContactValues);
+    }
+
+    if (!service || !previousValues) {
+      throw new Error(dictionary.meeting.error.message);
+    }
+
+    const schedule = {
+      date: values.date,
+      message: values.message,
+      time: values.time,
+    } satisfies MeetingFromServiceValues;
+
+    if (origin === "custom") {
+      return buildCustomSoftwareMeetingPayload(schedule, previousValues);
+    }
+
+    return buildServiceMeetingPayload({ language, schedule, service, values: previousValues });
+  }
+
+  async function handleSubmit(values: MeetingFormValues) {
     setSubmitError(undefined);
     setStep("loading");
 
     try {
       const response = await fetch("/api/meeting", {
-        body: JSON.stringify(buildContactMeetingPayload(values)),
+        body: JSON.stringify(buildPayload(values)),
         headers: {
           "Content-Type": "application/json",
         },
@@ -192,10 +405,11 @@ export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: Meetin
     onClose();
   }
 
+  const formId = isContactOrigin ? "meeting-contact-form" : "meeting-service-form";
   const footer = step === "form" ? (
     <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
       <Button variant="outlined" onClick={handleClose}>{dictionary.meeting.actions.close}</Button>
-      <Button disabled={availability.status === "loading"} form="meeting-contact-form" type="submit">
+      <Button disabled={availability.status === "loading"} form={formId} type="submit">
         {dictionary.meeting.actions.confirm}
       </Button>
     </div>
@@ -217,13 +431,13 @@ export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: Meetin
       ) : (
         <form
           className="space-y-5"
-          id="meeting-contact-form"
+          id={formId}
           noValidate
           onSubmit={form.handleSubmit(handleSubmit, scrollToFirstError)}
         >
           <div className="space-y-2">
             <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">
-              {dictionary.meeting.descriptionFromContact}
+              {isContactOrigin ? dictionary.meeting.descriptionFromContact : dictionary.meeting.descriptionFromService}
             </p>
             <p className="rounded-2xl border border-border bg-surface/30 px-4 py-3 text-base leading-7 text-muted-foreground md:text-sm md:leading-6">
               {dictionary.meeting.disclaimer}
@@ -243,34 +457,38 @@ export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: Meetin
           ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="name" required>{dictionary.meeting.fields.name}</Label>
-              <Input id="name" autoComplete="name" aria-invalid={Boolean(errors.name)} {...form.register("name")} />
-              <FieldError dictionary={dictionary} id="name-error" message={errors.name?.message} />
-            </div>
+            {isContactOrigin ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name" required>{dictionary.meeting.fields.name}</Label>
+                  <Input id="name" autoComplete="name" aria-invalid={Boolean(errors.name)} {...form.register("name")} />
+                  <FieldError dictionary={dictionary} id="name-error" message={errors.name?.message} />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" required>{dictionary.meeting.fields.email}</Label>
-              <Input id="email" autoComplete="email" type="email" aria-invalid={Boolean(errors.email)} {...form.register("email")} />
-              <FieldError dictionary={dictionary} id="email-error" message={errors.email?.message} />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" required>{dictionary.meeting.fields.email}</Label>
+                  <Input id="email" autoComplete="email" type="email" aria-invalid={Boolean(errors.email)} {...form.register("email")} />
+                  <FieldError dictionary={dictionary} id="email-error" message={errors.email?.message} />
+                </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="phone" required>{dictionary.meeting.fields.phone}</Label>
-              <Input id="phone" autoComplete="tel" inputMode="tel" type="tel" aria-invalid={Boolean(errors.phone)} {...form.register("phone")} />
-              <FieldError dictionary={dictionary} id="phone-error" message={errors.phone?.message} />
-            </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="phone" required>{dictionary.meeting.fields.phone}</Label>
+                  <Input id="phone" autoComplete="tel" inputMode="tel" type="tel" aria-invalid={Boolean(errors.phone)} {...form.register("phone")} />
+                  <FieldError dictionary={dictionary} id="phone-error" message={errors.phone?.message} />
+                </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="reason" required>{dictionary.meeting.fields.reason}</Label>
-              <Select id="reason" aria-invalid={Boolean(errors.reason)} {...form.register("reason")}>
-                <option value="">{dictionary.meeting.fields.reason}</option>
-                <option value="project">{dictionary.meeting.reasons.project}</option>
-                <option value="job">{dictionary.meeting.reasons.job}</option>
-                <option value="general">{dictionary.meeting.reasons.general}</option>
-              </Select>
-              <FieldError dictionary={dictionary} id="reason-error" message={errors.reason?.message} />
-            </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="reason" required>{dictionary.meeting.fields.reason}</Label>
+                  <Select id="reason" aria-invalid={Boolean(errors.reason)} {...form.register("reason")}>
+                    <option value="">{dictionary.meeting.fields.reason}</option>
+                    <option value="project">{dictionary.meeting.reasons.project}</option>
+                    <option value="job">{dictionary.meeting.reasons.job}</option>
+                    <option value="general">{dictionary.meeting.reasons.general}</option>
+                  </Select>
+                  <FieldError dictionary={dictionary} id="reason-error" message={errors.reason?.message} />
+                </div>
+              </>
+            ) : null}
 
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="message">{dictionary.meeting.fields.message}</Label>

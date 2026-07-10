@@ -97,6 +97,52 @@ export type Dictionary = {
     toastPlaceholder: string;
     linksLabel: string;
   };
+  meeting: {
+    title: string;
+    descriptionFromService: string;
+    descriptionFromContact: string;
+    disclaimer: string;
+    fields: {
+      name: string;
+      email: string;
+      phone: string;
+      reason: string;
+      message: string;
+      date: string;
+      time: string;
+    };
+    reasons: {
+      project: string;
+      job: string;
+      general: string;
+    };
+    actions: {
+      confirm: string;
+      back: string;
+      close: string;
+      retry: string;
+      whatsapp: string;
+    };
+    availability: {
+      loading: string;
+      empty: string;
+      error: string;
+    };
+    success: {
+      title: string;
+      message: string;
+    };
+    error: {
+      title: string;
+      message: string;
+      slotUnavailable: string;
+    };
+    contact: {
+      title: string;
+      subtitle: string;
+      cta: string;
+    };
+  };
   forms: {
     common: {
       name: string;
@@ -146,6 +192,11 @@ export type Dictionary = {
       messageMin: string;
       brandRequired: string;
       submission: string;
+      dateRequired: string;
+      timeRequired: string;
+      phoneRequired: string;
+      reasonRequired: string;
+      slotUnavailable: string;
     };
     success: {
       title: string;
@@ -283,6 +334,56 @@ export const dictionaries: Record<Language, Dictionary> = {
         "El formulario real estará disponible pronto. Mientras tanto, puedes escribirme por email o WhatsApp.",
       linksLabel: "Canales de contacto",
     },
+    meeting: {
+      title: "Agendar llamada",
+      descriptionFromService: "Elegí un día y horario disponible para solicitar una reunión sobre tu proyecto.",
+      descriptionFromContact:
+        "Completá tus datos y elegí un horario disponible para solicitar una reunión breve.",
+      disclaimer:
+        "La reunión quedará pendiente de confirmación. Si el horario sigue disponible, te voy a enviar la convocatoria con el enlace de Google Meet.",
+      fields: {
+        name: "Nombre",
+        email: "Email",
+        phone: "WhatsApp / Teléfono",
+        reason: "Motivo de la llamada",
+        message: "Mensaje adicional",
+        date: "Fecha",
+        time: "Horario disponible",
+      },
+      reasons: {
+        project: "Proyecto / servicio",
+        job: "Oportunidad laboral",
+        general: "Consulta general",
+      },
+      actions: {
+        confirm: "Confirmar solicitud",
+        back: "Volver",
+        close: "Cerrar",
+        retry: "Reintentar",
+        whatsapp: "Continuar por WhatsApp →",
+      },
+      availability: {
+        loading: "Buscando horarios disponibles...",
+        empty: "No hay horarios disponibles para este día. Elegí otra fecha.",
+        error:
+          "No se pudieron cargar los horarios disponibles. Intentá nuevamente o contactame por WhatsApp.",
+      },
+      success: {
+        title: "Reunión solicitada con éxito",
+        message:
+          "Recibí tu solicitud. En las próximas horas voy a confirmar la disponibilidad y enviarte la convocatoria con el enlace de Google Meet, o te voy a proponer otro horario.",
+      },
+      error: {
+        title: "Error al solicitar reunión",
+        message: "No se pudo solicitar la reunión. Intentá nuevamente o contactame por WhatsApp.",
+        slotUnavailable: "Ese horario ya no está disponible. Elegí otro horario para solicitar la reunión.",
+      },
+      contact: {
+        title: "¿Te interesa mi perfil o alguno de mis servicios?",
+        subtitle: "Agendemos una llamada breve para conversar próximos pasos.",
+        cta: "Agendar llamada",
+      },
+    },
     forms: {
       common: {
         name: "Nombre",
@@ -332,6 +433,11 @@ export const dictionaries: Record<Language, Dictionary> = {
         messageMin: "El mensaje debe tener al menos 10 caracteres.",
         brandRequired: "Indicá el nombre de la marca o empresa.",
         submission: "No se pudo enviar la solicitud. Intentá nuevamente o contactame por WhatsApp.",
+        dateRequired: "Seleccioná una fecha.",
+        timeRequired: "Seleccioná un horario.",
+        phoneRequired: "Ingresá un WhatsApp o teléfono de contacto.",
+        reasonRequired: "Seleccioná un motivo.",
+        slotUnavailable: "Ese horario ya no está disponible.",
       },
       success: {
         title: "Solicitud enviada",
@@ -466,6 +572,55 @@ export const dictionaries: Record<Language, Dictionary> = {
         "The real form will be available soon. In the meantime, you can contact me by email or WhatsApp.",
       linksLabel: "Contact channels",
     },
+    meeting: {
+      title: "Schedule a call",
+      descriptionFromService: "Choose an available day and time to request a meeting about your project.",
+      descriptionFromContact:
+        "Complete your details and choose an available time to request a brief meeting.",
+      disclaimer:
+        "The meeting will be pending confirmation. If the time is still available, I'll send you the invite with the Google Meet link.",
+      fields: {
+        name: "Name",
+        email: "Email",
+        phone: "WhatsApp / Phone",
+        reason: "Call reason",
+        message: "Additional message",
+        date: "Date",
+        time: "Available time",
+      },
+      reasons: {
+        project: "Project / service",
+        job: "Job opportunity",
+        general: "General inquiry",
+      },
+      actions: {
+        confirm: "Confirm request",
+        back: "Back",
+        close: "Close",
+        retry: "Retry",
+        whatsapp: "Continue on WhatsApp →",
+      },
+      availability: {
+        loading: "Searching available times...",
+        empty: "No available times for this day. Choose another date.",
+        error: "Could not load available times. Try again or contact me on WhatsApp.",
+      },
+      success: {
+        title: "Meeting request sent successfully",
+        message:
+          "I received your request. In the next few hours I'll confirm availability and send you the invite with the Google Meet link, or I'll propose another time.",
+      },
+      error: {
+        title: "Error requesting meeting",
+        message: "Could not request the meeting. Try again or contact me on WhatsApp.",
+        slotUnavailable: "That time is no longer available. Choose another time to request the meeting.",
+      },
+      contact: {
+        title: "Interested in my profile or services?",
+        subtitle: "Let's schedule a brief call to discuss next steps.",
+        cta: "Schedule a call",
+      },
+    },
     forms: {
       common: {
         name: "Name",
@@ -515,6 +670,11 @@ export const dictionaries: Record<Language, Dictionary> = {
         messageMin: "The message must be at least 10 characters.",
         brandRequired: "Enter the brand or company name.",
         submission: "The request could not be sent. Try again or contact me on WhatsApp.",
+        dateRequired: "Select a date.",
+        timeRequired: "Select a time.",
+        phoneRequired: "Enter a WhatsApp number or contact phone.",
+        reasonRequired: "Select a reason.",
+        slotUnavailable: "That time is no longer available.",
       },
       success: {
         title: "Request sent",

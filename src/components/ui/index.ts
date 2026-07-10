@@ -1,10 +1,13 @@
+export { Accordion, AccordionItem } from "./accordion";
 export { Button } from "./button";
 export { CardSurface } from "./card-surface";
 export { Chip } from "./chip";
+export { FormError, Label, Radio } from "./form-controls";
 export { IconButton } from "./icon-button";
 export { Input, Textarea } from "./form-field";
 export { Modal } from "./modal";
 export { PdfModal } from "./pdf-modal";
 export { SectionHeading } from "./section-heading";
 export { SectionShell } from "./section-shell";
+export { ServiceInfoModal } from "./informational-modal";
 export { Toast } from "./toast";

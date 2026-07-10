@@ -1,10 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { generalContactFormSchema, type GeneralContactFormValues } from "@/components/forms/schemas";
+import { createCustomServiceRequestTarget, ServiceRequestModal, type ServiceRequestTarget } from "@/components/forms/service-request-modal";
 import { useLanguage } from "@/components/providers/language-provider";
 import { assets, aboutOrbitTech, contactLinks, services, stackCategories, type Service } from "@/data/content";
-import { Button, CardSurface, Chip, Input, Modal, PdfModal, SectionHeading, SectionShell, Textarea, Toast } from "@/components/ui";
+import { Button, CardSurface, Chip, FormError, Input, Label, PdfModal, SectionHeading, SectionShell, ServiceInfoModal, Textarea, Toast } from "@/components/ui";
 
 // Outer orbit ring: 7 icons, clockwise rotation.
 // Each icon counter-rotates so it stays upright.
@@ -13,7 +17,15 @@ const OUTER_RING = aboutOrbitTech.slice(0, 4);
 const INNER_RING = aboutOrbitTech.slice(4);
 
 const DARK_INVERT_STACK_ICON_NAMES = new Set(["Railway", "VPS", "CI/CD", "n8n", "MCP", "Webhooks"]);
-type ServiceModalContent = Pick<Service, "description" | "features" | "title">;
+
+function translateFormError(dictionary: ReturnType<typeof useLanguage>["dictionary"], message?: string) {
+  if (!message) {
+    return undefined;
+  }
+
+  const key = message.replace("forms.errors.", "") as keyof typeof dictionary.forms.errors;
+  return dictionary.forms.errors[key] ?? message;
+}
 
 function AboutDesktopIllustration({ profileAlt }: { profileAlt: string }) {
   return (
@@ -251,62 +263,17 @@ function AboutSection() {
   );
 }
 
-function ServicePlaceholderModal({
-  onClose,
-  service,
-}: {
-  onClose: () => void;
-  service: ServiceModalContent | null;
-}) {
-  const { dictionary, language } = useLanguage();
-
-  return (
-    <Modal
-      closeLabel={dictionary.modals.closeLabel}
-      isOpen={Boolean(service)}
-      onClose={onClose}
-      title={dictionary.modals.comingSoonTitle}
-    >
-      {service ? (
-        <div className="space-y-6">
-          <div>
-            <p className="mono text-xs tracking-[0.18em] text-muted-foreground uppercase">{service.title[language]}</p>
-            <p className="mt-4 text-sm leading-6 text-body-foreground">{service.description[language]}</p>
-            <p className="mt-4 text-sm leading-6 text-foreground">{dictionary.modals.comingSoonMessage}</p>
-          </div>
-          <ul className="grid gap-2 sm:grid-cols-3">
-            {service.features.map((feature) => (
-              <li className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-foreground" key={feature[language]}>
-                {feature[language]}
-              </li>
-            ))}
-          </ul>
-          <a
-            className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-            href="#contact"
-            onClick={onClose}
-          >
-            {dictionary.modals.contactCta}
-          </a>
-        </div>
-      ) : null}
-    </Modal>
-  );
-}
-
 function ServicesSection() {
   const { dictionary, language } = useLanguage();
   const t = dictionary.services;
-  const [selectedService, setSelectedService] = useState<ServiceModalContent | null>(null);
-  const customService: ServiceModalContent = {
-    title: { es: t.customTitle, en: t.customTitle },
-    description: { es: t.customDescription, en: t.customDescription },
-    features: [
-      { es: "MVPs y herramientas internas", en: "MVPs and internal tools" },
-      { es: "Paneles administrativos", en: "Admin dashboards" },
-      { es: "Flujos que no encajan en plantillas", en: "Flows that do not fit templates" },
-    ],
-  };
+  const [infoService, setInfoService] = useState<Service | null>(null);
+  const [requestService, setRequestService] = useState<ServiceRequestTarget | null>(null);
+  const customService = createCustomServiceRequestTarget(t.customTitle, t.customDescription);
+
+  function handleRequestFromInfo(service: Service) {
+    setInfoService(null);
+    setRequestService(service);
+  }
 
   return (
     <SectionShell className="hairline-t hairline-b bg-surface/40" id="services">
@@ -330,7 +297,7 @@ function ServicesSection() {
             <div className="hairline-t mt-6 pt-4 flex items-center justify-between gap-4">
               <button
                 className="mono inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => setSelectedService(service)}
+                onClick={() => setInfoService(service)}
                 type="button"
               >
                 <Image
@@ -345,7 +312,7 @@ function ServicesSection() {
               </button>
               <button
                 className="mono inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => setSelectedService(service)}
+                onClick={() => setRequestService(service)}
                 type="button"
               >
                 {t.request}
@@ -372,7 +339,7 @@ function ServicesSection() {
         <button
           aria-label={t.request}
           className="group inline-flex items-center justify-center gap-2 rounded-full border border-background/30 px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
-          onClick={() => setSelectedService(customService)}
+          onClick={() => setRequestService(customService)}
           type="button"
         >
           {t.request}
@@ -386,7 +353,25 @@ function ServicesSection() {
           />
         </button>
       </div>
-      <ServicePlaceholderModal onClose={() => setSelectedService(null)} service={selectedService} />
+      <ServiceInfoModal
+        closeLabel={dictionary.modals.closeLabel}
+        isOpen={Boolean(infoService)}
+        language={language}
+        onClose={() => setInfoService(null)}
+        onRequest={handleRequestFromInfo}
+        service={infoService}
+      />
+      {requestService ? (
+        <ServiceRequestModal
+          closeLabel={dictionary.modals.closeLabel}
+          dictionary={dictionary}
+          isOpen={Boolean(requestService)}
+          key={requestService.id}
+          language={language}
+          onClose={() => setRequestService(null)}
+          service={requestService}
+        />
+      ) : null}
     </SectionShell>
   );
 }
@@ -431,6 +416,17 @@ function ContactSection() {
   const { dictionary } = useLanguage();
   const contact = dictionary.contact;
   const [toastVisible, setToastVisible] = useState(false);
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+    reset,
+  } = useForm<GeneralContactFormValues>({
+    mode: "onBlur",
+    resolver: zodResolver(generalContactFormSchema),
+  });
+  const emailError = translateFormError(dictionary, errors.email?.message);
+  const messageError = translateFormError(dictionary, errors.message?.message);
 
   useEffect(() => {
     if (!toastVisible) {
@@ -441,9 +437,9 @@ function ContactSection() {
     return () => window.clearTimeout(timeout);
   }, [toastVisible]);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function onSubmit() {
     setToastVisible(true);
+    reset();
   }
 
   return (
@@ -451,15 +447,30 @@ function ContactSection() {
       {/* Pass empty description so SectionHeading stays centered without noisy copy */}
       <SectionHeading className="text-center lg:block" description={contact.description} label={contact.label} title={contact.title} />
       <div className="grid gap-10 lg:grid-cols-5 lg:gap-14">
-        <form className="space-y-5 lg:col-span-3" onSubmit={onSubmit}>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-foreground">{contact.emailLabel}</span>
-            <Input name="email" placeholder={contact.emailPlaceholder} required type="email" />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-foreground">{contact.messageLabel}</span>
-            <Textarea name="message" placeholder={contact.messagePlaceholder} required />
-          </label>
+        <form className="space-y-5 lg:col-span-3" noValidate onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-2">
+            <Label htmlFor="contact-email" required>{contact.emailLabel}</Label>
+            <Input
+              aria-describedby={emailError ? "contact-email-error" : undefined}
+              aria-invalid={Boolean(emailError)}
+              id="contact-email"
+              placeholder={contact.emailPlaceholder}
+              type="email"
+              {...register("email")}
+            />
+            <FormError id="contact-email-error">{emailError}</FormError>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="contact-message" required>{contact.messageLabel}</Label>
+            <Textarea
+              aria-describedby={messageError ? "contact-message-error" : undefined}
+              aria-invalid={Boolean(messageError)}
+              id="contact-message"
+              placeholder={contact.messagePlaceholder}
+              {...register("message")}
+            />
+            <FormError id="contact-message-error">{messageError}</FormError>
+          </div>
           {/* Submit button centered below the form */}
           <div className="flex justify-center">
             <Button type="submit">

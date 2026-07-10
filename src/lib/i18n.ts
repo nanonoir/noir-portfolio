@@ -97,11 +97,67 @@ export type Dictionary = {
     toastPlaceholder: string;
     linksLabel: string;
   };
+  forms: {
+    common: {
+      name: string;
+      namePlaceholder: string;
+      email: string;
+      emailPlaceholder: string;
+      phone: string;
+      phoneHelper: string;
+      phonePlaceholder: string;
+      message: string;
+      messageMaxHelper: string;
+      messagePlaceholder: string;
+      optional: string;
+      requiredFieldsMessage: string;
+      submit: string;
+      retry: string;
+      contactWhatsApp: string;
+    };
+    fields: {
+      websiteUrl: string;
+      websiteUrlHelper: string;
+      websiteUrlPlaceholder: string;
+      projectType: string;
+      projectTypePersonal: string;
+      projectTypeBusiness: string;
+      brandName: string;
+      brandNamePlaceholder: string;
+      social: string;
+      socialHelper: string;
+      socialPlaceholder: string;
+      automationType: string;
+      automationCustomerService: string;
+      automationBusinessProcesses: string;
+      automationOther: string;
+      business: string;
+      businessPlaceholder: string;
+      budget: string;
+      budgetPlaceholder: string;
+    };
+    errors: {
+      required: string;
+      email: string;
+      name: string;
+      phone: string;
+      url: string;
+      messageMax: string;
+      messageMin: string;
+      brandRequired: string;
+      submission: string;
+    };
+    success: {
+      title: string;
+      message: string;
+      meeting: string;
+      meetingUnavailable: string;
+      whatsApp: string;
+      emptyMessageFallback: string;
+    };
+  };
   modals: {
-    comingSoonTitle: string;
-    comingSoonMessage: string;
     closeLabel: string;
-    contactCta: string;
     diplomaTitle: string;
     resumeTitle: string;
   };
@@ -227,11 +283,68 @@ export const dictionaries: Record<Language, Dictionary> = {
         "El formulario real estará disponible pronto. Mientras tanto, puedes escribirme por email o WhatsApp.",
       linksLabel: "Canales de contacto",
     },
+    forms: {
+      common: {
+        name: "Nombre",
+        namePlaceholder: "Coloca tu nombre completo",
+        email: "Correo",
+        emailPlaceholder: "Coloca tu mail principal",
+        phone: "WhatsApp / Teléfono",
+        phoneHelper: "Ejemplo: +54 9 11 1234 5678",
+        phonePlaceholder: "Coloca tu WhatsApp o teléfono",
+        message: "Mensaje",
+        messageMaxHelper: "Máximo 500 caracteres.",
+        messagePlaceholder: "Contame brevemente qué necesitás…",
+        optional: "Opcional",
+        requiredFieldsMessage: "Completá los campos obligatorios para enviar tu solicitud.",
+        submit: "Enviar solicitud",
+        retry: "Reintentar",
+        contactWhatsApp: "Contactar por WhatsApp →",
+      },
+      fields: {
+        websiteUrl: "Enlace de la web",
+        websiteUrlHelper: "Ejemplo: https://tusitio.com",
+        websiteUrlPlaceholder: "Coloca la URL de tu sitio web",
+        projectType: "Tipo de proyecto",
+        projectTypePersonal: "Personal",
+        projectTypeBusiness: "Marca / empresa",
+        brandName: "Nombre de marca / empresa",
+        brandNamePlaceholder: "Coloca el nombre de tu marca o empresa",
+        social: "Red social",
+        socialHelper: "Se acepta URL o usuario.",
+        socialPlaceholder: "Coloca tu perfil o @usuario",
+        automationType: "Tipo de automatización",
+        automationCustomerService: "Atención al cliente",
+        automationBusinessProcesses: "Procesos del negocio",
+        automationOther: "Otro",
+        business: "Empresa / negocio",
+        businessPlaceholder: "Coloca el nombre o rubro del negocio",
+        budget: "Presupuesto",
+        budgetPlaceholder: "Ej: $1000, USD 500, a definir…",
+      },
+      errors: {
+        required: "Este campo es obligatorio.",
+        email: "Ingresá un correo válido.",
+        name: "Ingresá un nombre válido.",
+        phone: "Ingresá un teléfono válido.",
+        url: "Ingresá una URL válida.",
+        messageMax: "El mensaje no puede superar los 500 caracteres.",
+        messageMin: "El mensaje debe tener al menos 10 caracteres.",
+        brandRequired: "Indicá el nombre de la marca o empresa.",
+        submission: "No se pudo enviar la solicitud. Intentá nuevamente o contactame por WhatsApp.",
+      },
+      success: {
+        title: "Solicitud enviada",
+        message:
+          "Recibí tu consulta. Para avanzar más rápido y no perder el contacto, podés continuar la conversación por WhatsApp.",
+        meeting: "Agendar reunión",
+        meetingUnavailable: "Agendá una reunión directamente desde el portfolio — próximamente",
+        whatsApp: "Continuar por WhatsApp →",
+        emptyMessageFallback: "Sin mensaje adicional",
+      },
+    },
     modals: {
-      comingSoonTitle: "Próximamente",
-      comingSoonMessage: "Este flujo estará disponible en una próxima versión.",
       closeLabel: "Cerrar modal",
-      contactCta: "Ir a contacto",
       diplomaTitle: "Título",
       resumeTitle: "Resumen",
     },
@@ -353,11 +466,68 @@ export const dictionaries: Record<Language, Dictionary> = {
         "The real form will be available soon. In the meantime, you can contact me by email or WhatsApp.",
       linksLabel: "Contact channels",
     },
+    forms: {
+      common: {
+        name: "Name",
+        namePlaceholder: "Enter your full name",
+        email: "Email",
+        emailPlaceholder: "Enter your main email",
+        phone: "WhatsApp / Phone",
+        phoneHelper: "Example: +1 555 123 4567",
+        phonePlaceholder: "Enter your WhatsApp or phone",
+        message: "Message",
+        messageMaxHelper: "Maximum 500 characters.",
+        messagePlaceholder: "Tell me briefly what you need…",
+        optional: "Optional",
+        requiredFieldsMessage: "Complete the required fields to send your request.",
+        submit: "Send request",
+        retry: "Retry",
+        contactWhatsApp: "Contact via WhatsApp →",
+      },
+      fields: {
+        websiteUrl: "Website URL",
+        websiteUrlHelper: "Example: https://yoursite.com",
+        websiteUrlPlaceholder: "Enter your website URL",
+        projectType: "Project type",
+        projectTypePersonal: "Personal",
+        projectTypeBusiness: "Brand / company",
+        brandName: "Brand / company name",
+        brandNamePlaceholder: "Enter your brand or company name",
+        social: "Social profile",
+        socialHelper: "URL or username is accepted.",
+        socialPlaceholder: "Enter your profile or @username",
+        automationType: "Automation type",
+        automationCustomerService: "Customer service",
+        automationBusinessProcesses: "Business processes",
+        automationOther: "Other",
+        business: "Company / business",
+        businessPlaceholder: "Enter your business name or industry",
+        budget: "Budget",
+        budgetPlaceholder: "e.g. $1000, USD 500, to define…",
+      },
+      errors: {
+        required: "This field is required.",
+        email: "Enter a valid email address.",
+        name: "Enter a valid name.",
+        phone: "Enter a valid phone number.",
+        url: "Enter a valid URL.",
+        messageMax: "The message cannot exceed 500 characters.",
+        messageMin: "The message must be at least 10 characters.",
+        brandRequired: "Enter the brand or company name.",
+        submission: "The request could not be sent. Try again or contact me on WhatsApp.",
+      },
+      success: {
+        title: "Request sent",
+        message:
+          "I received your request. To move faster and keep the conversation going, you can continue on WhatsApp.",
+        meeting: "Schedule meeting",
+        meetingUnavailable: "Schedule a meeting directly from the portfolio — coming soon",
+        whatsApp: "Continue on WhatsApp →",
+        emptyMessageFallback: "No additional message",
+      },
+    },
     modals: {
-      comingSoonTitle: "Coming soon",
-      comingSoonMessage: "This flow will be available in a future version.",
       closeLabel: "Close modal",
-      contactCta: "Go to contact",
       diplomaTitle: "Diploma",
       resumeTitle: "Resume",
     },

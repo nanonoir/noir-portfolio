@@ -516,13 +516,13 @@ function ContactSection() {
           </div>
         </aside>
       </div>
-      <div className="mt-8 rounded-[24px] border border-border bg-card px-6 py-5 shadow-sm md:flex md:items-center md:justify-between md:gap-8 md:px-7">
+      <div className="mt-8 rounded-[24px] border border-foreground bg-foreground px-6 py-5 shadow-sm md:flex md:items-center md:justify-between md:gap-8 md:px-7">
         <div>
-          <p className="text-lg font-semibold tracking-[-0.02em] text-foreground">{meeting.title}</p>
-          <p className="mt-2 text-base leading-7 text-body-foreground md:text-sm md:leading-6">{meeting.subtitle}</p>
+          <p className="text-lg font-semibold tracking-[-0.02em] text-background">{meeting.title}</p>
+          <p className="mt-2 text-base leading-7 text-background/70 md:text-sm md:leading-6">{meeting.subtitle}</p>
         </div>
         <button
-          className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:mt-0 md:w-auto md:text-sm"
+          className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-background/30 bg-background px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-background/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background md:mt-0 md:w-auto md:text-sm"
           onClick={() => setMeetingOpen(true)}
           type="button"
         >
@@ -530,7 +530,7 @@ function ContactSection() {
           <Image
             alt=""
             aria-hidden="true"
-            className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
+            className="size-4 dark:invert"
             height={16}
             src="/handwritten-icons/calendar.svg"
             width={16}

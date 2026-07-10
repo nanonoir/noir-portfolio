@@ -32,6 +32,13 @@ type MeetingModalProps = {
   isOpen: boolean;
   language: Language;
   onClose: () => void;
+  /**
+   * Called when the user completes the meeting request (success state closed).
+   * If provided, the success close triggers this instead of onClose, so the
+   * parent can distinguish "mid-flow dismiss" from "completed" and react
+   * accordingly (e.g. close both parent and child modals).
+   */
+  onComplete?: () => void;
   origin?: "contact" | "service" | "custom";
   previousValues?: ServiceRequestValues | null;
   service?: ServiceRequestTarget | null;
@@ -315,6 +322,7 @@ export function MeetingModal({
   isOpen,
   language,
   onClose,
+  onComplete,
   origin = "contact",
   previousValues,
   service,
@@ -450,6 +458,20 @@ export function MeetingModal({
     onClose();
   }
 
+  function handleSuccessClose() {
+    setStep("form");
+    setAvailability(INITIAL_AVAILABILITY);
+    setSubmitError(undefined);
+    form.reset();
+    // If a completion handler is provided (nested service flow), call it so the
+    // parent service modal can also close. Otherwise fall back to onClose.
+    if (onComplete) {
+      onComplete();
+    } else {
+      onClose();
+    }
+  }
+
   const formId = isContactOrigin ? "meeting-contact-form" : "meeting-service-form";
   const footer = step === "form" ? (
     <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
@@ -470,7 +492,7 @@ export function MeetingModal({
       title={dictionary.meeting.title}
     >
       {step === "success" ? (
-        <MeetingSuccess dictionary={dictionary} onClose={handleClose} whatsappUrl={isContactOrigin ? undefined : whatsAppUrl} />
+        <MeetingSuccess dictionary={dictionary} onClose={handleSuccessClose} whatsappUrl={isContactOrigin ? undefined : whatsAppUrl} />
       ) : step === "error" ? (
         <MeetingError dictionary={dictionary} message={submitError} onBackToForm={handleBackToForm} onRetry={handleRetry} whatsappMessage={whatsAppMessage} />
       ) : (
@@ -483,9 +505,6 @@ export function MeetingModal({
           <div className="space-y-2">
             <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">
               {isContactOrigin ? dictionary.meeting.descriptionFromContact : dictionary.meeting.descriptionFromService}
-            </p>
-            <p className="rounded-2xl border border-border bg-surface/30 px-4 py-3 text-base leading-7 text-muted-foreground md:text-sm md:leading-6">
-              {dictionary.meeting.disclaimer}
             </p>
           </div>
 

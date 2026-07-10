@@ -55,11 +55,13 @@ function ServiceRequestForm({
 function SuccessState({
   dictionary,
   language,
+  onParentClose,
   service,
   values,
 }: {
   dictionary: Dictionary;
   language: Language;
+  onParentClose: () => void;
   service: ServiceRequestTarget;
   values: ServiceRequestValues;
 }) {
@@ -109,6 +111,11 @@ function SuccessState({
         isOpen={meetingOpen}
         language={language}
         onClose={() => setMeetingOpen(false)}
+        onComplete={() => {
+          // Meeting completed successfully: close child, then close parent
+          setMeetingOpen(false);
+          onParentClose();
+        }}
         origin={service.id === "custom" ? "custom" : "service"}
         previousValues={values}
         service={service}
@@ -160,7 +167,7 @@ export function ServiceRequestModal({
   return (
     <Modal closeLabel={closeLabel} footer={modalFooter} isOpen={isOpen} onClose={onClose} size="lg" title={currentService.title[language]}>
       {submittedValues ? (
-        <SuccessState dictionary={dictionary} language={language} service={currentService} values={submittedValues} />
+        <SuccessState dictionary={dictionary} language={language} onParentClose={onClose} service={currentService} values={submittedValues} />
       ) : (
         <>
           <div className="mb-4 space-y-2">

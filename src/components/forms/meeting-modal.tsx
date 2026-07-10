@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import type { Dictionary, Language } from "@/lib/i18n";
 import { Button, FormError, Input, Label, Modal, Select, Textarea } from "@/components/ui";
 import { MeetingCalendar, type AvailabilityState } from "./meeting-calendar";
@@ -26,6 +26,26 @@ type MeetingModalProps = {
 };
 
 const INITIAL_AVAILABILITY: AvailabilityState = { status: "idle", slots: [] };
+
+const CONTACT_REASON_LABELS: Record<MeetingFromContactValues["reason"], string> = {
+  project: "Proyecto / servicio",
+  job: "Oportunidad laboral",
+  general: "Consulta general",
+};
+
+type ContactMeetingPayload = {
+  type: "meeting_request";
+  origin: "Contacto";
+  reason: string;
+  name: string;
+  email: string;
+  phone: string;
+  message?: string;
+  meeting: {
+    date: string;
+    time: string;
+  };
+};
 
 function translateError(dictionary: Dictionary, message?: string) {
   if (!message) return undefined;
@@ -52,6 +72,24 @@ function createMeetingWhatsAppMessage(values: Partial<MeetingFromContactValues>,
   ].join("\n");
 }
 
+function buildContactMeetingPayload(values: MeetingFromContactValues): ContactMeetingPayload {
+  const message = values.message?.trim();
+
+  return {
+    type: "meeting_request",
+    origin: "Contacto",
+    reason: CONTACT_REASON_LABELS[values.reason],
+    name: values.name.trim(),
+    email: values.email.trim().toLowerCase(),
+    phone: values.phone.trim(),
+    ...(message ? { message } : {}),
+    meeting: {
+      date: values.date,
+      time: values.time,
+    },
+  };
+}
+
 function FieldError({ dictionary, id, message }: { dictionary: Dictionary; id: string; message?: string }) {
   return <FormError id={id}>{translateError(dictionary, message)}</FormError>;
 }
@@ -74,7 +112,7 @@ export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: Meetin
     resolver: zodResolver(meetingFromContactSchema),
   });
   const errors = form.formState.errors;
-  const watchedValues = form.watch();
+  const watchedValues = useWatch({ control: form.control });
   const selectedDate = watchedValues.date || "";
   const selectedTime = watchedValues.time || "";
   const whatsAppMessage = useMemo(
@@ -117,10 +155,29 @@ export function MeetingModal({ closeLabel, dictionary, isOpen, onClose }: Meetin
       });
   }, [dictionary.meeting.availability.error, selectedDate]);
 
-  async function handleSubmit() {
+  async function handleSubmit(values: MeetingFromContactValues) {
     setSubmitError(undefined);
     setStep("loading");
-    setStep("success");
+
+    try {
+      const response = await fetch("/api/meeting", {
+        body: JSON.stringify(buildContactMeetingPayload(values)),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || dictionary.meeting.error.message);
+      }
+
+      setStep("success");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : dictionary.meeting.error.message);
+      setStep("error");
+    }
   }
 
   function handleRetry() {

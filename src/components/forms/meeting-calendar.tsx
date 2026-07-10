@@ -151,11 +151,13 @@ export function MeetingCalendar({
       ] ?? error)
     : undefined;
 
-  const now = useRef(Date.now());
-  const today = useMemo(() => getBuenosAiresToday(new Date(now.current)), []);
+  // Capture mount time once; never changes during the component's life.
+  // useState with an initializer is pure (runs once, outside the render path).
+  const [mountTime] = useState(() => Date.now());
+  const today = useMemo(() => getBuenosAiresToday(new Date(mountTime)), [mountTime]);
   const candidates = useMemo(
-    () => buildCandidates(today, now.current),
-    [today],
+    () => buildCandidates(today, mountTime),
+    [today, mountTime],
   );
 
   // Track active button index for arrow-key navigation
@@ -264,15 +266,14 @@ export function MeetingCalendar({
           {dictionary.meeting.availability.empty}
         </p>
       ) : (
-        /* Role="group" with keyboard navigation handled at div level */
-        <div
-          aria-describedby={translatedError ? errorId : helper ? helperId : undefined}
-          aria-invalid={Boolean(translatedError)}
-          aria-label={label}
-          className="flex flex-wrap gap-2"
-          onKeyDown={handleKeyDown}
-          role="group"
-        >
+          /* Role="group" with keyboard navigation handled at div level */
+          <div
+            aria-describedby={helper ? helperId : undefined}
+            aria-label={label}
+            className="flex flex-wrap gap-2"
+            onKeyDown={handleKeyDown}
+            role="group"
+          >
           {candidates.map((candidate, index) => {
             const isSelected = candidate.iso === value;
 
@@ -284,7 +285,6 @@ export function MeetingCalendar({
                 }}
                 aria-label={`${candidate.dayLabel} ${candidate.label}`}
                 aria-pressed={isSelected}
-                aria-selected={isSelected}
                 className={[
                   // Base: 44px minimum touch target, adequate padding
                   "inline-flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-2xl border px-3 py-2 text-sm font-medium transition-colors",

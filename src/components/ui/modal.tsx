@@ -89,8 +89,8 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       openerRef.current?.focus();
     };
-    // Only re-run when isOpen changes — intentionally excluding onClose
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Only re-run when isOpen changes — onClose is captured via onCloseRef
+    // so the listener never closes over a stale callback.
   }, [isOpen]);
 
   if (!isOpen) {

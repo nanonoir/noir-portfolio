@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { Dictionary } from "@/lib/i18n";
-import { FormError, Label } from "@/components/ui";
+import { FormError } from "@/components/ui";
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -86,13 +86,13 @@ function addUTCDays(base: Date, days: number) {
 }
 
 /**
- * Returns the earliest UTC timestamp of a slot on the given ISO date,
- * adjusted for Buenos Aires UTC-3 offset.
+ * Returns the UTC timestamp of a business slot on the given ISO date,
+ * adjusted for Buenos Aires (UTC-3).
  */
 function getSlotTimestamp(iso: string, time: string) {
   const [year, month, day] = iso.split("-").map(Number);
   const [hour, minute] = time.split(":").map(Number);
-  // Buenos Aires is UTC-3; add 3h to convert local to UTC
+  // Buenos Aires is UTC-3; add 3h to convert local business time to UTC
   return Date.UTC(year, month - 1, day, hour + 3, minute);
 }
 
@@ -111,9 +111,8 @@ function buildCandidates(today: Date, now: number): DateCandidate[] {
     if (weekday === 0 || weekday === 6) continue; // skip weekends
 
     const iso = formatIso(d);
-    if (!hasSelectableSlot(iso, now)) continue; // skip under-lead-time
+    if (!hasSelectableSlot(iso, now)) continue; // skip dates with no selectable slot
 
-    // Format a short label like "14 Jul" in local display
     const label = d.toLocaleDateString("es-AR", {
       day: "numeric",
       month: "short",
@@ -151,8 +150,7 @@ export function MeetingCalendar({
       ] ?? error)
     : undefined;
 
-  // Capture mount time once; never changes during the component's life.
-  // useState with an initializer is pure (runs once, outside the render path).
+  // Capture mount time once — useState initializer is pure (runs once only).
   const [mountTime] = useState(() => Date.now());
   const today = useMemo(() => getBuenosAiresToday(new Date(mountTime)), [mountTime]);
   const candidates = useMemo(
@@ -160,7 +158,7 @@ export function MeetingCalendar({
     [today, mountTime],
   );
 
-  // Track active button index for arrow-key navigation
+  // Roving tabindex state — tracks which button holds tabIndex=0
   const [focusIndex, setFocusIndex] = useState<number>(-1);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -208,8 +206,7 @@ export function MeetingCalendar({
         onAvailabilityChange({
           status: "error",
           slots: [],
-          message:
-            fetchError.message || dictionary.meeting.availability.error,
+          message: fetchError.message || dictionary.meeting.availability.error,
         });
       });
 
@@ -257,25 +254,43 @@ export function MeetingCalendar({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={id} required={required}>
+      {/*
+       * Plain <p> instead of <Label htmlFor> because there is no single
+       * associated input — the group is a set of toggle buttons.
+       * The group is labelled via aria-labelledby instead.
+       */}
+      <p
+        className={`text-sm font-medium ${required ? "after:ml-0.5 after:text-red-500 after:content-['*']" : ""}`}
+        id={`${id}-label`}
+      >
         {label}
-      </Label>
+      </p>
 
       {candidates.length === 0 ? (
         <p className="text-base text-muted-foreground md:text-sm">
           {dictionary.meeting.availability.empty}
         </p>
       ) : (
-          /* Role="group" with keyboard navigation handled at div level */
-          <div
-            aria-describedby={helper ? helperId : undefined}
-            aria-label={label}
-            className="flex flex-wrap gap-2"
-            onKeyDown={handleKeyDown}
-            role="group"
-          >
+        /* role="group" provides grouping semantics; aria-labelledby links the
+           visible label text so screen readers announce the group name. */
+        <div
+          aria-describedby={helper ? helperId : undefined}
+          aria-labelledby={`${id}-label`}
+          className="flex flex-wrap gap-2"
+          onKeyDown={handleKeyDown}
+          role="group"
+        >
           {candidates.map((candidate, index) => {
             const isSelected = candidate.iso === value;
+
+            // Roving tabindex: exactly one button is reachable via Tab at a time.
+            // Priority: selected > currently focused > first button (initial entry).
+            const tabIndexValue =
+              isSelected || focusIndex === index
+                ? 0
+                : !value && index === 0
+                  ? 0
+                  : -1;
 
             return (
               <button
@@ -286,17 +301,16 @@ export function MeetingCalendar({
                 aria-label={`${candidate.dayLabel} ${candidate.label}`}
                 aria-pressed={isSelected}
                 className={[
-                  // Base: 44px minimum touch target, adequate padding
+                  // 44px minimum touch target; flex column for day + date
                   "inline-flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-2xl border px-3 py-2 text-sm font-medium transition-colors",
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
-                  // Selected state: high contrast, inverse pill
+                  // Selected: inverse pill (high contrast)
                   isSelected
                     ? "border-foreground bg-foreground text-background"
                     : "border-border bg-card text-foreground hover:border-border-strong hover:bg-surface",
-                  // Reduced motion: no transition animation
                   "motion-reduce:transition-none",
                 ].join(" ")}
-                tabIndex={isSelected ? 0 : focusIndex === index ? 0 : -1}
+                tabIndex={tabIndexValue}
                 type="button"
                 onClick={() => handleSelect(candidate.iso, index)}
                 onFocus={() => setFocusIndex(index)}

@@ -472,6 +472,20 @@ export function MeetingModal({
     }
   }
 
+  /**
+   * Universal dismiss handler passed to Modal's onClose, X button, and
+   * backdrop. Routes to handleSuccessClose when the user has already
+   * completed a meeting request, so ALL dismiss paths (X, backdrop, Escape,
+   * explicit Close button) trigger the correct completion signal.
+   */
+  function handleDismiss() {
+    if (step === "success") {
+      handleSuccessClose();
+    } else {
+      handleClose();
+    }
+  }
+
   const formId = isContactOrigin ? "meeting-contact-form" : "meeting-service-form";
   const footer = step === "form" ? (
     <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
@@ -487,7 +501,7 @@ export function MeetingModal({
       closeLabel={closeLabel || dictionary.modals.closeLabel}
       footer={footer}
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={handleDismiss}
       size="lg"
       title={dictionary.meeting.title}
     >

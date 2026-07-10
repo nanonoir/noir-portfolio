@@ -11,7 +11,7 @@ type MeetingSuccessProps = {
 
 export function MeetingSuccess({ dictionary, onClose, whatsappUrl }: MeetingSuccessProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" role="status" aria-live="polite">
       <div className="space-y-3">
         <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
           {dictionary.meeting.title}

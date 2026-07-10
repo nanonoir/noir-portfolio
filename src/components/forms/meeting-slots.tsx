@@ -78,26 +78,26 @@ export function MeetingSlots({
       ) : null}
 
       {state.status === "loading" ? (
-        <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm" role="status">
+        <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm" role="status" aria-live="polite">
           {dictionary.meeting.availability.loading}
         </div>
       ) : null}
 
       {state.status === "empty" ? (
-        <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm">
+        <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm" role="status" aria-live="polite">
           {dictionary.meeting.availability.empty}
         </div>
       ) : null}
 
       {state.status === "error" ? (
-        <div className="space-y-3 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-4">
+        <div className="space-y-3 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-4" role="alert" aria-live="assertive">
           <p className="text-base text-red-500 md:text-sm">
             {state.message || dictionary.meeting.availability.error}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outlined" onClick={onRetry}>{dictionary.meeting.actions.retry}</Button>
             <a
-              className="inline-flex items-center justify-center rounded-full border border-foreground/20 px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+              className="inline-flex items-center justify-center rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
               href={whatsappUrl}
               rel="noreferrer"
               target="_blank"

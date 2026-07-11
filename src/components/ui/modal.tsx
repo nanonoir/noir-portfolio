@@ -14,19 +14,20 @@ type ModalProps = {
 };
 
 /**
- * Module-level active-modal counter.
+ * Module-level active-modal stack.
  *
- * Every open Modal increments it; every closing Modal decrements it.
+ * Every open Modal registers a token; every closing Modal removes its token.
  * Rules:
- *   - Only the FIRST open modal locks body scroll (count goes 0 → 1).
- *   - Only the LAST closing modal unlocks body scroll (count goes 1 → 0).
- *   - Escape key: the innermost modal handles it and stops propagation so
- *     the parent modal's listener never fires.
+ *   - Only the FIRST open modal locks body scroll.
+ *   - Only the LAST closing modal unlocks body scroll.
+ *   - Only the topmost token handles Escape and Tab. This explicit identity
+ *     check is required because stopPropagation does not stop listeners on
+ *     the same document node.
  *
  * Using a plain mutable object (not React state) because it is shared
  * across all Modal instances synchronously within the same JS event loop.
  */
-const modalStack = { depth: 0, originalOverflow: "" };
+const modalStack = { entries: [] as symbol[], originalOverflow: "" };
 
 export function Modal({
   children,
@@ -55,6 +56,8 @@ export function Modal({
       return;
     }
 
+    const modalToken = Symbol("modal");
+
     // Capture opener before modifying focus
     openerRef.current =
       document.activeElement instanceof HTMLElement
@@ -64,8 +67,8 @@ export function Modal({
     // Only the first modal in the stack locks body scroll; subsequent modals
     // (e.g. nested MeetingModal inside ServiceRequestModal) skip locking since
     // it is already locked, which prevents double-restore on close.
-    modalStack.depth += 1;
-    if (modalStack.depth === 1) {
+    modalStack.entries.push(modalToken);
+    if (modalStack.entries.length === 1) {
       modalStack.originalOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
     }
@@ -75,9 +78,16 @@ export function Modal({
     dialogRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
+      const topmostToken = modalStack.entries[modalStack.entries.length - 1];
+
+      // All Modal listeners are attached to document in capture phase. Since
+      // they share the same node, propagation controls cannot distinguish
+      // them; only the active stack identity can isolate the topmost modal.
+      if (topmostToken !== modalToken) {
+        return;
+      }
+
       if (event.key === "Escape") {
-        // Stop propagation so parent modals' listeners don't also fire when a
-        // child modal is the one handling this Escape press.
         event.stopPropagation();
         onCloseRef.current();
         return;
@@ -115,9 +125,13 @@ export function Modal({
     return () => {
       document.removeEventListener("keydown", handleKeyDown, true);
 
-      // Decrement stack; only restore scroll when the last modal closes.
-      modalStack.depth = Math.max(0, modalStack.depth - 1);
-      if (modalStack.depth === 0) {
+      // Remove this modal; only restore scroll when the last modal closes.
+      const entryIndex = modalStack.entries.indexOf(modalToken);
+      if (entryIndex >= 0) {
+        modalStack.entries.splice(entryIndex, 1);
+      }
+
+      if (modalStack.entries.length === 0) {
         document.body.style.overflow = modalStack.originalOverflow;
         modalStack.originalOverflow = "";
       }

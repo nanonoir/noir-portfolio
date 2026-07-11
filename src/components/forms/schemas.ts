@@ -34,6 +34,24 @@ const meetingTime = z
   .min(1, "forms.errors.timeRequired")
   .regex(timePattern, "forms.errors.timeRequired");
 
+export const ianaTimeZone = z
+  .string()
+  .trim()
+  .min(1, "forms.errors.timezoneRequired")
+  .refine((value) => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+      return true;
+    } catch {
+      return false;
+    }
+  }, "forms.errors.timezoneRequired");
+
+export const availabilityQuerySchema = z.object({
+  date: meetingDate,
+  timezone: ianaTimeZone,
+});
+
 const meetingPhone = z
   .string()
   .trim()
@@ -127,6 +145,7 @@ export type CustomServiceFormValues = z.infer<typeof customServiceFormSchema>;
 export type GeneralContactFormValues = z.infer<typeof generalContactFormSchema>;
 export type MeetingFromServiceValues = z.infer<typeof meetingFromServiceSchema>;
 export type MeetingFromContactValues = z.infer<typeof meetingFromContactSchema>;
+export type AvailabilityQueryValues = z.infer<typeof availabilityQuerySchema>;
 
 export const serviceFormSchemas = {
   "web-audit": auditFormSchema,

@@ -30,9 +30,17 @@ export function Button({
   variant = "primary",
   ...props
 }: ButtonProps) {
+  const hasExplicitDisplayClass = Boolean(
+    className && /\b(hidden|block|inline-block|flex|inline-flex|grid|inline-grid)\b/.test(className),
+  );
+
   return (
     <button
-      className={[baseClasses, variantClasses[variant], className]
+      className={[
+        hasExplicitDisplayClass ? baseClasses.replace("inline-flex ", "") : baseClasses,
+        variantClasses[variant],
+        className,
+      ]
         .filter(Boolean)
         .join(" ")}
       type={type}

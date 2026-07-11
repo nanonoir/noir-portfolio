@@ -4,10 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo, useState } from "react";
 import { type Resolver, useForm, useWatch } from "react-hook-form";
 import type { Dictionary, Language } from "@/lib/i18n";
-import { Button, FormError, Input, Label, Modal, Select, Textarea } from "@/components/ui";
-import { MeetingCalendar, type AvailabilityState } from "./meeting-calendar";
+import { Button, FormError, Label, Modal, Select } from "@/components/ui";
+import { DateTimeModal } from "./date-time-modal";
 import { MeetingError } from "./meeting-error";
-import { MeetingSlots } from "./meeting-slots";
 import { MeetingSuccess } from "./meeting-success";
 import { createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
 import {
@@ -22,6 +21,7 @@ import {
   type MeetingFromServiceValues,
 } from "./schemas";
 import { scrollToFirstError } from "./service-form-fields";
+import { TextAreaField, TextField } from "./service-form-fields";
 import type { ServiceRequestTarget } from "./service-request-modal";
 
 type MeetingStep = "form" | "loading" | "success" | "error";
@@ -43,8 +43,6 @@ type MeetingModalProps = {
   previousValues?: ServiceRequestValues | null;
   service?: ServiceRequestTarget | null;
 };
-
-const INITIAL_AVAILABILITY: AvailabilityState = { status: "idle", slots: [] };
 
 type ContactMeetingPayload = {
   type: "meeting_request";
@@ -329,7 +327,7 @@ export function MeetingModal({
 }: MeetingModalProps) {
   const isContactOrigin = origin === "contact";
   const [step, setStep] = useState<MeetingStep>("form");
-  const [availability, setAvailability] = useState<AvailabilityState>(INITIAL_AVAILABILITY);
+  const [dateTimeOpen, setDateTimeOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const form = useForm<MeetingFormValues>({
     defaultValues: {
@@ -345,49 +343,27 @@ export function MeetingModal({
     resolver: zodResolver(isContactOrigin ? meetingFromContactSchema : meetingFromServiceSchema) as Resolver<MeetingFormValues>,
   });
   const errors = form.formState.errors;
-  const watchedValues = useWatch({ control: form.control });
-  const selectedDate = watchedValues.date || "";
-  const selectedTime = watchedValues.time || "";
+  const selectedDate = useWatch({ control: form.control, name: "date" }) || "";
+  const selectedTime = useWatch({ control: form.control, name: "time" }) || "";
   const isSubmittingMeeting = step === "loading";
   const whatsAppMessage = useMemo(
-    () => createMeetingWhatsAppMessage({ dictionary, language, origin, previousValues, service, values: watchedValues }),
-    [dictionary, language, origin, previousValues, service, watchedValues],
+    () => createMeetingWhatsAppMessage({
+      dictionary,
+      language,
+      origin,
+      previousValues,
+      service,
+      values: form.getValues(),
+    }),
+    [dictionary, form, language, origin, previousValues, service, selectedDate, selectedTime, step],
   );
   const whatsAppUrl = useMemo(() => createWhatsAppUrl(whatsAppMessage), [whatsAppMessage]);
 
-  const resetSlot = useCallback(() => {
-    form.setValue("time", "", { shouldDirty: true, shouldValidate: true });
-  }, [form]);
-
-  const handleDateChange = useCallback((date: string) => {
+  const handleDateTimeConfirm = useCallback(({ date, time }: { date: string; time: string }) => {
     form.setValue("date", date, { shouldDirty: true, shouldValidate: true });
-  }, [form]);
-
-  const handleSlotSelect = useCallback((time: string) => {
     form.setValue("time", time, { shouldDirty: true, shouldValidate: true });
+    setDateTimeOpen(false);
   }, [form]);
-
-  const retryAvailability = useCallback(() => {
-    if (!selectedDate) return;
-
-    const currentDate = selectedDate;
-    setAvailability({ status: "loading", slots: [] });
-
-    fetch(`/api/availability?date=${encodeURIComponent(currentDate)}`)
-      .then(async (response) => {
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          throw new Error(data.message || dictionary.meeting.availability.error);
-        }
-
-        const slots = Array.isArray(data.slots) ? data.slots : [];
-        setAvailability({ status: slots.length > 0 ? "success" : "empty", slots });
-      })
-      .catch((error: Error) => {
-        setAvailability({ status: "error", slots: [], message: error.message || dictionary.meeting.availability.error });
-      });
-  }, [dictionary.meeting.availability.error, selectedDate]);
 
   function buildPayload(values: MeetingFormValues): MeetingPayload {
     if (isContactOrigin) {
@@ -452,7 +428,7 @@ export function MeetingModal({
 
   function handleClose() {
     setStep("form");
-    setAvailability(INITIAL_AVAILABILITY);
+    setDateTimeOpen(false);
     setSubmitError(undefined);
     form.reset();
     onClose();
@@ -460,7 +436,7 @@ export function MeetingModal({
 
   function handleSuccessClose() {
     setStep("form");
-    setAvailability(INITIAL_AVAILABILITY);
+    setDateTimeOpen(false);
     setSubmitError(undefined);
     form.reset();
     // If a completion handler is provided (nested service flow), call it so the
@@ -489,116 +465,149 @@ export function MeetingModal({
   const formId = isContactOrigin ? "meeting-contact-form" : "meeting-service-form";
   const footer = step === "form" ? (
     <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-      <Button variant="outlined" onClick={handleClose}>{dictionary.meeting.actions.close}</Button>
-      <Button disabled={availability.status === "loading" || isSubmittingMeeting} form={formId} type="submit">
+       <Button className="hidden md:inline-flex" variant="outlined" onClick={handleClose}>{dictionary.meeting.actions.close}</Button>
+      <Button disabled={isSubmittingMeeting} form={formId} type="submit">
         {dictionary.meeting.actions.confirm}
       </Button>
     </div>
   ) : null;
 
   return (
-    <Modal
-      closeLabel={closeLabel || dictionary.modals.closeLabel}
-      footer={footer}
-      isOpen={isOpen}
-      onClose={handleDismiss}
-      size="lg"
-      title={dictionary.meeting.title}
-    >
-      {step === "success" ? (
-        <MeetingSuccess dictionary={dictionary} onClose={handleSuccessClose} whatsappUrl={isContactOrigin ? undefined : whatsAppUrl} />
-      ) : step === "error" ? (
-        <MeetingError dictionary={dictionary} message={submitError} onBackToForm={handleBackToForm} onRetry={handleRetry} whatsappMessage={whatsAppMessage} />
-      ) : (
-        <form
-          className="space-y-5"
-          id={formId}
-          noValidate
-          onSubmit={form.handleSubmit(handleSubmit, scrollToFirstError)}
-        >
-          <div className="space-y-2">
-            <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">
-              {isContactOrigin ? dictionary.meeting.descriptionFromContact : dictionary.meeting.descriptionFromService}
-            </p>
-          </div>
-
-          {Object.keys(errors).length > 0 && form.formState.isSubmitted ? (
-            <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-base text-red-500 md:text-sm" role="alert" aria-live="assertive">
-              {dictionary.forms.common.requiredFieldsMessage}
+    <>
+      <Modal
+        closeLabel={closeLabel || dictionary.modals.closeLabel}
+        footer={footer}
+        isOpen={isOpen}
+        onClose={handleDismiss}
+        size="lg"
+        title={dictionary.meeting.title}
+      >
+        {step === "success" ? (
+          <MeetingSuccess dictionary={dictionary} onClose={handleSuccessClose} whatsappUrl={isContactOrigin ? undefined : whatsAppUrl} />
+        ) : step === "error" ? (
+          <MeetingError dictionary={dictionary} message={submitError} onBackToForm={handleBackToForm} onRetry={handleRetry} whatsappMessage={whatsAppMessage} />
+        ) : (
+          <form
+            className="space-y-5"
+            id={formId}
+            noValidate
+            onSubmit={form.handleSubmit(handleSubmit, scrollToFirstError)}
+          >
+            <div className="space-y-2">
+              <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">
+                {isContactOrigin ? dictionary.meeting.descriptionFromContact : dictionary.meeting.descriptionFromService}
+              </p>
             </div>
-          ) : null}
 
-          {step === "loading" ? (
-            <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm" role="status" aria-live="polite">
-              {dictionary.meeting.actions.loading}
-            </div>
-          ) : null}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {isContactOrigin ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="name" required>{dictionary.meeting.fields.name}</Label>
-                  <Input id="name" autoComplete="name" aria-describedby={errors.name ? "name-error" : undefined} aria-invalid={Boolean(errors.name)} {...form.register("name")} />
-                  <FieldError dictionary={dictionary} id="name-error" message={errors.name?.message} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" required>{dictionary.meeting.fields.email}</Label>
-                  <Input id="email" autoComplete="email" type="email" aria-describedby={errors.email ? "email-error" : undefined} aria-invalid={Boolean(errors.email)} {...form.register("email")} />
-                  <FieldError dictionary={dictionary} id="email-error" message={errors.email?.message} />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="phone" required>{dictionary.meeting.fields.phone}</Label>
-                  <Input id="phone" autoComplete="tel" inputMode="tel" type="tel" aria-describedby={errors.phone ? "phone-error" : undefined} aria-invalid={Boolean(errors.phone)} {...form.register("phone")} />
-                  <FieldError dictionary={dictionary} id="phone-error" message={errors.phone?.message} />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="reason" required>{dictionary.meeting.fields.reason}</Label>
-                  <Select id="reason" aria-describedby={errors.reason ? "reason-error" : undefined} aria-invalid={Boolean(errors.reason)} {...form.register("reason")}>
-                    <option value="">{dictionary.meeting.fields.reason}</option>
-                    <option value="project">{dictionary.meeting.reasons.project}</option>
-                    <option value="job">{dictionary.meeting.reasons.job}</option>
-                    <option value="general">{dictionary.meeting.reasons.general}</option>
-                  </Select>
-                  <FieldError dictionary={dictionary} id="reason-error" message={errors.reason?.message} />
-                </div>
-              </>
+            {Object.keys(errors).length > 0 && form.formState.isSubmitted ? (
+              <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-base text-red-500 md:text-sm" role="alert" aria-live="assertive">
+                {dictionary.forms.common.requiredFieldsMessage}
+              </div>
             ) : null}
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="message">{dictionary.meeting.fields.message}</Label>
-              <Textarea id="message" aria-describedby={errors.message ? "message-error" : undefined} aria-invalid={Boolean(errors.message)} {...form.register("message")} />
-              <FieldError dictionary={dictionary} id="message-error" message={errors.message?.message} />
-            </div>
+            {step === "loading" ? (
+              <div className="rounded-2xl border border-border bg-surface/30 px-4 py-4 text-base text-body-foreground md:text-sm" role="status" aria-live="polite">
+                {dictionary.meeting.actions.loading}
+              </div>
+            ) : null}
 
-            <div className="sm:col-span-2">
-              <MeetingCalendar
-                dictionary={dictionary}
-                error={errors.date?.message}
-                onAvailabilityChange={setAvailability}
-                onChange={handleDateChange}
-                onSlotReset={resetSlot}
-                value={selectedDate}
-              />
-            </div>
+            <div className="grid min-w-0 gap-5 md:grid-cols-2 md:items-start">
+              <div className="min-w-0 space-y-4">
+                {isContactOrigin ? (
+                  <>
+                    <TextField
+                      dictionary={dictionary}
+                      error={errors.name?.message}
+                      label={dictionary.meeting.fields.name}
+                      name="name"
+                      placeholder={dictionary.forms.common.namePlaceholder}
+                      registration={form.register("name")}
+                      required
+                      variant="name"
+                    />
 
-            <div className="sm:col-span-2">
-              <MeetingSlots
-                dictionary={dictionary}
-                error={errors.time?.message}
-                onRetry={retryAvailability}
-                onSelect={handleSlotSelect}
-                selectedTime={selectedTime}
-                state={availability}
-                whatsappUrl={whatsAppUrl}
-              />
+                    <TextField
+                      autoComplete="email"
+                      dictionary={dictionary}
+                      error={errors.email?.message}
+                      label={dictionary.meeting.fields.email}
+                      name="email"
+                      placeholder={dictionary.forms.common.emailPlaceholder}
+                      registration={form.register("email")}
+                      required
+                      type="email"
+                    />
+
+                    <TextField
+                      dictionary={dictionary}
+                      error={errors.phone?.message}
+                      label={dictionary.meeting.fields.phone}
+                      name="phone"
+                      placeholder={dictionary.forms.common.phonePlaceholder}
+                      registration={form.register("phone")}
+                      required
+                      type="tel"
+                      variant="phone"
+                    />
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reason" required>{dictionary.meeting.fields.reason}</Label>
+                      <Select id="reason" aria-describedby={errors.reason ? "reason-error" : undefined} aria-invalid={Boolean(errors.reason)} {...form.register("reason")}>
+                        <option value="">{dictionary.meeting.fields.reason}</option>
+                        <option value="project">{dictionary.meeting.reasons.project}</option>
+                        <option value="job">{dictionary.meeting.reasons.job}</option>
+                        <option value="general">{dictionary.meeting.reasons.general}</option>
+                      </Select>
+                      <FieldError dictionary={dictionary} id="reason-error" message={errors.reason?.message} />
+                    </div>
+                  </>
+                ) : null}
+
+                <TextAreaField
+                  dictionary={dictionary}
+                  error={errors.message?.message}
+                  label={dictionary.meeting.fields.message}
+                  name="message"
+                  placeholder={dictionary.forms.common.messagePlaceholder}
+                  registration={form.register("message")}
+                />
+              </div>
+
+              <div className="min-w-0 space-y-3">
+                <div
+                  aria-describedby={errors.date || errors.time ? "meeting-date-time-error" : undefined}
+                  aria-live="polite"
+                  className="rounded-2xl border border-border bg-surface/20 px-4 py-4"
+                  role="group"
+                >
+                  <p className="text-sm font-medium text-foreground">{dictionary.meeting.fields.date} / {dictionary.meeting.fields.time}</p>
+                  <p className="mt-1 text-base text-body-foreground md:text-sm">
+                    {selectedDate && selectedTime ? `${selectedDate} · ${selectedTime}` : dictionary.meeting.dateTime.open}
+                  </p>
+                  <Button className="mt-3" type="button" variant="outlined" onClick={() => setDateTimeOpen(true)}>
+                    {dictionary.meeting.dateTime.open}
+                  </Button>
+                </div>
+                {(errors.date?.message || errors.time?.message) ? (
+                  <FieldError dictionary={dictionary} id="meeting-date-time-error" message={errors.date?.message || errors.time?.message} />
+                ) : null}
+              </div>
             </div>
-          </div>
-        </form>
-      )}
-    </Modal>
+          </form>
+        )}
+      </Modal>
+
+      <DateTimeModal
+        closeLabel={closeLabel || dictionary.modals.closeLabel}
+        dictionary={dictionary}
+        initialDate={selectedDate}
+        initialTime={selectedTime}
+        isOpen={dateTimeOpen}
+        language={language}
+        onClose={() => setDateTimeOpen(false)}
+        onConfirm={handleDateTimeConfirm}
+        whatsappUrl={whatsAppUrl}
+      />
+    </>
   );
 }

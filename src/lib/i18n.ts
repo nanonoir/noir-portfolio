@@ -111,6 +111,17 @@ export type Dictionary = {
       date: string;
       time: string;
     };
+    dateTime: {
+      title: string;
+      open: string;
+      selected: string;
+      previousMonth: string;
+      nextMonth: string;
+      calendarLabel: string;
+      timezoneLabel: string;
+      confirm: string;
+      cancel: string;
+    };
     reasons: {
       project: string;
       job: string;
@@ -362,6 +373,17 @@ export const dictionaries: Record<Language, Dictionary> = {
         date: "Fecha",
         time: "Horario disponible",
       },
+      dateTime: {
+        title: "Elegí fecha y horario",
+        open: "Elegir fecha y horario",
+        selected: "Horario seleccionado",
+        previousMonth: "Mes anterior",
+        nextMonth: "Mes siguiente",
+        calendarLabel: "Calendario de disponibilidad",
+        timezoneLabel: "Horario local",
+        confirm: "Confirmar horario",
+        cancel: "Cancelar",
+      },
       reasons: {
         project: "Proyecto / servicio",
         job: "Oportunidad laboral",
@@ -462,6 +484,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         phoneRequired: "Ingresá un WhatsApp o teléfono de contacto.",
         reasonRequired: "Seleccioná un motivo.",
         slotUnavailable: "Ese horario ya no está disponible.",
+        timezoneRequired: "No se pudo identificar una zona horaria válida.",
       },
       success: {
         title: "Solicitud enviada",
@@ -612,6 +635,17 @@ export const dictionaries: Record<Language, Dictionary> = {
         date: "Date",
         time: "Available time",
       },
+      dateTime: {
+        title: "Choose a date and time",
+        open: "Choose date and time",
+        selected: "Selected time",
+        previousMonth: "Previous month",
+        nextMonth: "Next month",
+        calendarLabel: "Availability calendar",
+        timezoneLabel: "Local time",
+        confirm: "Confirm time",
+        cancel: "Cancel",
+      },
       reasons: {
         project: "Project / service",
         job: "Job opportunity",
@@ -711,6 +745,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         phoneRequired: "Enter a WhatsApp number or contact phone.",
         reasonRequired: "Select a reason.",
         slotUnavailable: "That time is no longer available.",
+        timezoneRequired: "A valid time zone could not be identified.",
       },
       success: {
         title: "Request sent",

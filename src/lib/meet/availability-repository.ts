@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Slot, Timezone } from "./domain";
+import { getZonedDateTime } from "./zoned-date-time";
 
 const AVAILABILITY_START_MINUTES = 8 * 60;
 const AVAILABILITY_END_MINUTES = 20 * 60;
@@ -50,31 +51,6 @@ function isCalendarDate(date: string) {
   return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === date;
 }
 
-function getTimeZoneOffsetMs(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    hour: "2-digit",
-    hourCycle: "h23",
-    minute: "2-digit",
-    month: "2-digit",
-    second: "2-digit",
-    timeZone,
-    year: "numeric",
-  }).formatToParts(date);
-  const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
-
-  return Date.UTC(value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second")) - date.getTime();
-}
-
-function getZonedDateTime(date: string, time: string, timeZone: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute);
-  const firstGuess = new Date(localAsUtc - getTimeZoneOffsetMs(new Date(localAsUtc), timeZone));
-
-  return new Date(localAsUtc - getTimeZoneOffsetMs(firstGuess, timeZone));
-}
-
 function hashCode(value: string) {
   return [...value].reduce((hash, char) => (hash << 5) - hash + char.charCodeAt(0), 0);
 }
@@ -119,7 +95,7 @@ export class MockAvailabilityRepository implements AvailabilityRepository {
     ) {
       const time = `${Math.floor(minutes / 60).toString().padStart(2, "0")}:${(minutes % 60).toString().padStart(2, "0")}`;
 
-      if (getZonedDateTime(date, time, timezone).getTime() >= now.getTime() + MIN_LEAD_TIME_MS) {
+      if (getZonedDateTime({ date, time, timezone }).getTime() >= now.getTime() + MIN_LEAD_TIME_MS) {
         times.push(time);
       }
     }

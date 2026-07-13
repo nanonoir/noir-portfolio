@@ -25,7 +25,7 @@ export interface SlotReservationInput {
 }
 
 export type SlotReservationResult =
-  | { record: BookingRecord; success: true }
+  | { record: BookingRecord; replayed: boolean; success: true }
   | { error: typeof MEETING_ERROR_CODES.SLOT_UNAVAILABLE; success: false };
 
 export interface BookingRepository {
@@ -71,17 +71,18 @@ export class MockBookingRepository implements BookingRepository {
     const existing = await this.findByIdempotencyKey(record.idempotencyKey);
 
     if (existing) {
-      return { record: existing, success: true };
+      return { record: existing, replayed: true, success: true };
     }
 
     if (this.bookingIdsBySlotIdentity.has(slotIdentity)) {
       return { error: MEETING_ERROR_CODES.SLOT_UNAVAILABLE, success: false };
     }
 
+    this.bookingsById.set(record.id, record);
+    this.bookingIdsByIdempotencyKey.set(record.idempotencyKey, record.id);
     this.bookingIdsBySlotIdentity.set(slotIdentity, record.id);
-    await this.create(record);
 
-    return { record, success: true };
+    return { record, replayed: false, success: true };
   }
 
   async updateStatus(

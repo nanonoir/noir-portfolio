@@ -3,6 +3,7 @@ import "server-only";
 import type { BookingRequestDto } from "./dto";
 import type { ContactReason, Locale, MeetingOrigin, MeetingStatus, Timezone } from "./domain";
 import type { BookingAuditEvent } from "./audit-events";
+import { getZonedDateTime as getSharedZonedDateTime } from "./zoned-date-time";
 
 export type BookingTimestamp = string;
 
@@ -16,6 +17,11 @@ export interface BookingIdentity {
 export interface BookingMeeting {
   date: string;
   time: string;
+}
+
+export interface BookingPreviousRequest {
+  details: Record<string, unknown>;
+  service: string;
 }
 
 export interface BookingProposedSlotInput {
@@ -42,7 +48,9 @@ export interface BookingRecord {
   origin: MeetingOrigin;
   proposalVersion: string;
   proposedSlot: BookingProposedSlot | null;
+  previousRequest: BookingPreviousRequest | null;
   reason: ContactReason | null;
+  relatedService: string | null;
   status: MeetingStatus;
   visitorTimezone: Timezone;
   updatedAt: BookingTimestamp;
@@ -53,29 +61,8 @@ export interface CreateBookingRecordOptions {
   id: string;
 }
 
-function getTimeZoneOffsetMs(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    hour: "2-digit",
-    hourCycle: "h23",
-    minute: "2-digit",
-    month: "2-digit",
-    second: "2-digit",
-    timeZone,
-    year: "numeric",
-  }).formatToParts(date);
-  const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
-
-  return Date.UTC(value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second")) - date.getTime();
-}
-
 function getZonedDateTime({ date, time, visitorTimezone }: BookingProposedSlotInput) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute);
-  const firstGuess = new Date(localAsUtc - getTimeZoneOffsetMs(new Date(localAsUtc), visitorTimezone));
-
-  return new Date(localAsUtc - getTimeZoneOffsetMs(firstGuess, visitorTimezone));
+  return getSharedZonedDateTime({ date, time, timezone: visitorTimezone });
 }
 
 export function createProposedSlot(input: BookingProposedSlotInput): BookingProposedSlot {
@@ -92,6 +79,8 @@ export function getProposalExpiration(proposedSlot: BookingProposedSlot): Bookin
 export function createBookingRecord(request: BookingRequestDto, options: CreateBookingRecordOptions): BookingRecord {
   const createdAt = options.createdAt ?? new Date().toISOString();
   const reason = request.origin === "contact" ? request.reason : null;
+  const previousRequest = request.origin === "contact" ? null : request.previousRequest;
+  const relatedService = request.origin === "contact" ? null : request.relatedService;
 
   return {
     auditLog: [],
@@ -107,7 +96,9 @@ export function createBookingRecord(request: BookingRequestDto, options: CreateB
     origin: request.origin,
     proposalVersion: request.proposalMetadata.proposalVersion,
     proposedSlot: null,
+    previousRequest,
     reason,
+    relatedService,
     status: "requested",
     visitorTimezone: request.meeting.timezone as Timezone,
     updatedAt: createdAt,

@@ -6,20 +6,13 @@ import { type Resolver, useForm, useWatch } from "react-hook-form";
 import type { Dictionary, Language } from "@/lib/i18n";
 import { Button, FormError, Label, Modal, Select } from "@/components/ui";
 import { DateTimeModal } from "./date-time-modal";
-import { getVisitorTimeZone } from "./date-time-constants";
 import { MeetingError } from "./meeting-error";
+import { buildMeetingPayload, type MeetingFormValues } from "./meeting-payload-mapper";
 import { MeetingSuccess } from "./meeting-success";
 import { createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
 import {
   meetingFromContactSchema,
   meetingFromServiceSchema,
-  type AutomationFormValues,
-  type AuditFormValues,
-  type CustomServiceFormValues,
-  type EcommerceFormValues,
-  type LandingFormValues,
-  type MeetingFromContactValues,
-  type MeetingFromServiceValues,
 } from "./schemas";
 import { scrollToFirstError } from "./service-form-fields";
 import { TextAreaField, TextField } from "./service-form-fields";
@@ -44,81 +37,6 @@ type MeetingModalProps = {
   previousValues?: ServiceRequestValues | null;
   service?: ServiceRequestTarget | null;
 };
-
-type ContactMeetingPayload = {
-  type: "meeting_request";
-  origin: "contact";
-  reason: "project" | "job" | "general";
-  identity: MeetingIdentity;
-  locale: string;
-  idempotencyKey: string;
-  proposalMetadata: ProposalMetadata;
-  meeting: {
-    date: string;
-    time: string;
-    timezone: string;
-  };
-};
-
-type ServiceMeetingPayload = {
-  type: "meeting_request";
-  origin: "service";
-  relatedService: string;
-  identity: MeetingIdentity;
-  locale: string;
-  idempotencyKey: string;
-  proposalMetadata: ProposalMetadata;
-  meeting: {
-    date: string;
-    time: string;
-    timezone: string;
-  };
-  previousRequest: {
-    service: string;
-    details: Record<string, unknown>;
-  };
-};
-
-type CustomSoftwareMeetingPayload = {
-  type: "meeting_request";
-  origin: "custom_software";
-  relatedService: "custom_software";
-  identity: MeetingIdentity;
-  locale: string;
-  idempotencyKey: string;
-  proposalMetadata: ProposalMetadata;
-  meeting: {
-    date: string;
-    time: string;
-    timezone: string;
-  };
-  previousRequest: {
-    service: "custom_software";
-    details: {
-      projectIdea?: string;
-      currentProblem?: string;
-      priority?: string;
-      budget?: string;
-    };
-  };
-};
-
-type MeetingPayload = ContactMeetingPayload | ServiceMeetingPayload | CustomSoftwareMeetingPayload;
-
-type MeetingIdentity = {
-  name: string;
-  email: string;
-  phone: string;
-  message?: string;
-};
-
-type ProposalMetadata = {
-  originVersion: "meet-ui-v2";
-  proposalVersion: "meet-ui-v2";
-  submittedAt: string;
-};
-
-type MeetingFormValues = MeetingFromServiceValues & Partial<Omit<MeetingFromContactValues, keyof MeetingFromServiceValues>>;
 
 type MeetingApiError = {
   error?: string;
@@ -190,161 +108,6 @@ function createMeetingWhatsAppMessage({
   ].join("\n");
 }
 
-function trimmedOptional(value?: string) {
-  const trimmed = value?.trim();
-
-  return trimmed ? trimmed : undefined;
-}
-
-function buildContactMeetingPayload(
-  values: MeetingFromContactValues,
-  context: MeetingRequestContext,
-): ContactMeetingPayload {
-  const message = values.message?.trim();
-
-  return {
-    type: "meeting_request",
-    origin: "contact",
-    reason: values.reason,
-    identity: {
-      name: values.name.trim(),
-      email: values.email.trim().toLowerCase(),
-      phone: values.phone.trim(),
-      ...(message ? { message } : {}),
-    },
-    ...context,
-    meeting: {
-      date: values.date,
-      time: values.time,
-      timezone: context.timezone,
-    },
-  };
-}
-
-function getServiceDetails(service: ServiceRequestTarget, values: ServiceRequestValues): Record<string, unknown> {
-  switch (service.id) {
-    case "web-audit": {
-      const data = values as AuditFormValues;
-      return { websiteUrl: data.websiteUrl };
-    }
-    case "landing": {
-      const data = values as LandingFormValues;
-      return {
-        projectType: data.projectType,
-        brandName: trimmedOptional(data.brandName),
-        social: trimmedOptional(data.social),
-      };
-    }
-    case "ecommerce": {
-      const data = values as EcommerceFormValues;
-      return {
-        brandName: data.brandName,
-        social: trimmedOptional(data.social),
-      };
-    }
-    case "automation": {
-      const data = values as AutomationFormValues;
-      return {
-        brandName: data.brandName,
-        automationType: data.automationType,
-      };
-    }
-    case "custom": {
-      const data = values as CustomServiceFormValues;
-      return {
-        business: trimmedOptional(data.business),
-        social: trimmedOptional(data.social),
-        budget: trimmedOptional(data.budget),
-      };
-    }
-  }
-}
-
-function buildServiceMeetingPayload({
-  context,
-  service,
-  schedule,
-  values,
-}: {
-  context: MeetingRequestContext;
-  service: ServiceRequestTarget;
-  schedule: MeetingFromServiceValues;
-  values: ServiceRequestValues;
-}): ServiceMeetingPayload {
-  const message = trimmedOptional(schedule.message) || trimmedOptional(values.message);
-  const serviceCode = service.id;
-
-  return {
-    type: "meeting_request",
-    origin: "service",
-    relatedService: serviceCode,
-    identity: {
-      name: values.name.trim(),
-      email: values.email.trim().toLowerCase(),
-      phone: values.phone.trim(),
-      ...(message ? { message } : {}),
-    },
-    ...context,
-    meeting: {
-      date: schedule.date,
-      time: schedule.time,
-      timezone: context.timezone,
-    },
-    previousRequest: {
-      service: serviceCode,
-      details: getServiceDetails(service, values),
-    },
-  };
-}
-
-function buildCustomSoftwareMeetingPayload(
-  context: MeetingRequestContext,
-  schedule: MeetingFromServiceValues,
-  values: ServiceRequestValues,
-): CustomSoftwareMeetingPayload {
-  const data = values as CustomServiceFormValues;
-  const message = trimmedOptional(schedule.message) || trimmedOptional(data.message);
-  const company = trimmedOptional(data.business);
-
-  return {
-    type: "meeting_request",
-    origin: "custom_software",
-    relatedService: "custom_software",
-    identity: {
-      name: data.name.trim(),
-      email: data.email.trim().toLowerCase(),
-      phone: data.phone.trim(),
-      ...(message ? { message } : {}),
-    },
-    ...context,
-    meeting: {
-      date: schedule.date,
-      time: schedule.time,
-      timezone: context.timezone,
-    },
-    previousRequest: {
-      service: "custom_software",
-      details: {
-        projectIdea: trimmedOptional(data.message),
-        currentProblem: company,
-        priority: trimmedOptional(data.social),
-        budget: trimmedOptional(data.budget),
-      },
-    },
-  };
-}
-
-type MeetingRequestContext = {
-  idempotencyKey: string;
-  locale: string;
-  proposalMetadata: ProposalMetadata;
-  timezone: string;
-};
-
-function getVisitorLocale(language: Language) {
-  return navigator.language || (language === "es" ? "es-AR" : "en-US");
-}
-
 function FieldError({ dictionary, id, message }: { dictionary: Dictionary; id: string; message?: string }) {
   return <FormError id={id}>{translateError(dictionary, message)}</FormError>;
 }
@@ -398,37 +161,15 @@ export function MeetingModal({
     setDateTimeOpen(false);
   }, [form]);
 
-  function buildPayload(values: MeetingFormValues): MeetingPayload {
-    const context: MeetingRequestContext = {
+  function buildPayload(values: MeetingFormValues) {
+    return buildMeetingPayload({
       idempotencyKey,
-      locale: getVisitorLocale(language),
-      proposalMetadata: {
-        originVersion: "meet-ui-v2",
-        proposalVersion: "meet-ui-v2",
-        submittedAt: new Date().toISOString(),
-      },
-      timezone: getVisitorTimeZone(),
-    };
-
-    if (isContactOrigin) {
-      return buildContactMeetingPayload(values as MeetingFromContactValues, context);
-    }
-
-    if (!service || !previousValues) {
-      throw new Error(dictionary.meeting.error.message);
-    }
-
-    const schedule = {
-      date: values.date,
-      message: values.message,
-      time: values.time,
-    } satisfies MeetingFromServiceValues;
-
-    if (origin === "custom") {
-      return buildCustomSoftwareMeetingPayload(context, schedule, previousValues);
-    }
-
-    return buildServiceMeetingPayload({ context, schedule, service, values: previousValues });
+      language,
+      origin,
+      previousValues,
+      service,
+      values,
+    });
   }
 
   async function handleSubmit(values: MeetingFormValues) {

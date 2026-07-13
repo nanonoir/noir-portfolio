@@ -13,8 +13,6 @@ import { getSlotIdentity } from "./slot-identity";
 export type BookingServiceResult = BookingSuccessResponseDto | BookingErrorResponseDto;
 
 export class BookingService {
-  private readonly bookedSlotKeys = new Set<string>();
-
   constructor(
     private readonly availabilityRepository: AvailabilityRepository = new MockAvailabilityRepository(),
     private readonly bookingRepository: BookingRepository = new MockBookingRepository(),
@@ -33,15 +31,24 @@ export class BookingService {
       return this.error(MEETING_ERROR_CODES.SLOT_UNAVAILABLE);
     }
 
-    const slotKey = this.getSlotKey(request);
     const response = this.success(`meet_${crypto.randomUUID().slice(0, 8)}`);
-    const record = await this.bookingRepository.create(createBookingRecord(request, { id: response.meetingId }));
+    const reservation = await this.bookingRepository.reserveSlotIfAvailable({
+      record: createBookingRecord(request, { id: response.meetingId }),
+      slotIdentity: this.getSlotKey(request),
+    });
 
-    this.bookedSlotKeys.add(slotKey);
-    const calendarResult = await this.calendarProvider.createEvent(record);
+    if (!reservation.success) {
+      return this.error(reservation.error);
+    }
+
+    if (reservation.replayed) {
+      return this.success(reservation.record.id);
+    }
+
+    const calendarResult = await this.calendarProvider.createEvent(reservation.record);
     const bookingWithProviderDetails = calendarResult.success
-      ? ((await this.bookingRepository.updateProviderDetails(record.id, calendarResult.event)) ?? record)
-      : record;
+      ? ((await this.bookingRepository.updateProviderDetails(reservation.record.id, calendarResult.event)) ?? reservation.record)
+      : reservation.record;
 
     await this.emailProvider.sendMeetingRequested({
       booking: bookingWithProviderDetails,
@@ -58,7 +65,7 @@ export class BookingService {
       timezone: request.meeting.timezone as Timezone,
     };
 
-    if (!this.availabilityRepository.isAvailableDate(query) || this.bookedSlotKeys.has(this.getSlotKey(request))) {
+    if (!this.availabilityRepository.isAvailableDate(query)) {
       return false;
     }
 

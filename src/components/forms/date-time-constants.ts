@@ -17,7 +17,7 @@ export type AvailabilityState =
   | { status: "loading"; slots: AvailabilitySlot[] }
   | { status: "success"; slots: AvailabilitySlot[] }
   | { status: "empty"; slots: AvailabilitySlot[] }
-  | { status: "error"; slots: AvailabilitySlot[]; message?: string };
+  | { status: "error"; slots: AvailabilitySlot[]; code?: string; message?: string };
 
 export function getVisitorTimeZone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";

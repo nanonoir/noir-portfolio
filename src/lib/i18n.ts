@@ -220,6 +220,7 @@ export type Dictionary = {
       phoneRequired: string;
       reasonRequired: string;
       slotUnavailable: string;
+      timezoneRequired: string;
     };
     success: {
       title: string;

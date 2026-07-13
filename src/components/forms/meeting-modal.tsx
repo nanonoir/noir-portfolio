@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { type Resolver, useForm, useWatch } from "react-hook-form";
 import type { Dictionary, Language } from "@/lib/i18n";
 import { Button, FormError, Label, Modal, Select } from "@/components/ui";
 import { DateTimeModal } from "./date-time-modal";
+import { getVisitorTimeZone } from "./date-time-constants";
 import { MeetingError } from "./meeting-error";
 import { MeetingSuccess } from "./meeting-success";
 import { createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
@@ -46,30 +47,31 @@ type MeetingModalProps = {
 
 type ContactMeetingPayload = {
   type: "meeting_request";
-  origin: "Contacto";
-  reason: string;
-  name: string;
-  email: string;
-  phone: string;
-  message?: string;
+  origin: "contact";
+  reason: "project" | "job" | "general";
+  identity: MeetingIdentity;
+  locale: string;
+  idempotencyKey: string;
+  proposalMetadata: ProposalMetadata;
   meeting: {
     date: string;
     time: string;
+    timezone: string;
   };
 };
 
 type ServiceMeetingPayload = {
   type: "meeting_request";
-  origin: "Solicitud de servicio";
+  origin: "service";
   relatedService: string;
-  name: string;
-  email: string;
-  phone: string;
-  company?: string;
-  message?: string;
+  identity: MeetingIdentity;
+  locale: string;
+  idempotencyKey: string;
+  proposalMetadata: ProposalMetadata;
   meeting: {
     date: string;
     time: string;
+    timezone: string;
   };
   previousRequest: {
     service: string;
@@ -79,19 +81,19 @@ type ServiceMeetingPayload = {
 
 type CustomSoftwareMeetingPayload = {
   type: "meeting_request";
-  origin: "Software a medida";
-  relatedService: "Software a medida";
-  name: string;
-  email: string;
-  phone: string;
-  company?: string;
-  message?: string;
+  origin: "custom_software";
+  relatedService: "custom_software";
+  identity: MeetingIdentity;
+  locale: string;
+  idempotencyKey: string;
+  proposalMetadata: ProposalMetadata;
   meeting: {
     date: string;
     time: string;
+    timezone: string;
   };
   previousRequest: {
-    reason: "Software a medida";
+    service: "custom_software";
     details: {
       projectIdea?: string;
       currentProblem?: string;
@@ -103,12 +105,30 @@ type CustomSoftwareMeetingPayload = {
 
 type MeetingPayload = ContactMeetingPayload | ServiceMeetingPayload | CustomSoftwareMeetingPayload;
 
+type MeetingIdentity = {
+  name: string;
+  email: string;
+  phone: string;
+  message?: string;
+};
+
+type ProposalMetadata = {
+  originVersion: "meet-ui-v2";
+  proposalVersion: "meet-ui-v2";
+  submittedAt: string;
+};
+
 type MeetingFormValues = MeetingFromServiceValues & Partial<Omit<MeetingFromContactValues, keyof MeetingFromServiceValues>>;
 
 type MeetingApiError = {
   error?: string;
   message?: string;
   success?: false;
+};
+
+type MeetingErrorState = {
+  code?: string;
+  message: string;
 };
 
 function translateError(dictionary: Dictionary, message?: string) {
@@ -176,34 +196,29 @@ function trimmedOptional(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
-function buildContactMeetingPayload(values: MeetingFromContactValues, dictionary: Dictionary): ContactMeetingPayload {
+function buildContactMeetingPayload(
+  values: MeetingFromContactValues,
+  context: MeetingRequestContext,
+): ContactMeetingPayload {
   const message = values.message?.trim();
 
   return {
     type: "meeting_request",
-    origin: "Contacto",
-    reason: dictionary.meeting.reasons[values.reason],
-    name: values.name.trim(),
-    email: values.email.trim().toLowerCase(),
-    phone: values.phone.trim(),
-    ...(message ? { message } : {}),
+    origin: "contact",
+    reason: values.reason,
+    identity: {
+      name: values.name.trim(),
+      email: values.email.trim().toLowerCase(),
+      phone: values.phone.trim(),
+      ...(message ? { message } : {}),
+    },
+    ...context,
     meeting: {
       date: values.date,
       time: values.time,
+      timezone: context.timezone,
     },
   };
-}
-
-function getServiceCompany(service: ServiceRequestTarget | null | undefined, values: ServiceRequestValues) {
-  if (service?.id === "landing" || service?.id === "ecommerce" || service?.id === "automation") {
-    return trimmedOptional((values as LandingFormValues | EcommerceFormValues | AutomationFormValues).brandName);
-  }
-
-  if (service?.id === "custom") {
-    return trimmedOptional((values as CustomServiceFormValues).business);
-  }
-
-  return undefined;
 }
 
 function getServiceDetails(service: ServiceRequestTarget, values: ServiceRequestValues): Record<string, unknown> {
@@ -246,60 +261,69 @@ function getServiceDetails(service: ServiceRequestTarget, values: ServiceRequest
 }
 
 function buildServiceMeetingPayload({
-  language,
+  context,
   service,
   schedule,
   values,
 }: {
-  language: Language;
+  context: MeetingRequestContext;
   service: ServiceRequestTarget;
   schedule: MeetingFromServiceValues;
   values: ServiceRequestValues;
 }): ServiceMeetingPayload {
   const message = trimmedOptional(schedule.message) || trimmedOptional(values.message);
-  const company = getServiceCompany(service, values);
-  const serviceName = service.title[language];
+  const serviceCode = service.id;
 
   return {
     type: "meeting_request",
-    origin: "Solicitud de servicio",
-    relatedService: serviceName,
-    name: values.name.trim(),
-    email: values.email.trim().toLowerCase(),
-    phone: values.phone.trim(),
-    ...(company ? { company } : {}),
-    ...(message ? { message } : {}),
+    origin: "service",
+    relatedService: serviceCode,
+    identity: {
+      name: values.name.trim(),
+      email: values.email.trim().toLowerCase(),
+      phone: values.phone.trim(),
+      ...(message ? { message } : {}),
+    },
+    ...context,
     meeting: {
       date: schedule.date,
       time: schedule.time,
+      timezone: context.timezone,
     },
     previousRequest: {
-      service: serviceName,
+      service: serviceCode,
       details: getServiceDetails(service, values),
     },
   };
 }
 
-function buildCustomSoftwareMeetingPayload(schedule: MeetingFromServiceValues, values: ServiceRequestValues): CustomSoftwareMeetingPayload {
+function buildCustomSoftwareMeetingPayload(
+  context: MeetingRequestContext,
+  schedule: MeetingFromServiceValues,
+  values: ServiceRequestValues,
+): CustomSoftwareMeetingPayload {
   const data = values as CustomServiceFormValues;
   const message = trimmedOptional(schedule.message) || trimmedOptional(data.message);
   const company = trimmedOptional(data.business);
 
   return {
     type: "meeting_request",
-    origin: "Software a medida",
-    relatedService: "Software a medida",
-    name: data.name.trim(),
-    email: data.email.trim().toLowerCase(),
-    phone: data.phone.trim(),
-    ...(company ? { company } : {}),
-    ...(message ? { message } : {}),
+    origin: "custom_software",
+    relatedService: "custom_software",
+    identity: {
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      phone: data.phone.trim(),
+      ...(message ? { message } : {}),
+    },
+    ...context,
     meeting: {
       date: schedule.date,
       time: schedule.time,
+      timezone: context.timezone,
     },
     previousRequest: {
-      reason: "Software a medida",
+      service: "custom_software",
       details: {
         projectIdea: trimmedOptional(data.message),
         currentProblem: company,
@@ -308,6 +332,17 @@ function buildCustomSoftwareMeetingPayload(schedule: MeetingFromServiceValues, v
       },
     },
   };
+}
+
+type MeetingRequestContext = {
+  idempotencyKey: string;
+  locale: string;
+  proposalMetadata: ProposalMetadata;
+  timezone: string;
+};
+
+function getVisitorLocale(language: Language) {
+  return navigator.language || (language === "es" ? "es-AR" : "en-US");
 }
 
 function FieldError({ dictionary, id, message }: { dictionary: Dictionary; id: string; message?: string }) {
@@ -328,7 +363,8 @@ export function MeetingModal({
   const isContactOrigin = origin === "contact";
   const [step, setStep] = useState<MeetingStep>("form");
   const [dateTimeOpen, setDateTimeOpen] = useState(false);
-  const [submitError, setSubmitError] = useState<string>();
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [submitError, setSubmitError] = useState<MeetingErrorState>();
   const form = useForm<MeetingFormValues>({
     defaultValues: {
       name: "",
@@ -346,18 +382,15 @@ export function MeetingModal({
   const selectedDate = useWatch({ control: form.control, name: "date" }) || "";
   const selectedTime = useWatch({ control: form.control, name: "time" }) || "";
   const isSubmittingMeeting = step === "loading";
-  const whatsAppMessage = useMemo(
-    () => createMeetingWhatsAppMessage({
-      dictionary,
-      language,
-      origin,
-      previousValues,
-      service,
-      values: form.getValues(),
-    }),
-    [dictionary, form, language, origin, previousValues, service, selectedDate, selectedTime, step],
-  );
-  const whatsAppUrl = useMemo(() => createWhatsAppUrl(whatsAppMessage), [whatsAppMessage]);
+  const whatsAppMessage = createMeetingWhatsAppMessage({
+    dictionary,
+    language,
+    origin,
+    previousValues,
+    service,
+    values: form.getValues(),
+  });
+  const whatsAppUrl = createWhatsAppUrl(whatsAppMessage);
 
   const handleDateTimeConfirm = useCallback(({ date, time }: { date: string; time: string }) => {
     form.setValue("date", date, { shouldDirty: true, shouldValidate: true });
@@ -366,8 +399,19 @@ export function MeetingModal({
   }, [form]);
 
   function buildPayload(values: MeetingFormValues): MeetingPayload {
+    const context: MeetingRequestContext = {
+      idempotencyKey,
+      locale: getVisitorLocale(language),
+      proposalMetadata: {
+        originVersion: "meet-ui-v2",
+        proposalVersion: "meet-ui-v2",
+        submittedAt: new Date().toISOString(),
+      },
+      timezone: getVisitorTimeZone(),
+    };
+
     if (isContactOrigin) {
-      return buildContactMeetingPayload(values as MeetingFromContactValues, dictionary);
+      return buildContactMeetingPayload(values as MeetingFromContactValues, context);
     }
 
     if (!service || !previousValues) {
@@ -381,10 +425,10 @@ export function MeetingModal({
     } satisfies MeetingFromServiceValues;
 
     if (origin === "custom") {
-      return buildCustomSoftwareMeetingPayload(schedule, previousValues);
+      return buildCustomSoftwareMeetingPayload(context, schedule, previousValues);
     }
 
-    return buildServiceMeetingPayload({ language, schedule, service, values: previousValues });
+    return buildServiceMeetingPayload({ context, schedule, service, values: previousValues });
   }
 
   async function handleSubmit(values: MeetingFormValues) {
@@ -403,16 +447,22 @@ export function MeetingModal({
 
       if (!response.ok || !data.success) {
         const apiError = data as MeetingApiError;
-        throw new Error(
-          apiError.error === "SLOT_UNAVAILABLE" || apiError.message === "forms.errors.slotUnavailable"
+        const code = apiError.error;
+
+        console.warn("Meeting request failed", { code });
+        setSubmitError({
+          code,
+          message: code === "SLOT_UNAVAILABLE"
             ? dictionary.meeting.error.slotUnavailable
-            : apiError.message || dictionary.meeting.error.message,
-        );
+            : dictionary.meeting.error.message,
+        });
+        setStep("error");
+        return;
       }
 
       setStep("success");
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : dictionary.meeting.error.message);
+      setSubmitError({ message: error instanceof Error ? error.message : dictionary.meeting.error.message });
       setStep("error");
     }
   }
@@ -430,6 +480,7 @@ export function MeetingModal({
     setStep("form");
     setDateTimeOpen(false);
     setSubmitError(undefined);
+    setIdempotencyKey(crypto.randomUUID());
     form.reset();
     onClose();
   }
@@ -438,6 +489,7 @@ export function MeetingModal({
     setStep("form");
     setDateTimeOpen(false);
     setSubmitError(undefined);
+    setIdempotencyKey(crypto.randomUUID());
     form.reset();
     // If a completion handler is provided (nested service flow), call it so the
     // parent service modal can also close. Otherwise fall back to onClose.
@@ -485,7 +537,7 @@ export function MeetingModal({
         {step === "success" ? (
           <MeetingSuccess dictionary={dictionary} onClose={handleSuccessClose} whatsappUrl={isContactOrigin ? undefined : whatsAppUrl} />
         ) : step === "error" ? (
-          <MeetingError dictionary={dictionary} message={submitError} onBackToForm={handleBackToForm} onRetry={handleRetry} whatsappMessage={whatsAppMessage} />
+          <MeetingError code={submitError?.code} dictionary={dictionary} message={submitError?.message} onBackToForm={handleBackToForm} onRetry={handleRetry} whatsappMessage={whatsAppMessage} />
         ) : (
           <form
             className="space-y-5"
@@ -597,17 +649,19 @@ export function MeetingModal({
         )}
       </Modal>
 
-      <DateTimeModal
-        closeLabel={closeLabel || dictionary.modals.closeLabel}
-        dictionary={dictionary}
-        initialDate={selectedDate}
-        initialTime={selectedTime}
-        isOpen={dateTimeOpen}
-        language={language}
-        onClose={() => setDateTimeOpen(false)}
-        onConfirm={handleDateTimeConfirm}
-        whatsappUrl={whatsAppUrl}
-      />
+      {dateTimeOpen ? (
+        <DateTimeModal
+          closeLabel={closeLabel || dictionary.modals.closeLabel}
+          dictionary={dictionary}
+          initialDate={selectedDate}
+          initialTime={selectedTime}
+          isOpen={dateTimeOpen}
+          language={language}
+          onClose={() => setDateTimeOpen(false)}
+          onConfirm={handleDateTimeConfirm}
+          whatsappUrl={whatsAppUrl}
+        />
+      ) : null}
     </>
   );
 }

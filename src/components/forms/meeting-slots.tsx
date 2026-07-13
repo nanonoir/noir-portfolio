@@ -94,6 +94,7 @@ export function MeetingSlots({
           <p className="text-base text-red-500 md:text-sm">
             {state.message || dictionary.meeting.availability.error}
           </p>
+          {state.code ? <p className="mono text-[11px] tracking-[0.12em] text-red-500/80">{state.code}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button variant="outlined" onClick={onRetry}>{dictionary.meeting.actions.retry}</Button>
             <a

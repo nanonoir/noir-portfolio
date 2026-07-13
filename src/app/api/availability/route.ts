@@ -1,70 +1,18 @@
 import { NextResponse } from "next/server";
-import {
-  addCalendarDays,
-  getAvailableStartTimes,
-  getDateWeekday,
-  getTodayInTimeZone,
-  isDateWithinAvailabilityRules,
-  isValidTimeZone,
-  MAX_HORIZON_DAYS,
-  MEETING_BUFFER_MINUTES,
-  MEETING_DURATION_MINUTES,
-} from "@/components/forms/date-time-constants";
-import { availabilityQuerySchema } from "@/components/forms/schemas";
+import { availabilityService } from "@/lib/meet/availability-service";
+import { MEETING_ERROR_CODES } from "@/lib/meet/codes";
 
-const ERROR_RESPONSE = {
-  success: false,
-  error: "AVAILABILITY_ERROR",
-  message: "No se pudieron cargar los horarios disponibles.",
-} as const;
-
-type AvailabilitySlot = {
-  time: string;
-  available: true;
-};
-
-function hashCode(value: string) {
-  return [...value].reduce((hash, char) => (hash << 5) - hash + char.charCodeAt(0), 0);
-}
-
-function generateSlots(date: string, timeZone: string, now = new Date()): AvailabilitySlot[] {
-  const dateHash = hashCode(`${date}:${timeZone}`);
-
-  return getAvailableStartTimes(date, timeZone, now)
-    .filter((time) => (dateHash + hashCode(time)) % 3 !== 0)
-    .map((time) => ({ time, available: true }));
-}
-
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const searchParams = new URL(request.url).searchParams;
-  const date = searchParams.get("date");
-  const timezone = searchParams.get("timezone");
 
-  if (!date || !timezone || !isValidTimeZone(timezone)) {
-    return NextResponse.json(ERROR_RESPONSE, { status: 400 });
+  try {
+    const result = await availabilityService.getAvailability({
+      date: searchParams.get("date"),
+      timezone: searchParams.get("timezone") ?? request.headers.get("x-timezone"),
+    });
+
+    return NextResponse.json(result, { status: result.success ? 200 : 400 });
+  } catch {
+    return NextResponse.json({ success: false, error: MEETING_ERROR_CODES.AVAILABILITY_ERROR }, { status: 500 });
   }
-
-  const parsed = availabilityQuerySchema.safeParse({ date, timezone });
-
-  if (!parsed.success || !isDateWithinAvailabilityRules(date, timezone)) {
-    return NextResponse.json(ERROR_RESPONSE, { status: 400 });
-  }
-
-  const today = getTodayInTimeZone(timezone);
-  const maximumDate = addCalendarDays(today, MAX_HORIZON_DAYS);
-
-  return NextResponse.json({
-    success: true,
-    date,
-    timezone,
-    rules: {
-      bufferMinutes: MEETING_BUFFER_MINUTES,
-      durationMinutes: MEETING_DURATION_MINUTES,
-      enabledWeekdays: [1, 2, 3, 4, 5, 6],
-      maxDate: maximumDate,
-      minLeadTimeHours: 12,
-      startWeekday: getDateWeekday(date),
-    },
-    slots: generateSlots(date, timezone),
-  });
 }

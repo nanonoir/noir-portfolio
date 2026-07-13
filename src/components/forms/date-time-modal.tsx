@@ -94,10 +94,13 @@ export function DateTimeModal({
 }: DateTimeModalProps) {
   const [now] = useState(() => new Date());
   const [timeZone] = useState(() => getVisitorTimeZone());
-  const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [selectedTime, setSelectedTime] = useState(initialTime);
-  const [visibleMonth, setVisibleMonth] = useState(() => getMonthKey(initialDate || getTodayInTimeZone(timeZone, now)));
-  const [availability, setAvailability] = useState<AvailabilityState>({ status: "idle", slots: [] });
+  const initialSelectedDate = initialDate && isDateWithinAvailabilityRules(initialDate, timeZone, now) ? initialDate : "";
+  const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
+  const [selectedTime, setSelectedTime] = useState(initialSelectedDate ? initialTime : "");
+  const [visibleMonth, setVisibleMonth] = useState(() => getMonthKey(initialSelectedDate || getTodayInTimeZone(timeZone, now)));
+  const [availability, setAvailability] = useState<AvailabilityState>(() => (
+    initialSelectedDate ? { status: "loading", slots: [] } : { status: "idle", slots: [] }
+  ));
   const [retryCount, setRetryCount] = useState(0);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -118,24 +121,9 @@ export function DateTimeModal({
   const tabTargetDate = monthDays.includes(selectedDate) ? selectedDate : firstFocusableDate;
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    const nextDate = initialDate && isDateWithinAvailabilityRules(initialDate, timeZone, now) ? initialDate : "";
-    setSelectedDate(nextDate);
-    setSelectedTime(nextDate ? initialTime : "");
-    setVisibleMonth(getMonthKey(nextDate || today));
-    setAvailability({ status: "idle", slots: [] });
-    setRetryCount(0);
-  }, [initialDate, initialTime, isOpen, now, timeZone, today]);
-
-  useEffect(() => {
-    if (!isOpen || !selectedDate) {
-      setAvailability({ status: "idle", slots: [] });
-      return;
-    }
+    if (!selectedDate) return;
 
     const controller = new AbortController();
-    setAvailability({ status: "loading", slots: [] });
 
     fetch(`/api/availability?date=${encodeURIComponent(selectedDate)}&timezone=${encodeURIComponent(timeZone)}`, {
       signal: controller.signal,
@@ -144,24 +132,32 @@ export function DateTimeModal({
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.message || dictionary.meeting.availability.error);
+          const code = typeof data.error === "string" ? data.error : undefined;
+          console.warn("Meeting availability failed", { code });
+          setAvailability({
+            status: "error",
+            slots: [],
+            code,
+            message: dictionary.meeting.availability.error,
+          });
+          return;
         }
 
         const slots = Array.isArray(data.slots) ? data.slots : [];
         setAvailability({ status: slots.length > 0 ? "success" : "empty", slots });
       })
-      .catch((error: Error) => {
+      .catch(() => {
         if (controller.signal.aborted) return;
 
         setAvailability({
           status: "error",
           slots: [],
-          message: error.message || dictionary.meeting.availability.error,
+          message: dictionary.meeting.availability.error,
         });
       });
 
     return () => controller.abort();
-  }, [dictionary.meeting.availability.error, isOpen, retryCount, selectedDate, timeZone]);
+  }, [dictionary.meeting.availability.error, retryCount, selectedDate, timeZone]);
 
   function isSelectableDate(date: string) {
     return isDateWithinAvailabilityRules(date, timeZone, now);
@@ -216,10 +212,11 @@ export function DateTimeModal({
   }
 
   function handleDateSelect(date: string) {
-    if (!isSelectableDate(date)) return;
+    if (!isSelectableDate(date) || selectedDate === date) return;
 
     setSelectedDate(date);
     setSelectedTime("");
+    setAvailability({ status: "loading", slots: [] });
   }
 
   const canConfirm = Boolean(selectedDate && selectedTime && availability.status === "success");
@@ -326,7 +323,10 @@ export function DateTimeModal({
 
         <MeetingSlots
           dictionary={dictionary}
-          onRetry={() => setRetryCount((count) => count + 1)}
+          onRetry={() => {
+            setAvailability({ status: "loading", slots: [] });
+            setRetryCount((count) => count + 1);
+          }}
           onSelect={setSelectedTime}
           selectedTime={selectedTime}
           state={availability}

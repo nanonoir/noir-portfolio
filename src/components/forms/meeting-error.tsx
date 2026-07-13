@@ -5,6 +5,7 @@ import { Button } from "@/components/ui";
 import { createWhatsAppUrl } from "./whatsapp-link";
 
 type MeetingErrorProps = {
+  code?: string;
   dictionary: Dictionary;
   message?: string;
   onBackToForm: () => void;
@@ -12,7 +13,7 @@ type MeetingErrorProps = {
   whatsappMessage: string;
 };
 
-export function MeetingError({ dictionary, message, onBackToForm, onRetry, whatsappMessage }: MeetingErrorProps) {
+export function MeetingError({ code, dictionary, message, onBackToForm, onRetry, whatsappMessage }: MeetingErrorProps) {
   const whatsappUrl = createWhatsAppUrl(whatsappMessage);
 
   return (
@@ -24,6 +25,7 @@ export function MeetingError({ dictionary, message, onBackToForm, onRetry, whats
         <p className="text-base leading-7 text-red-500 md:text-sm md:leading-6">
           {message || dictionary.meeting.error.message}
         </p>
+        {code ? <p className="mono text-[11px] tracking-[0.12em] text-red-500/80">{code}</p> : null}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">

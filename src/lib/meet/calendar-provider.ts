@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { BookingRecord } from "./booking-model";
+import { meetLogger, normalizeErrorCause } from "./logger";
 
 export const CALENDAR_PROVIDER_ERROR_CODES = {
   CALENDAR_PROVIDER_ERROR: "CALENDAR_PROVIDER_ERROR",
@@ -43,22 +44,37 @@ function createMockEventReference(bookingId: string): CalendarEventReference {
 
 export class GoogleCalendarMockProvider implements CalendarProvider {
   async createEvent(booking: BookingRecord): Promise<CalendarProviderResult> {
-    return { success: true, event: createMockEventReference(booking.id) };
+    try {
+      return { success: true, event: createMockEventReference(booking.id) };
+    } catch (error) {
+      meetLogger.error("calendar.mock.create_error", { bookingId: booking.id, cause: normalizeErrorCause(error) });
+      return { success: false, error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR };
+    }
   }
 
   async updateEvent(booking: BookingRecord): Promise<CalendarProviderResult> {
-    return { success: true, event: createMockEventReference(booking.id) };
+    try {
+      return { success: true, event: createMockEventReference(booking.id) };
+    } catch (error) {
+      meetLogger.error("calendar.mock.update_error", { bookingId: booking.id, cause: normalizeErrorCause(error) });
+      return { success: false, error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR };
+    }
   }
 
   async deleteEvent(calendarEventId: string): Promise<CalendarProviderResult> {
-    const eventSuffix = calendarEventId.replace(/^mock-calendar-/, "");
+    try {
+      const eventSuffix = calendarEventId.replace(/^mock-calendar-/, "");
 
-    return {
-      success: true,
-      event: {
-        calendarEventId,
-        googleMeetUrl: `https://meet.google.com/mock-${eventSuffix}`,
-      },
-    };
+      return {
+        success: true,
+        event: {
+          calendarEventId,
+          googleMeetUrl: `https://meet.google.com/mock-${eventSuffix}`,
+        },
+      };
+    } catch (error) {
+      meetLogger.error("calendar.mock.delete_error", { cause: normalizeErrorCause(error), provider: "calendar" });
+      return { success: false, error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR };
+    }
   }
 }

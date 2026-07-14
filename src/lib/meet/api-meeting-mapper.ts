@@ -2,31 +2,36 @@ import "server-only";
 
 import type { BookingRequestDto } from "./dto";
 import { bookingRequestSchema } from "./schemas";
+import { createSafeHash, safeStableSerialize } from "./serialization";
 
 const LEGACY_TIMEZONE = "America/Argentina/Buenos_Aires";
 
-function stableSerialize(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
-  if (!value || typeof value !== "object") return JSON.stringify(value) ?? "undefined";
-
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`).join(",")}}`;
-}
-
-function hash(value: string, seed: number) {
-  let result = seed;
-
-  for (const character of value) {
-    result = Math.imul(result ^ character.charCodeAt(0), 0x45d9f3b);
-    result ^= result >>> 16;
-  }
-
-  return result >>> 0;
+function normalizeEmail(value: unknown) {
+  return typeof value === "string" ? value.trim().toLowerCase() : value;
 }
 
 function createLegacyIdempotencyKey(payload: Record<string, unknown>) {
-  const fingerprint = stableSerialize(payload);
-  const hex = [0, 1, 2, 3].map((seed) => hash(fingerprint, seed + 1).toString(16).padStart(8, "0")).join("");
+  const identity = payload.identity as Record<string, unknown> | undefined;
+  const meeting = payload.meeting as Record<string, unknown> | undefined;
+  const previousRequest = payload.previousRequest as Record<string, unknown> | undefined;
+  const semanticPayload = payload.origin === "contact"
+    ? {
+      identity: { email: normalizeEmail(identity?.email) },
+      meeting: { date: meeting?.date, time: meeting?.time, timezone: meeting?.timezone },
+      origin: payload.origin,
+      reason: payload.reason,
+    }
+    : {
+      identity: { email: normalizeEmail(identity?.email) },
+      meeting: { date: meeting?.date, time: meeting?.time, timezone: meeting?.timezone },
+      origin: payload.origin,
+      previousRequest: { details: previousRequest?.details, service: previousRequest?.service },
+      relatedService: payload.relatedService,
+    };
+  const hash = createSafeHash(semanticPayload);
+  if (!hash.safe) return null;
+
+  const hex = hash.value;
   const variant = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
 
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20)}`;
@@ -80,7 +85,6 @@ function normalizeLegacyMeetingRequest(input: unknown): unknown {
       name: payload.name,
       phone: payload.phone,
     },
-    idempotencyKey: createLegacyIdempotencyKey(payload),
     locale: "es-AR",
     meeting: {
       date: schedule.date,
@@ -96,12 +100,14 @@ function normalizeLegacyMeetingRequest(input: unknown): unknown {
   };
 
   if (origin === "contact") {
-    return { ...base, reason: getLegacyReason(payload.reason) };
+    const normalized = { ...base, reason: getLegacyReason(payload.reason) };
+    const idempotencyKey = createLegacyIdempotencyKey(normalized);
+    return idempotencyKey ? { ...normalized, idempotencyKey } : null;
   }
 
   if (origin === "custom_software") {
     const previousRequest = payload.previousRequest as Record<string, unknown> | undefined;
-    return {
+    const normalized = {
       ...base,
       previousRequest: {
         details: previousRequest?.details,
@@ -109,10 +115,12 @@ function normalizeLegacyMeetingRequest(input: unknown): unknown {
       },
       relatedService: "custom_software",
     };
+    const idempotencyKey = createLegacyIdempotencyKey(normalized);
+    return idempotencyKey ? { ...normalized, idempotencyKey } : null;
   }
 
   const previousRequest = payload.previousRequest as Record<string, unknown> | undefined;
-  return {
+  const normalized = {
     ...base,
     previousRequest: {
       details: previousRequest?.details,
@@ -120,11 +128,18 @@ function normalizeLegacyMeetingRequest(input: unknown): unknown {
     },
     relatedService: payload.relatedService,
   };
+  const idempotencyKey = createLegacyIdempotencyKey(normalized);
+  return idempotencyKey ? { ...normalized, idempotencyKey } : null;
 }
 
 /** Route-only compatibility boundary for pre-canonical Contact, Service, and Custom payloads. */
 export function mapMeetingApiPayload(input: unknown): BookingRequestDto | null {
-  const parsed = bookingRequestSchema.safeParse(normalizeLegacyMeetingRequest(input));
+  if (!safeStableSerialize(input).safe) return null;
+
+  const normalized = normalizeLegacyMeetingRequest(input);
+  if (!normalized) return null;
+
+  const parsed = bookingRequestSchema.safeParse(normalized);
 
   return parsed.success ? parsed.data : null;
 }

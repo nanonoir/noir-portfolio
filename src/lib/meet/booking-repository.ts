@@ -1,14 +1,17 @@
 import "server-only";
 
 import {
+  appendProviderAuditEvent,
   proposeAlternativeBooking,
   transitionBooking,
   type BookingTransitionOptions,
   type BookingTransitionResult,
   type ProposeAlternativeOptions,
 } from "./booking-lifecycle";
+import { BOOKING_AUDIT_ACTIONS } from "./audit-events";
 import type { BookingRecord } from "./booking-model";
 import { MEETING_ERROR_CODES } from "./codes";
+import type { ProviderDeliveryState } from "./dto";
 import type { MeetingStatus, SlotIdentity } from "./domain";
 
 export const BOOKING_REPOSITORY_ERROR_CODES = {
@@ -24,6 +27,13 @@ export interface SlotReservationInput {
   slotIdentity: SlotIdentity;
 }
 
+export type ProviderName = "calendar" | "email";
+
+export interface ProviderDeliveryUpdate {
+  errorCode?: string;
+  status: "completed" | "failed";
+}
+
 export type SlotReservationResult =
   | { record: BookingRecord; replayed: boolean; success: true }
   | { error: typeof MEETING_ERROR_CODES.SLOT_UNAVAILABLE; success: false };
@@ -33,9 +43,11 @@ export interface BookingRepository {
   findById(id: string): Promise<BookingRecord | null>;
   findByIdempotencyKey(idempotencyKey: string): Promise<BookingRecord | null>;
   proposeAlternative(id: string, options: ProposeAlternativeOptions): Promise<BookingRepositoryResult>;
+  recordIdempotencyReplay(id: string): Promise<BookingRecord | null>;
   /** Future durable adapters MUST atomically reserve slotIdentity and persist record, keyed by idempotencyKey. */
   reserveSlotIfAvailable(input: SlotReservationInput): Promise<SlotReservationResult>;
   updateProviderDetails(id: string, details: Pick<BookingRecord, "calendarEventId" | "googleMeetUrl">): Promise<BookingRecord | null>;
+  updateProviderDelivery(id: string, provider: ProviderName, update: ProviderDeliveryUpdate): Promise<BookingRecord | null>;
   updateStatus(id: string, status: MeetingStatus, options?: BookingTransitionOptions): Promise<BookingRepositoryResult>;
 }
 
@@ -85,6 +97,22 @@ export class MockBookingRepository implements BookingRepository {
     return { record, replayed: false, success: true };
   }
 
+  async recordIdempotencyReplay(id: string): Promise<BookingRecord | null> {
+    const record = await this.findById(id);
+
+    if (!record) return null;
+
+    const updatedAt = new Date().toISOString();
+    const updatedRecord = appendProviderAuditEvent(
+      { ...record, updatedAt },
+      BOOKING_AUDIT_ACTIONS.IDEMPOTENCY_REPLAY,
+      { now: updatedAt, payload: { idempotencyKey: record.idempotencyKey } },
+    );
+    this.bookingsById.set(id, updatedRecord);
+
+    return updatedRecord;
+  }
+
   async updateStatus(
     id: string,
     status: MeetingStatus,
@@ -115,10 +143,64 @@ export class MockBookingRepository implements BookingRepository {
       return null;
     }
 
-    const updatedRecord = { ...record, ...details, updatedAt: new Date().toISOString() };
-    this.bookingsById.set(id, updatedRecord);
+    const updatedAt = new Date().toISOString();
+    const providerWasRecovered = record.calendarDelivery.status === "failed";
+    const updatedRecord = {
+      ...record,
+      ...details,
+      calendarDelivery: {
+        ...record.calendarDelivery,
+        attempts: record.calendarDelivery.attempts + 1,
+        status: "completed" as const,
+      },
+      updatedAt,
+    };
+    const recordWithAudit = providerWasRecovered
+      ? appendProviderAuditEvent(updatedRecord, BOOKING_AUDIT_ACTIONS.PROVIDER_RECOVERED, {
+        now: updatedAt,
+        payload: { provider: "calendar" },
+      })
+      : updatedRecord;
+    this.bookingsById.set(id, recordWithAudit);
 
-    return updatedRecord;
+    return recordWithAudit;
+  }
+
+  async updateProviderDelivery(
+    id: string,
+    provider: ProviderName,
+    update: ProviderDeliveryUpdate,
+  ): Promise<BookingRecord | null> {
+    const record = await this.findById(id);
+
+    if (!record) return null;
+
+    const updatedAt = new Date().toISOString();
+    const deliveryKey = provider === "calendar" ? "calendarDelivery" : "emailDelivery";
+    const previousDelivery = record[deliveryKey] as ProviderDeliveryState;
+    const delivery: ProviderDeliveryState = {
+      attempts: previousDelivery.attempts + 1,
+      ...(previousDelivery.lastError ? { lastError: previousDelivery.lastError } : {}),
+      ...(update.status === "failed" && update.errorCode
+        ? { lastError: { code: update.errorCode, occurredAt: updatedAt } }
+        : {}),
+      status: update.status,
+    };
+    const updatedRecord = { ...record, [deliveryKey]: delivery, updatedAt } as BookingRecord;
+    const action = update.status === "failed"
+      ? BOOKING_AUDIT_ACTIONS.PROVIDER_FAILED
+      : previousDelivery.status === "failed"
+        ? BOOKING_AUDIT_ACTIONS.PROVIDER_RECOVERED
+        : null;
+    const recordWithAudit = action
+      ? appendProviderAuditEvent(updatedRecord, action, {
+        now: updatedAt,
+        payload: { code: update.errorCode, provider },
+      })
+      : updatedRecord;
+    this.bookingsById.set(id, recordWithAudit);
+
+    return recordWithAudit;
   }
 
   async proposeAlternative(id: string, options: ProposeAlternativeOptions): Promise<BookingRepositoryResult> {

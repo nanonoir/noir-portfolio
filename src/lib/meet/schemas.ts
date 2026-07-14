@@ -41,6 +41,22 @@ const identitySchema = z.object({
   message: z.string().trim().max(500).optional(),
 });
 
+const detailPrimitiveSchema = z.union([
+  z.string().max(2000),
+  z.number().finite(),
+  z.boolean(),
+  z.null(),
+]);
+
+const detailValueSchema = z.union([
+  detailPrimitiveSchema,
+  z.array(detailPrimitiveSchema).max(100),
+]);
+
+export const previousRequestDetailsSchema = z
+  .record(z.string().min(1).max(64), detailValueSchema)
+  .refine((details) => Object.keys(details).length <= 50, "Details cannot contain more than 50 keys");
+
 export const proposalMetadataSchema = z.object({
   proposalVersion: z.string().trim().min(1),
   originVersion: z.string().trim().min(1),
@@ -63,10 +79,10 @@ const contactBookingRequestSchema = bookingRequestBaseSchema.extend({
 
 const serviceBookingRequestSchema = bookingRequestBaseSchema.extend({
   origin: z.literal(MEETING_ORIGINS.SERVICE),
-  relatedService: z.string().trim().min(1),
+  relatedService: z.string().trim().min(1).max(128),
   previousRequest: z.object({
-    service: z.string().trim().min(1),
-    details: z.record(z.string(), z.unknown()),
+    service: z.string().trim().min(1).max(128),
+    details: previousRequestDetailsSchema,
   }),
 });
 
@@ -75,7 +91,7 @@ const customSoftwareBookingRequestSchema = bookingRequestBaseSchema.extend({
   relatedService: z.literal(MEETING_ORIGINS.CUSTOM_SOFTWARE),
   previousRequest: z.object({
     service: z.literal(MEETING_ORIGINS.CUSTOM_SOFTWARE),
-    details: z.record(z.string(), z.unknown()),
+    details: previousRequestDetailsSchema,
   }),
 });
 
@@ -111,5 +127,6 @@ export const bookingErrorResponseSchema = z.object({
     MEETING_ERROR_CODES.MEETING_ERROR,
     MEETING_ERROR_CODES.SLOT_UNAVAILABLE,
     MEETING_ERROR_CODES.IDEMPOTENCY_REPLAY,
+    MEETING_ERROR_CODES.IDEMPOTENCY_CONFLICT,
   ]),
 });

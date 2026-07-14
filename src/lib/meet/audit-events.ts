@@ -13,6 +13,9 @@ export type BookingAuditActor = (typeof BOOKING_AUDIT_ACTORS)[keyof typeof BOOKI
 
 export const BOOKING_AUDIT_ACTIONS = {
   ALTERNATIVE_PROPOSED: "alternative_proposed",
+  IDEMPOTENCY_REPLAY: "idempotency_replay",
+  PROVIDER_FAILED: "provider_failed",
+  PROVIDER_RECOVERED: "provider_recovered",
   STATUS_CHANGED: "status_changed",
 } as const;
 

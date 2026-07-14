@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { BookingRecord } from "./booking-model";
+import { meetLogger, normalizeErrorCause } from "./logger";
 
 export const EMAIL_TEMPLATE_CODES = {
   MEETING_CONFIRMED: "MEETING_CONFIRMED",
@@ -50,18 +51,29 @@ export class ResendMockProvider implements EmailProvider {
   readonly sentEmails: SentMeetingEmail[] = [];
 
   async sendMeetingRequested(input: MeetingEmailInput): Promise<EmailProviderResult> {
-    this.capture(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, input);
-    return { success: true };
+    return this.send(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, input);
   }
 
   async sendMeetingConfirmed(input: MeetingEmailInput): Promise<EmailProviderResult> {
-    this.capture(EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, input);
-    return { success: true };
+    return this.send(EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, input);
   }
 
   async sendRescheduleProposed(input: MeetingEmailInput): Promise<EmailProviderResult> {
-    this.capture(EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED, input);
-    return { success: true };
+    return this.send(EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED, input);
+  }
+
+  private async send(template: EmailTemplateCode, input: MeetingEmailInput): Promise<EmailProviderResult> {
+    try {
+      this.capture(template, input);
+      return { success: true };
+    } catch (error) {
+      meetLogger.error("email.mock.send_error", {
+        bookingId: input.booking.id,
+        cause: normalizeErrorCause(error),
+        provider: "email",
+      });
+      return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+    }
   }
 
   private capture(template: EmailTemplateCode, input: MeetingEmailInput) {

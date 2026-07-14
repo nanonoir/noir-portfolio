@@ -5,6 +5,7 @@ import {
   BOOKING_AUDIT_ACTORS,
   appendAuditEvent,
   type BookingAuditActor,
+  type BookingAuditAction,
 } from "./audit-events";
 import {
   createProposedSlot,
@@ -53,12 +54,41 @@ export interface ProposeAlternativeOptions extends BookingTransitionOptions {
   proposedSlot: BookingProposedSlotInput;
 }
 
+export type ProviderAuditAction = Extract<
+  BookingAuditAction,
+  "provider_failed" | "provider_recovered" | "idempotency_replay"
+>;
+
+export interface ProviderAuditOptions {
+  actor?: BookingAuditActor;
+  now?: BookingTimestamp;
+  payload?: Record<string, unknown>;
+}
+
 export type BookingTransitionResult =
   | { record: BookingRecord; success: true }
   | { error: BookingLifecycleErrorCode; success: false };
 
 export function canTransitionBooking(fromStatus: MeetingStatus, toStatus: MeetingStatus) {
   return BOOKING_STATUS_TRANSITIONS[fromStatus].includes(toStatus);
+}
+
+export function appendProviderAuditEvent(
+  record: BookingRecord,
+  action: ProviderAuditAction,
+  options: ProviderAuditOptions = {},
+): BookingRecord {
+  const now = options.now ?? new Date().toISOString();
+
+  return appendAuditEvent(record, {
+    action,
+    actor: options.actor ?? BOOKING_AUDIT_ACTORS.SYSTEM,
+    fromStatus: record.status,
+    id: crypto.randomUUID(),
+    payload: options.payload,
+    timestamp: now,
+    toStatus: record.status,
+  });
 }
 
 export function transitionBooking(

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { availabilityService } from "@/lib/meet/availability-service";
 import { MEETING_ERROR_CODES } from "@/lib/meet/codes";
+import { meetLogger, normalizeErrorCause } from "@/lib/meet/logger";
 
 export async function GET(request: Request) {
   const searchParams = new URL(request.url).searchParams;
@@ -12,7 +13,8 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
-  } catch {
+  } catch (error) {
+    meetLogger.error("availability.route.unexpected_error", { cause: normalizeErrorCause(error) });
     return NextResponse.json({ success: false, error: MEETING_ERROR_CODES.AVAILABILITY_ERROR }, { status: 500 });
   }
 }

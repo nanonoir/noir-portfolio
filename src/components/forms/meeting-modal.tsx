@@ -49,6 +49,11 @@ type MeetingErrorState = {
   message: string;
 };
 
+type IdempotencyBinding = {
+  fingerprint: string;
+  key: string;
+};
+
 function translateError(dictionary: Dictionary, message?: string) {
   if (!message) return undefined;
 
@@ -108,6 +113,41 @@ function createMeetingWhatsAppMessage({
   ].join("\n");
 }
 
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
+  if (!value || typeof value !== "object") return JSON.stringify(value) ?? "undefined";
+
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`).join(",")}}`;
+}
+
+function createIdempotencyFingerprint({
+  origin,
+  previousValues,
+  service,
+  values,
+}: {
+  origin: MeetingModalProps["origin"];
+  previousValues?: ServiceRequestValues | null;
+  service?: ServiceRequestTarget | null;
+  values: MeetingFormValues;
+}) {
+  return stableSerialize({
+    origin,
+    previousValues,
+    service: service?.id ?? null,
+    values: {
+      date: values.date,
+      email: values.email,
+      message: values.message,
+      name: values.name,
+      phone: values.phone,
+      reason: values.reason,
+      time: values.time,
+    },
+  });
+}
+
 function FieldError({ dictionary, id, message }: { dictionary: Dictionary; id: string; message?: string }) {
   return <FormError id={id}>{translateError(dictionary, message)}</FormError>;
 }
@@ -126,7 +166,7 @@ export function MeetingModal({
   const isContactOrigin = origin === "contact";
   const [step, setStep] = useState<MeetingStep>("form");
   const [dateTimeOpen, setDateTimeOpen] = useState(false);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyBinding, setIdempotencyBinding] = useState<IdempotencyBinding>();
   const [submitError, setSubmitError] = useState<MeetingErrorState>();
   const form = useForm<MeetingFormValues>({
     defaultValues: {
@@ -161,9 +201,9 @@ export function MeetingModal({
     setDateTimeOpen(false);
   }, [form]);
 
-  function buildPayload(values: MeetingFormValues) {
+  function buildPayload(values: MeetingFormValues, key: string) {
     return buildMeetingPayload({
-      idempotencyKey,
+      idempotencyKey: key,
       language,
       origin,
       previousValues,
@@ -173,12 +213,18 @@ export function MeetingModal({
   }
 
   async function handleSubmit(values: MeetingFormValues) {
+    const fingerprint = createIdempotencyFingerprint({ origin, previousValues, service, values });
+    const key = idempotencyBinding?.fingerprint === fingerprint
+      ? idempotencyBinding.key
+      : crypto.randomUUID();
+
+    setIdempotencyBinding({ fingerprint, key });
     setSubmitError(undefined);
     setStep("loading");
 
     try {
       const response = await fetch("/api/meeting", {
-        body: JSON.stringify(buildPayload(values)),
+        body: JSON.stringify(buildPayload(values, key)),
         headers: {
           "Content-Type": "application/json",
         },
@@ -221,7 +267,7 @@ export function MeetingModal({
     setStep("form");
     setDateTimeOpen(false);
     setSubmitError(undefined);
-    setIdempotencyKey(crypto.randomUUID());
+    setIdempotencyBinding(undefined);
     form.reset();
     onClose();
   }
@@ -230,7 +276,7 @@ export function MeetingModal({
     setStep("form");
     setDateTimeOpen(false);
     setSubmitError(undefined);
-    setIdempotencyKey(crypto.randomUUID());
+    setIdempotencyBinding(undefined);
     form.reset();
     // If a completion handler is provided (nested service flow), call it so the
     // parent service modal can also close. Otherwise fall back to onClose.

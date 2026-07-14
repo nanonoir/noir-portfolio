@@ -97,6 +97,75 @@ export type Dictionary = {
     toastPlaceholder: string;
     linksLabel: string;
   };
+  meeting: {
+    title: string;
+    descriptionFromService: string;
+    descriptionFromContact: string;
+    disclaimer: string;
+    fields: {
+      name: string;
+      email: string;
+      phone: string;
+      reason: string;
+      message: string;
+      date: string;
+      time: string;
+    };
+    dateTime: {
+      title: string;
+      open: string;
+      selected: string;
+      previousMonth: string;
+      nextMonth: string;
+      calendarLabel: string;
+      timezoneLabel: string;
+      confirm: string;
+      cancel: string;
+    };
+    reasons: {
+      project: string;
+      job: string;
+      general: string;
+    };
+    actions: {
+      confirm: string;
+      loading: string;
+      back: string;
+      backToForm: string;
+      close: string;
+      retry: string;
+      whatsapp: string;
+    };
+    availability: {
+      loading: string;
+      empty: string;
+      error: string;
+    };
+    success: {
+      title: string;
+      message: string;
+    };
+    error: {
+      title: string;
+      message: string;
+      slotUnavailable: string;
+    };
+    contact: {
+      title: string;
+      subtitle: string;
+      cta: string;
+    };
+    whatsapp: {
+      intro: string;
+      service: string;
+      name: string;
+      email: string;
+      phone: string;
+      reason: string;
+      schedule: string;
+      message: string;
+    };
+  };
   forms: {
     common: {
       name: string;
@@ -146,6 +215,12 @@ export type Dictionary = {
       messageMin: string;
       brandRequired: string;
       submission: string;
+      dateRequired: string;
+      timeRequired: string;
+      phoneRequired: string;
+      reasonRequired: string;
+      slotUnavailable: string;
+      timezoneRequired: string;
     };
     success: {
       title: string;
@@ -283,6 +358,79 @@ export const dictionaries: Record<Language, Dictionary> = {
         "El formulario real estará disponible pronto. Mientras tanto, puedes escribirme por email o WhatsApp.",
       linksLabel: "Canales de contacto",
     },
+    meeting: {
+      title: "Agendar llamada",
+      descriptionFromService: "Elegí un día y horario disponible para solicitar una reunión sobre tu proyecto.",
+      descriptionFromContact:
+        "Completá tus datos y elegí un horario disponible para solicitar una reunión breve.",
+      disclaimer:
+        "La reunión quedará pendiente de confirmación. Si el horario sigue disponible, te voy a enviar la convocatoria con el enlace de Google Meet.",
+      fields: {
+        name: "Nombre",
+        email: "Email",
+        phone: "WhatsApp / Teléfono",
+        reason: "Motivo de la llamada",
+        message: "Mensaje adicional",
+        date: "Fecha",
+        time: "Horario disponible",
+      },
+      dateTime: {
+        title: "Elegí fecha y horario",
+        open: "Elegir fecha y horario",
+        selected: "Horario seleccionado",
+        previousMonth: "Mes anterior",
+        nextMonth: "Mes siguiente",
+        calendarLabel: "Calendario de disponibilidad",
+        timezoneLabel: "Horario local",
+        confirm: "Confirmar horario",
+        cancel: "Cancelar",
+      },
+      reasons: {
+        project: "Proyecto / servicio",
+        job: "Oportunidad laboral",
+        general: "Consulta general",
+      },
+      actions: {
+        confirm: "Confirmar solicitud",
+        loading: "Solicitando reunión...",
+        back: "Volver",
+        backToForm: "Volver al formulario",
+        close: "Cerrar",
+        retry: "Reintentar",
+        whatsapp: "Continuar por WhatsApp →",
+      },
+      availability: {
+        loading: "Buscando horarios disponibles...",
+        empty: "No hay horarios disponibles para este día. Elegí otra fecha.",
+        error:
+          "No se pudieron cargar los horarios disponibles. Intentá nuevamente o contactame por WhatsApp.",
+      },
+      success: {
+        title: "Reunión solicitada con éxito",
+        message:
+          "Recibí tu solicitud. En las próximas horas voy a confirmar la disponibilidad y enviarte la convocatoria con el enlace de Google Meet, o te voy a proponer otro horario.",
+      },
+      error: {
+        title: "Error al solicitar reunión",
+        message: "No se pudo solicitar la reunión. Intentá nuevamente o contactame por WhatsApp.",
+        slotUnavailable: "Ese horario ya no está disponible. Elegí otro horario para solicitar la reunión.",
+      },
+      contact: {
+        title: "¿Te interesa mi perfil o alguno de mis servicios?",
+        subtitle: "Agendemos una llamada breve para conversar próximos pasos.",
+        cta: "Agendar llamada",
+      },
+      whatsapp: {
+        intro: "Hola Nahuel, quiero solicitar una reunión.",
+        service: "Servicio",
+        name: "Nombre",
+        email: "Correo",
+        phone: "WhatsApp",
+        reason: "Motivo",
+        schedule: "Horario solicitado",
+        message: "Mensaje",
+      },
+    },
     forms: {
       common: {
         name: "Nombre",
@@ -332,12 +480,18 @@ export const dictionaries: Record<Language, Dictionary> = {
         messageMin: "El mensaje debe tener al menos 10 caracteres.",
         brandRequired: "Indicá el nombre de la marca o empresa.",
         submission: "No se pudo enviar la solicitud. Intentá nuevamente o contactame por WhatsApp.",
+        dateRequired: "Seleccioná una fecha.",
+        timeRequired: "Seleccioná un horario.",
+        phoneRequired: "Ingresá un WhatsApp o teléfono de contacto.",
+        reasonRequired: "Seleccioná un motivo.",
+        slotUnavailable: "Ese horario ya no está disponible.",
+        timezoneRequired: "No se pudo identificar una zona horaria válida.",
       },
       success: {
         title: "Solicitud enviada",
         message:
           "Recibí tu consulta. Para avanzar más rápido y no perder el contacto, podés continuar la conversación por WhatsApp.",
-        meeting: "Agendar reunión",
+        meeting: "Agendar llamada",
         meetingUnavailable: "Agendá una reunión directamente desde el portfolio — próximamente",
         whatsApp: "Continuar por WhatsApp →",
         emptyMessageFallback: "Sin mensaje adicional",
@@ -466,6 +620,78 @@ export const dictionaries: Record<Language, Dictionary> = {
         "The real form will be available soon. In the meantime, you can contact me by email or WhatsApp.",
       linksLabel: "Contact channels",
     },
+    meeting: {
+      title: "Schedule a call",
+      descriptionFromService: "Choose an available day and time to request a meeting about your project.",
+      descriptionFromContact:
+        "Complete your details and choose an available time to request a brief meeting.",
+      disclaimer:
+        "The meeting will be pending confirmation. If the time is still available, I'll send you the invite with the Google Meet link.",
+      fields: {
+        name: "Name",
+        email: "Email",
+        phone: "WhatsApp / Phone",
+        reason: "Call reason",
+        message: "Additional message",
+        date: "Date",
+        time: "Available time",
+      },
+      dateTime: {
+        title: "Choose a date and time",
+        open: "Choose date and time",
+        selected: "Selected time",
+        previousMonth: "Previous month",
+        nextMonth: "Next month",
+        calendarLabel: "Availability calendar",
+        timezoneLabel: "Local time",
+        confirm: "Confirm time",
+        cancel: "Cancel",
+      },
+      reasons: {
+        project: "Project / service",
+        job: "Job opportunity",
+        general: "General inquiry",
+      },
+      actions: {
+        confirm: "Confirm request",
+        loading: "Requesting meeting...",
+        back: "Back",
+        backToForm: "Back to form",
+        close: "Close",
+        retry: "Retry",
+        whatsapp: "Continue on WhatsApp →",
+      },
+      availability: {
+        loading: "Searching available times...",
+        empty: "No available times for this day. Choose another date.",
+        error: "Could not load available times. Try again or contact me on WhatsApp.",
+      },
+      success: {
+        title: "Meeting request sent successfully",
+        message:
+          "I received your request. In the next few hours I'll confirm availability and send you the invite with the Google Meet link, or I'll propose another time.",
+      },
+      error: {
+        title: "Error requesting meeting",
+        message: "Could not request the meeting. Try again or contact me on WhatsApp.",
+        slotUnavailable: "That time is no longer available. Choose another time to request the meeting.",
+      },
+      contact: {
+        title: "Interested in my profile or services?",
+        subtitle: "Let's schedule a brief call to discuss next steps.",
+        cta: "Schedule a call",
+      },
+      whatsapp: {
+        intro: "Hi Nahuel, I want to request a meeting.",
+        service: "Service",
+        name: "Name",
+        email: "Email",
+        phone: "WhatsApp",
+        reason: "Reason",
+        schedule: "Requested time",
+        message: "Message",
+      },
+    },
     forms: {
       common: {
         name: "Name",
@@ -515,12 +741,18 @@ export const dictionaries: Record<Language, Dictionary> = {
         messageMin: "The message must be at least 10 characters.",
         brandRequired: "Enter the brand or company name.",
         submission: "The request could not be sent. Try again or contact me on WhatsApp.",
+        dateRequired: "Select a date.",
+        timeRequired: "Select a time.",
+        phoneRequired: "Enter a WhatsApp number or contact phone.",
+        reasonRequired: "Select a reason.",
+        slotUnavailable: "That time is no longer available.",
+        timezoneRequired: "A valid time zone could not be identified.",
       },
       success: {
         title: "Request sent",
         message:
           "I received your request. To move faster and keep the conversation going, you can continue on WhatsApp.",
-        meeting: "Schedule meeting",
+        meeting: "Schedule a call",
         meetingUnavailable: "Schedule a meeting directly from the portfolio — coming soon",
         whatsApp: "Continue on WhatsApp →",
         emptyMessageFallback: "No additional message",

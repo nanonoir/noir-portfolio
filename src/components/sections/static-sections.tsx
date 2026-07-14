@@ -4,6 +4,7 @@ import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { MeetingModal } from "@/components/forms/meeting-modal";
 import { generalContactFormSchema, type GeneralContactFormValues } from "@/components/forms/schemas";
 import { createCustomServiceRequestTarget, ServiceRequestModal, type ServiceRequestTarget } from "@/components/forms/service-request-modal";
 import { useLanguage } from "@/components/providers/language-provider";
@@ -413,8 +414,10 @@ function StackSection() {
 }
 
 function ContactSection() {
-  const { dictionary } = useLanguage();
+  const { dictionary, language } = useLanguage();
   const contact = dictionary.contact;
+  const meeting = dictionary.meeting.contact;
+  const [meetingOpen, setMeetingOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const {
     formState: { errors },
@@ -513,6 +516,35 @@ function ContactSection() {
           </div>
         </aside>
       </div>
+      <div className="mt-8 rounded-[24px] border border-foreground bg-foreground px-6 py-5 shadow-sm md:flex md:items-center md:justify-between md:gap-8 md:px-7">
+        <div>
+          <p className="text-lg font-semibold tracking-[-0.02em] text-background">{meeting.title}</p>
+          <p className="mt-2 text-base leading-7 text-background/70 md:text-sm md:leading-6">{meeting.subtitle}</p>
+        </div>
+        <button
+          className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-background/30 bg-background px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-background/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background md:mt-0 md:w-auto md:text-sm"
+          onClick={() => setMeetingOpen(true)}
+          type="button"
+        >
+          {meeting.cta}
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="size-4 dark:invert"
+            height={16}
+            src="/handwritten-icons/calendar.svg"
+            width={16}
+          />
+        </button>
+      </div>
+      <MeetingModal
+        closeLabel={dictionary.modals.closeLabel}
+        dictionary={dictionary}
+        isOpen={meetingOpen}
+        language={language}
+        onClose={() => setMeetingOpen(false)}
+        origin="contact"
+      />
       <Toast isVisible={toastVisible} message={contact.toastPlaceholder} />
     </SectionShell>
   );

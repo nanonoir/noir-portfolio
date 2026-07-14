@@ -13,6 +13,22 @@ type ModalProps = {
   title: string;
 };
 
+/**
+ * Module-level active-modal stack.
+ *
+ * Every open Modal registers a token; every closing Modal removes its token.
+ * Rules:
+ *   - Only the FIRST open modal locks body scroll.
+ *   - Only the LAST closing modal unlocks body scroll.
+ *   - Only the topmost token handles Escape and Tab. This explicit identity
+ *     check is required because stopPropagation does not stop listeners on
+ *     the same document node.
+ *
+ * Using a plain mutable object (not React state) because it is shared
+ * across all Modal instances synchronously within the same JS event loop.
+ */
+const modalStack = { entries: [] as symbol[], originalOverflow: "" };
+
 export function Modal({
   children,
   closeLabel = "Close modal",
@@ -24,21 +40,56 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  // Stable ref so the keydown handler always has the latest onClose without
+  // being in the useEffect dependency array (which would re-register and
+  // steal focus from active inputs on every render).
+  const onCloseRef = useRef(onClose);
   const titleId = `modal-title-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+  // Keep the ref current without triggering the focus effect.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
-    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const modalToken = Symbol("modal");
+
+    // Capture opener before modifying focus
+    openerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    // Only the first modal in the stack locks body scroll; subsequent modals
+    // (e.g. nested MeetingModal inside ServiceRequestModal) skip locking since
+    // it is already locked, which prevents double-restore on close.
+    modalStack.entries.push(modalToken);
+    if (modalStack.entries.length === 1) {
+      modalStack.originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+
+    // Focus the modal container once on open. Subsequent re-renders must NOT
+    // re-call focus() — that is what steals focus from inputs.
     dialogRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
+      const topmostToken = modalStack.entries[modalStack.entries.length - 1];
+
+      // All Modal listeners are attached to document in capture phase. Since
+      // they share the same node, propagation controls cannot distinguish
+      // them; only the active stack identity can isolate the topmost modal.
+      if (topmostToken !== modalToken) {
+        return;
+      }
+
       if (event.key === "Escape") {
-        onClose();
+        event.stopPropagation();
+        onCloseRef.current();
         return;
       }
 
@@ -67,14 +118,28 @@ export function Modal({
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown);
+    // Use capture phase so the innermost modal's listener runs before any
+    // parent modal listeners, enabling stopPropagation to silence the parent.
+    document.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
+
+      // Remove this modal; only restore scroll when the last modal closes.
+      const entryIndex = modalStack.entries.indexOf(modalToken);
+      if (entryIndex >= 0) {
+        modalStack.entries.splice(entryIndex, 1);
+      }
+
+      if (modalStack.entries.length === 0) {
+        document.body.style.overflow = modalStack.originalOverflow;
+        modalStack.originalOverflow = "";
+      }
+
       openerRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+    // Intentionally omit onClose — it is captured via onCloseRef.
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;

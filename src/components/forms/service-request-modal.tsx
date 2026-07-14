@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import type { Dictionary, Language, LocalizedString } from "@/lib/i18n";
 import type { Service } from "@/data/content";
 import { Modal } from "@/components/ui";
@@ -10,6 +11,7 @@ import { ServiceFormAutomation } from "./service-form-automation";
 import { ServiceFormCustom } from "./service-form-custom";
 import { ServiceFormEcommerce } from "./service-form-ecommerce";
 import { ServiceFormLanding } from "./service-form-landing";
+import { MeetingModal } from "./meeting-modal";
 import { createWhatsAppMessage, createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
 
 export type ServiceRequestTarget = Pick<Service, "description" | "features" | "title"> & {
@@ -53,14 +55,17 @@ function ServiceRequestForm({
 function SuccessState({
   dictionary,
   language,
+  onParentClose,
   service,
   values,
 }: {
   dictionary: Dictionary;
   language: Language;
+  onParentClose: () => void;
   service: ServiceRequestTarget;
   values: ServiceRequestValues;
 }) {
+  const [meetingOpen, setMeetingOpen] = useState(false);
   const whatsAppMessage = createWhatsAppMessage({
     emptyMessageFallback: dictionary.forms.success.emptyMessageFallback,
     language,
@@ -76,18 +81,21 @@ function SuccessState({
       <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">{dictionary.forms.success.title}</h3>
       <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{dictionary.forms.success.message}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <span className="inline-flex" title={dictionary.forms.success.meetingUnavailable}>
-          <button
-            aria-describedby="meeting-unavailable-tooltip"
-            className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-muted-foreground opacity-60 md:text-sm"
-            disabled
-            title={dictionary.forms.success.meetingUnavailable}
-            type="button"
-          >
-            {dictionary.forms.success.meeting}
-          </button>
-        </span>
-        <p className="sr-only" id="meeting-unavailable-tooltip">{dictionary.forms.success.meetingUnavailable}</p>
+        <button
+          className="group inline-flex items-center justify-center gap-2 rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+          onClick={() => setMeetingOpen(true)}
+          type="button"
+        >
+          {dictionary.meeting.contact.cta}
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
+            height={16}
+            src="/handwritten-icons/calendar.svg"
+            width={16}
+          />
+        </button>
         <a
           className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-base font-medium text-primary-foreground transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
           href={whatsAppUrl}
@@ -97,6 +105,21 @@ function SuccessState({
           {dictionary.forms.success.whatsApp}
         </a>
       </div>
+      <MeetingModal
+        closeLabel={dictionary.modals.closeLabel}
+        dictionary={dictionary}
+        isOpen={meetingOpen}
+        language={language}
+        onClose={() => setMeetingOpen(false)}
+        onComplete={() => {
+          // Meeting completed successfully: close child, then close parent
+          setMeetingOpen(false);
+          onParentClose();
+        }}
+        origin={service.id === "custom" ? "custom" : "service"}
+        previousValues={values}
+        service={service}
+      />
     </div>
   );
 }
@@ -144,7 +167,7 @@ export function ServiceRequestModal({
   return (
     <Modal closeLabel={closeLabel} footer={modalFooter} isOpen={isOpen} onClose={onClose} size="lg" title={currentService.title[language]}>
       {submittedValues ? (
-        <SuccessState dictionary={dictionary} language={language} service={currentService} values={submittedValues} />
+        <SuccessState dictionary={dictionary} language={language} onParentClose={onClose} service={currentService} values={submittedValues} />
       ) : (
         <>
           <div className="mb-4 space-y-2">

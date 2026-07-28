@@ -1,27 +1,43 @@
 import { NextResponse } from "next/server";
 import { mapMeetingApiPayload } from "@/lib/meet/api-meeting-mapper";
-import { bookingService } from "@/lib/meet/booking-service";
+import { bookingService } from "@/lib/meet/composition";
 import { MEETING_ERROR_CODES } from "@/lib/meet/codes";
 import { meetLogger, normalizeErrorCause } from "@/lib/meet/logger";
+import {
+  PUBLIC_MEETING_RATE_LIMIT,
+  REQUEST_GUARD_RESULTS,
+  hasTriggeredHoneypot,
+  isRateLimitAllowed,
+  readBoundedJsonRequest,
+} from "@/lib/meet/request-guards";
 
 function getBookingHttpStatus(result: Awaited<ReturnType<typeof bookingService.createBooking>>) {
   if (result.success) return 201;
+  if (result.error === MEETING_ERROR_CODES.PROVIDER_UNAVAILABLE) return 503;
   return result.error === MEETING_ERROR_CODES.SLOT_UNAVAILABLE || result.error === MEETING_ERROR_CODES.IDEMPOTENCY_CONFLICT
     ? 409
     : 400;
 }
 
 export async function POST(request: Request) {
-  let payload: unknown = undefined;
-
-  try {
-    payload = await request.json();
-  } catch (error) {
-    payload = undefined;
-    meetLogger.warn("booking.route.invalid_json", { cause: normalizeErrorCause(error) });
+  if (!(await isRateLimitAllowed(request, PUBLIC_MEETING_RATE_LIMIT))) {
+    meetLogger.warn("booking.route.rate_limited");
+    return NextResponse.json({ success: false, error: MEETING_ERROR_CODES.MEETING_ERROR }, { status: 429 });
   }
 
-  const bookingRequest = mapMeetingApiPayload(payload);
+  const body = await readBoundedJsonRequest(request);
+  if (body.result !== REQUEST_GUARD_RESULTS.ALLOWED) {
+    meetLogger.warn("booking.route.invalid_json", { code: body.result });
+    return NextResponse.json({ success: false, error: MEETING_ERROR_CODES.MEETING_ERROR }, { status: 400 });
+  }
+  if (hasTriggeredHoneypot(body.payload)) {
+    // Deliberately use the generic invalid-request response: bots should not
+    // learn which anti-abuse control rejected their submission.
+    meetLogger.warn("booking.route.honeypot_rejected");
+    return NextResponse.json({ success: false, error: MEETING_ERROR_CODES.MEETING_ERROR }, { status: 400 });
+  }
+
+  const bookingRequest = mapMeetingApiPayload(body.payload);
 
   if (!bookingRequest) {
     meetLogger.warn("booking.route.invalid_request");

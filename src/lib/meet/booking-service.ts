@@ -9,7 +9,14 @@ import type { BookingErrorResponseDto, BookingRequestDto, BookingSuccessResponse
 import type { Timezone } from "./domain";
 import { ResendMockProvider, type EmailProvider } from "./email-provider";
 import { NoopMeetLogger, normalizeErrorCause, type MeetLogger } from "./logger";
-import { getSlotIdentity } from "./slot-identity";
+import {
+  ActionService,
+  issueOwnerTokensForNewBooking,
+} from "./action-service";
+import { sendInitialRequestNotifications } from "./email-notifications";
+import type { IssuedActionToken } from "./action-tokens";
+import { sealInitialOwnerTokens, unsealInitialOwnerTokens } from "./initial-owner-notification-recovery";
+import { FreeBusyError } from "@/lib/server/google-calendar-freebusy";
 
 export type BookingServiceResult = BookingSuccessResponseDto | BookingErrorResponseDto;
 
@@ -20,6 +27,12 @@ export class BookingService {
     private readonly calendarProvider: CalendarProvider = new GoogleCalendarMockProvider(),
     private readonly emailProvider: EmailProvider = new ResendMockProvider(),
     private readonly logger: MeetLogger = new NoopMeetLogger(),
+    /**
+     * Phase 4 action security service. Default `undefined` is replaced at
+     * composition time; the singleton export below wires the shared instance.
+     * Tests that don't care about tokens may omit it and issuance is skipped.
+     */
+    private readonly actionService?: ActionService,
   ) {}
 
   async createBooking(request: BookingRequestDto): Promise<BookingServiceResult> {
@@ -42,28 +55,64 @@ export class BookingService {
       return this.handleReplay(existing, request);
     }
 
-    if (!(await this.isSlotAvailable(request))) {
+    let slotAvailable: boolean;
+    try {
+      slotAvailable = await this.isSlotAvailable(request);
+    } catch (error) {
+      if (isRetryableFreeBusyProviderFailure(error)) {
+        this.logger.error("booking.availability_provider_unavailable", {
+          cause: normalizeErrorCause(error),
+          idempotencyKey: request.idempotencyKey,
+          provider: "calendar",
+        });
+        return this.error(MEETING_ERROR_CODES.PROVIDER_UNAVAILABLE);
+      }
+      throw error;
+    }
+
+    if (!slotAvailable) {
       return this.error(MEETING_ERROR_CODES.SLOT_UNAVAILABLE);
     }
 
+    // Phase 5: `requested` does NOT reserve a slot and does NOT create a
+    // Calendar event (PRD §1, §8.3, §13.5 exit criteria "requested creates no
+    // Calendar event"). The repository persists the `requested` record only;
+    // slot reservation moves to `ActionService.confirm` /
+    // `accept_proposal`. This is the re-routing the Phase 4 Deviations section
+    // flagged as deferred-to-Phase-5.
     const response = this.success(`meet_${crypto.randomUUID().slice(0, 8)}`);
-    const reservation = await this.bookingRepository.reserveSlotIfAvailable({
-      record: createBookingRecord(request, { id: response.meetingId }),
-      slotIdentity: this.getSlotKey(request),
-    });
-
-    if (!reservation.success) {
-      return this.error(reservation.error);
+    const createdRecord = createBookingRecord(request, { id: response.meetingId });
+    const persistedRecord = await this.bookingRepository.create(createdRecord);
+    if (persistedRecord.id !== createdRecord.id) {
+      return this.handleReplay(persistedRecord, request);
     }
 
-    if (reservation.replayed) {
-      return this.handleReplay(reservation.record, request);
+    // Phase 4/6: issue the initial owner action token set and immediately use
+    // raw tokens ONLY to compose the intended owner email links. Hashes are
+    // persisted; tokens never reach the visitor response, logs, or booking
+    // audit payloads. The retry envelope is persisted only as authenticated
+    // ciphertext so a failed initial owner email reuses this exact token set.
+    let ownerTokens: IssuedActionToken[] = [];
+    if (this.actionService) {
+      try {
+        ownerTokens = await issueOwnerTokensForNewBooking(this.actionService, createdRecord);
+      } catch (error) {
+        this.logger.error("booking.action_tokens_issuance_failed", {
+          bookingId: createdRecord.id,
+          cause: normalizeErrorCause(error),
+        });
+      }
     }
 
-    await this.processPendingProviders(reservation.record);
+    // Phase 6: owner request notification (with actions) + visitor pending
+    // receipt. Calendar remains intentionally excluded from `requested`.
+    const deliveredRecord = await this.processPendingProviders(createdRecord, ownerTokens);
 
-    this.logger.info("booking.accepted", { bookingId: reservation.record.id });
-    return response;
+    this.logger.info("booking.accepted", { bookingId: createdRecord.id });
+    if (deliveredRecord.emailDelivery.status !== "completed") {
+      return this.error(MEETING_ERROR_CODES.PROVIDER_UNAVAILABLE);
+    }
+    return this.success(response.meetingId, deliveredRecord.emailDelivery.status);
   }
 
   private async handleReplay(record: BookingRecord, request: BookingRequestDto): Promise<BookingServiceResult> {
@@ -79,74 +128,80 @@ export class BookingService {
       return this.success(replay.id);
     }
 
-    await this.processPendingProviders(replay);
+    const deliveredRecord = await this.processPendingProviders(replay);
     this.logger.info("booking.replay.recoverable", { bookingId: replay.id });
-    return this.success(replay.id);
+    if (deliveredRecord.emailDelivery.status !== "completed") {
+      return this.error(MEETING_ERROR_CODES.PROVIDER_UNAVAILABLE);
+    }
+    return this.success(replay.id, deliveredRecord.emailDelivery.status);
   }
 
   private areProvidersComplete(record: BookingRecord) {
-    return record.calendarDelivery.status === "completed" && record.emailDelivery.status === "completed";
+    // PRD §1/§13.5: `requested` has no Calendar event. Its pending calendar
+    // delivery state is therefore expected and MUST NOT force replay into a
+    // provider attempt. Calendar becomes required only after `owner_confirmed`
+    // (created by the Phase 5 action flow).
+    const calendarRequired = record.status === "owner_confirmed" || record.status === "confirmed";
+    return (!calendarRequired || record.calendarDelivery.status === "completed") &&
+      record.emailDelivery.status === "completed";
   }
 
-  private async processPendingProviders(record: BookingRecord) {
-    let currentRecord = record;
+  private async processPendingProviders(
+    record: BookingRecord,
+    initialOwnerTokens?: readonly IssuedActionToken[],
+  ): Promise<BookingRecord> {
+    // Phase 5 owns Calendar create/update after `owner_confirmed`; this
+    // booking-request path owns only Phase 6 initial emails. Never create a
+    // Calendar event for `requested`.
+    if (record.status !== "requested" || record.emailDelivery.status === "completed") {
+      return record;
+    }
 
-    if (currentRecord.calendarDelivery.status !== "completed") {
-      try {
-        const result = await this.calendarProvider.createEvent(currentRecord);
-
-        if (result.success) {
-          currentRecord = (await this.bookingRepository.updateProviderDetails(currentRecord.id, result.event)) ?? currentRecord;
-        } else {
-          currentRecord = (await this.bookingRepository.updateProviderDelivery(currentRecord.id, "calendar", {
-            errorCode: result.error,
-            status: "failed",
-          })) ?? currentRecord;
-          this.logger.warn("booking.provider_failed", { bookingId: currentRecord.id, code: result.error, provider: "calendar" });
+    let ownerTokens = initialOwnerTokens ?? [];
+    if (ownerTokens.length > 0) {
+      const recovery = sealInitialOwnerTokens(ownerTokens);
+      await this.bookingRepository.updateOwnerNotificationRecovery(record.id, recovery);
+    }
+    if (ownerTokens.length === 0 && this.actionService) {
+      ownerTokens = unsealInitialOwnerTokens(record.ownerNotificationRecovery) ?? [];
+      // No envelope means issuance never completed; mint the initial set once.
+      // A persisted envelope is always preferred so an owner-email retry never
+      // creates additional valid action tokens.
+      if (ownerTokens.length === 0 && record.ownerNotificationRecovery === null) {
+        try {
+          ownerTokens = await issueOwnerTokensForNewBooking(this.actionService, record);
+          const recovery = sealInitialOwnerTokens(ownerTokens);
+          await this.bookingRepository.updateOwnerNotificationRecovery(record.id, recovery);
+        } catch (error) {
+          this.logger.error("booking.action_tokens_issuance_failed", {
+            bookingId: record.id,
+            cause: normalizeErrorCause(error),
+          });
         }
-      } catch (error) {
-        currentRecord = (await this.bookingRepository.updateProviderDelivery(currentRecord.id, "calendar", {
-          errorCode: "CALENDAR_PROVIDER_ERROR",
-          status: "failed",
-        })) ?? currentRecord;
-        this.logger.error("booking.provider_unexpected_error", {
-          bookingId: currentRecord.id,
-          cause: normalizeErrorCause(error),
-          provider: "calendar",
-        });
       }
     }
 
-    if (currentRecord.emailDelivery.status !== "completed") {
-      try {
-        const result = await this.emailProvider.sendMeetingRequested({
-          booking: currentRecord,
-          payload: { meetingId: currentRecord.id, status: currentRecord.status },
-          recipient: currentRecord.identity.email,
-        });
-
-        if (result.success) {
-          currentRecord = (await this.bookingRepository.updateProviderDelivery(currentRecord.id, "email", {
-            status: "completed",
-          })) ?? currentRecord;
-        } else {
-          currentRecord = (await this.bookingRepository.updateProviderDelivery(currentRecord.id, "email", {
-            errorCode: result.error,
-            status: "failed",
-          })) ?? currentRecord;
-          this.logger.warn("booking.provider_failed", { bookingId: currentRecord.id, code: result.error, provider: "email" });
-        }
-      } catch (error) {
-        currentRecord = (await this.bookingRepository.updateProviderDelivery(currentRecord.id, "email", {
-          errorCode: "EMAIL_PROVIDER_ERROR",
-          status: "failed",
-        })) ?? currentRecord;
-        this.logger.error("booking.provider_unexpected_error", {
-          bookingId: currentRecord.id,
-          cause: normalizeErrorCause(error),
-          provider: "email",
-        });
+    try {
+      const delivered = await sendInitialRequestNotifications(
+        this.emailProvider,
+        this.bookingRepository,
+        record,
+        ownerTokens,
+      );
+      if (delivered.emailDelivery.status === "completed") {
+        return (await this.bookingRepository.updateOwnerNotificationRecovery(record.id, null)) ?? delivered;
       }
+      return delivered;
+    } catch (error) {
+      this.logger.error("booking.provider_unexpected_error", {
+        bookingId: record.id,
+        cause: normalizeErrorCause(error),
+        provider: "email",
+      });
+      return (await this.bookingRepository.updateProviderDelivery(record.id, "email", {
+        errorCode: "EMAIL_PROVIDER_ERROR",
+        status: "failed",
+      })) ?? record;
     }
   }
 
@@ -164,26 +219,24 @@ export class BookingService {
     return slots.some((slot) => slot.time === request.meeting.time);
   }
 
-  private getSlotKey(request: BookingRequestDto) {
-    return getSlotIdentity({
-      date: request.meeting.date,
-      time: request.meeting.time,
-      timezone: request.meeting.timezone as Timezone,
-    });
-  }
-
   private error(error: BookingErrorResponseDto["error"]): BookingServiceResult {
     return { success: false, error };
   }
 
-  private success(meetingId: string): BookingSuccessResponseDto {
+  private success(
+    meetingId: string,
+    emailDeliveryStatus: BookingSuccessResponseDto["emailDeliveryStatus"] = "pending",
+  ): BookingSuccessResponseDto {
     return {
       success: true,
       code: MEETING_RESPONSE_CODES.REQUEST_ACCEPTED,
       meetingId,
       status: "requested",
+      emailDeliveryStatus,
     };
   }
 }
 
-export const bookingService = new BookingService();
+function isRetryableFreeBusyProviderFailure(error: unknown): boolean {
+  return error instanceof FreeBusyError && error.code === "FREEBUSY_PROVIDER_ERROR";
+}

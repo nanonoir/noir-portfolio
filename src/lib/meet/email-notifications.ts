@@ -1,0 +1,294 @@
+import "server-only";
+
+import { getEnv } from "@/lib/server/env";
+import { buildActionLink } from "./action-links";
+import type { IssuedActionToken } from "./action-tokens";
+import type { BookingRecord } from "./booking-model";
+import { deliverMeetingEmail, emailDeliveryKey } from "./email-delivery";
+import {
+  EMAIL_PROVIDER_ERROR_CODES,
+  EMAIL_TEMPLATE_CODES,
+  type EmailProvider,
+  type EmailTemplateCode,
+} from "./email-provider";
+import type { BookingRepository } from "./booking-repository";
+import type { EmailActionLink } from "./email-templates";
+
+/**
+ * Phase 6 event-specific notification composition.
+ *
+ * The only place raw action tokens are transformed into URLs. The generated
+ * links travel immediately to the email provider's rendered body; callers get
+ * only the updated BookingRecord, never the links/tokens. No logger or
+ * persistence path receives the URLs.
+ */
+
+const ACTION_LABELS: Record<"en" | "es", Record<string, string>> = {
+  en: {
+    confirm: "Confirm meeting",
+    propose: "Propose another time",
+    decline: "Decline",
+    accept_proposal: "Accept proposed time",
+  },
+  es: {
+    confirm: "Confirmar reunión",
+    propose: "Proponer otro horario",
+    decline: "Rechazar",
+    accept_proposal: "Aceptar horario propuesto",
+  },
+};
+
+function lang(booking: BookingRecord): "en" | "es" {
+  return booking.locale.toLowerCase().startsWith("es") ? "es" : "en";
+}
+
+function getOwnerRecipient(): string | null {
+  return getEnv("CONTACT_TO_EMAIL") ?? null;
+}
+
+export function buildEmailActionLinks(
+  booking: BookingRecord,
+  tokens: readonly IssuedActionToken[],
+): EmailActionLink[] {
+  const labels = ACTION_LABELS[lang(booking)];
+  return tokens.map((issued) => ({
+    label: labels[issued.record.action] ?? issued.record.action,
+    url: buildActionLink({
+      meetingId: booking.id,
+      action: issued.record.action,
+      rawToken: issued.token,
+    }),
+  }));
+}
+
+export async function sendOwnerRequestNotification(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+  ownerTokens: readonly IssuedActionToken[],
+): Promise<BookingRecord> {
+  const ownerRecipient = getOwnerRecipient();
+  if (!ownerRecipient) {
+    return markEmailConfigurationFailure(repository, booking);
+  }
+  const actionLinks = tryBuildActionLinks(booking, ownerTokens);
+  if (!actionLinks) return markEmailConfigurationFailure(repository, booking);
+  return deliverMeetingEmail(provider, repository, {
+    template: EMAIL_TEMPLATE_CODES.MEETING_REQUESTED,
+    booking,
+    recipient: ownerRecipient,
+    // PRD §9: Nahuel emails use persisted validated visitor email as Reply-To.
+    replyTo: booking.identity.email,
+    payload: { actionLinks, audience: "owner" },
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, booking, ownerRecipient),
+  });
+}
+
+/**
+ * Initial request fan-out: owner action email + visitor pending receipt.
+ *
+ * Both Resend sends have independent idempotency keys, but the existing
+ * BookingRecord carries one aggregate `emailDelivery` state. Persist it once
+ * after both attempts so a successful visitor receipt cannot accidentally
+ * overwrite a failed owner-action delivery. A replay repeats only the missing
+ * provider work; Resend idempotency prevents duplicate accepted sends.
+ */
+export async function sendInitialRequestNotifications(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+  ownerTokens: readonly IssuedActionToken[],
+): Promise<BookingRecord> {
+  const ownerRecipient = getOwnerRecipient();
+  const actionLinks = tryBuildActionLinks(booking, ownerTokens);
+  const ownerResult = ownerRecipient && actionLinks
+    ? await safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, {
+      booking,
+      recipient: ownerRecipient,
+      replyTo: booking.identity.email,
+      payload: { actionLinks, audience: "owner" },
+      idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, booking, ownerRecipient),
+    })
+    : { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+
+  const visitorResult = await safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_RECEIVED, {
+    booking,
+    recipient: booking.identity.email,
+    payload: { audience: "visitor" },
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_RECEIVED, booking, booking.identity.email),
+  });
+
+  if (ownerResult.success && visitorResult.success) {
+    return (await repository.updateProviderDelivery(booking.id, "email", {
+      status: "completed",
+    })) ?? booking;
+  }
+
+  return (await repository.updateProviderDelivery(booking.id, "email", {
+    errorCode: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR,
+    status: "failed",
+  })) ?? booking;
+}
+
+async function safeSend(
+  provider: EmailProvider,
+  template: EmailTemplateCode,
+  input: Parameters<EmailProvider["send"]>[1],
+) {
+  try {
+    return await provider.send(template, input);
+  } catch {
+    return { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+  }
+}
+
+export async function sendVisitorReceivedAcknowledgement(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+): Promise<BookingRecord> {
+  return deliverMeetingEmail(provider, repository, {
+    template: EMAIL_TEMPLATE_CODES.MEETING_RECEIVED,
+    booking,
+    recipient: booking.identity.email,
+    payload: {},
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_RECEIVED, booking, booking.identity.email),
+  });
+}
+
+export async function sendRescheduleProposal(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+  visitorTokens: readonly IssuedActionToken[],
+): Promise<BookingRecord> {
+  const actionLinks = tryBuildActionLinks(booking, visitorTokens);
+  if (!actionLinks) return markEmailConfigurationFailure(repository, booking);
+  return deliverMeetingEmail(provider, repository, {
+    template: EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED,
+    booking,
+    recipient: booking.identity.email,
+    payload: { actionLinks, audience: "visitor" },
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED, booking, booking.identity.email),
+  });
+}
+
+export async function sendOwnerRescheduleProposal(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+  ownerTokens: readonly IssuedActionToken[],
+): Promise<BookingRecord> {
+  const ownerRecipient = getOwnerRecipient();
+  if (!ownerRecipient) return markEmailConfigurationFailure(repository, booking);
+  const actionLinks = tryBuildActionLinks(booking, ownerTokens);
+  if (!actionLinks) return markEmailConfigurationFailure(repository, booking);
+  return deliverMeetingEmail(provider, repository, {
+    template: EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED,
+    booking,
+    recipient: ownerRecipient,
+    replyTo: booking.identity.email,
+    payload: { actionLinks, audience: "owner" },
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED, booking, ownerRecipient),
+  });
+}
+
+export async function sendMeetingConfirmation(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+  visitorTokens: readonly IssuedActionToken[],
+): Promise<BookingRecord> {
+  const actionLinks = tryBuildActionLinks(booking, visitorTokens);
+  if (!actionLinks) return markEmailConfigurationFailure(repository, booking);
+  return deliverMeetingEmail(provider, repository, {
+    template: EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED,
+    booking,
+    recipient: booking.identity.email,
+    payload: { actionLinks, audience: "visitor" },
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, booking, booking.identity.email),
+  });
+}
+
+export async function sendDeclinedNotice(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+  recipient: string,
+): Promise<BookingRecord> {
+  return deliverSimple(provider, repository, EMAIL_TEMPLATE_CODES.MEETING_DECLINED, booking, recipient);
+}
+
+export async function sendOwnerDeclinedNotice(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+): Promise<BookingRecord> {
+  const ownerRecipient = getOwnerRecipient();
+  if (!ownerRecipient) return markEmailConfigurationFailure(repository, booking);
+  return deliverMeetingEmail(provider, repository, {
+    template: EMAIL_TEMPLATE_CODES.MEETING_DECLINED,
+    booking,
+    recipient: ownerRecipient,
+    replyTo: booking.identity.email,
+    payload: {},
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_DECLINED, booking, ownerRecipient),
+  });
+}
+
+export async function sendCancelledNotice(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+): Promise<BookingRecord> {
+  return deliverSimple(provider, repository, EMAIL_TEMPLATE_CODES.MEETING_CANCELLED, booking, booking.identity.email);
+}
+
+/** Provided for a future expiration command; Phase 6 does not add scheduler/cron. */
+export async function sendExpiredNotice(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+): Promise<BookingRecord> {
+  return deliverSimple(provider, repository, EMAIL_TEMPLATE_CODES.MEETING_EXPIRED, booking, booking.identity.email);
+}
+
+async function deliverSimple(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  template: EmailTemplateCode,
+  booking: BookingRecord,
+  recipient: string,
+): Promise<BookingRecord> {
+  return deliverMeetingEmail(provider, repository, {
+    template,
+    booking,
+    recipient,
+    payload: {},
+    idempotencyKey: emailDeliveryKey(template, booking, recipient),
+  });
+}
+
+async function markEmailConfigurationFailure(
+  repository: BookingRepository,
+  booking: BookingRecord,
+): Promise<BookingRecord> {
+  return (await repository.updateProviderDelivery(booking.id, "email", {
+    errorCode: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR,
+    status: "failed",
+  })) ?? booking;
+}
+
+function tryBuildActionLinks(
+  booking: BookingRecord,
+  tokens: readonly IssuedActionToken[],
+): EmailActionLink[] | null {
+  try {
+    return buildEmailActionLinks(booking, tokens);
+  } catch {
+    // APP_BASE_URL is mandatory for action links. Do not fall back to a fake
+    // production URL and do not throw after a booking transition; persist a
+    // recoverable email failure instead.
+    return null;
+  }
+}

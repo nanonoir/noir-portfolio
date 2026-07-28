@@ -1,0 +1,161 @@
+import "server-only";
+
+import { GOOGLE_CALENDAR_OPERATION_TIMEOUT_MS } from "@/lib/meet/deadlines";
+import { getEnv } from "./env";
+import { withBoundedTimeout } from "./bounded-timeout";
+import { getResendClient, isResendClientConfigured } from "./resend";
+import {
+  EMAIL_PROVIDER_ERROR_CODES,
+  EMAIL_TEMPLATE_CODES,
+  type EmailProvider,
+  type EmailProviderResult,
+  type EmailTemplateCode,
+  type MeetingEmailInput,
+} from "@/lib/meet/email-provider";
+import { composeMeetingEmail, type EmailActionLink } from "@/lib/meet/email-templates";
+import { meetLogger, normalizeErrorCause } from "@/lib/meet/logger";
+
+/**
+ * Phase 6 real Resend adapter.
+ *
+ * Server-only: reads RESEND_API_KEY only through the Phase 1 client
+ * foundation. The provider accepts a template code and safe payload/action
+ * links, renders HTML + text on the server, and sends with a stable Resend
+ * idempotency key (`template/booking/proposal/recipient`). The raw token is
+ * only present in the intended email action link fragment; it is never logged
+ * or persisted by this adapter.
+ */
+
+const DEFAULT_FROM = "Nahuel Noir Portfolio <onboarding@resend.dev>";
+
+export function isResendEmailConfigured(): boolean {
+  // CONTACT_FROM_EMAIL is optional because Phase 6 intentionally falls back
+  // to the documented Resend sandbox sender onboarding@resend.dev.
+  return isResendClientConfigured();
+}
+
+export class ResendEmailProvider implements EmailProvider {
+  async send(template: EmailTemplateCode, input: MeetingEmailInput): Promise<EmailProviderResult> {
+    try {
+      if (!isResendClientConfigured()) {
+        return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+      }
+
+      const actionLinks = readActionLinks(input.payload);
+      const composed = composeMeetingEmail({
+        template,
+        booking: input.booking,
+        actionLinks,
+        audience: readAudience(input.payload),
+        note: readOptionalNote(input.payload),
+      });
+      const from = getEnv("CONTACT_FROM_EMAIL") ?? DEFAULT_FROM;
+      const idempotencyKey = input.idempotencyKey ?? buildEmailIdempotencyKey(template, input);
+
+      const { error } = await withBoundedTimeout(
+        () => getResendClient().emails.send(
+          {
+            from,
+            to: [input.recipient],
+            ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+            subject: composed.subject,
+            html: composed.html,
+            text: composed.text,
+            headers: {
+              "X-Meet-Template": template,
+              "X-Meet-Booking": input.booking.id,
+            },
+          },
+          { idempotencyKey },
+        ),
+        GOOGLE_CALENDAR_OPERATION_TIMEOUT_MS,
+      );
+
+      if (error) {
+        // Do not include provider message, recipient, action link, or raw
+        // token in logs. The booking repository stores only the stable code.
+        meetLogger.warn("email.resend.send_failed", {
+          bookingId: input.booking.id,
+          provider: "email",
+          template,
+        });
+        return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+      }
+
+      return { success: true };
+    } catch (error) {
+      meetLogger.error("email.resend.send_error", {
+        bookingId: input.booking.id,
+        cause: normalizeErrorCause(error),
+        provider: "email",
+        template,
+      });
+      return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+    }
+  }
+
+  async sendMeetingRequested(input: MeetingEmailInput): Promise<EmailProviderResult> {
+    return this.send(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, input);
+  }
+
+  async sendMeetingConfirmed(input: MeetingEmailInput): Promise<EmailProviderResult> {
+    return this.send(EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, input);
+  }
+
+  async sendRescheduleProposed(input: MeetingEmailInput): Promise<EmailProviderResult> {
+    return this.send(EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED, input);
+  }
+}
+
+/**
+ * Production-safe fallback: never fabricates delivery when Firebase-backed
+ * deployment lacks RESEND_API_KEY or sender config. Callers retain booking
+ * state, persist `emailDelivery.failed`, and can replay after configuration.
+ */
+export class UnavailableEmailProvider implements EmailProvider {
+  async send(template: EmailTemplateCode, input: MeetingEmailInput): Promise<EmailProviderResult> {
+    void template;
+    void input;
+    return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+  }
+
+  async sendMeetingRequested(input: MeetingEmailInput): Promise<EmailProviderResult> {
+    return this.send(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, input);
+  }
+
+  async sendMeetingConfirmed(input: MeetingEmailInput): Promise<EmailProviderResult> {
+    return this.send(EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, input);
+  }
+
+  async sendRescheduleProposed(input: MeetingEmailInput): Promise<EmailProviderResult> {
+    return this.send(EMAIL_TEMPLATE_CODES.RESCHEDULE_PROPOSED, input);
+  }
+}
+
+export function buildEmailIdempotencyKey(template: EmailTemplateCode, input: MeetingEmailInput): string {
+  const recipientKey = input.recipient.trim().toLowerCase().replace(/[^a-z0-9@._+-]/g, "");
+  return `${template}/${input.booking.id}/${input.booking.proposalVersion}/${recipientKey}`.slice(0, 256);
+}
+
+function readActionLinks(payload: Readonly<Record<string, unknown>>): EmailActionLink[] {
+  const raw = payload.actionLinks;
+  if (!Array.isArray(raw)) return [];
+  const links: EmailActionLink[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const label = (item as { label?: unknown }).label;
+    const url = (item as { url?: unknown }).url;
+    if (typeof label === "string" && typeof url === "string") {
+      links.push({ label, url });
+    }
+  }
+  return links;
+}
+
+function readOptionalNote(payload: Readonly<Record<string, unknown>>): string | undefined {
+  return typeof payload.note === "string" ? payload.note : undefined;
+}
+
+function readAudience(payload: Readonly<Record<string, unknown>>): "owner" | "visitor" | undefined {
+  return payload.audience === "owner" || payload.audience === "visitor" ? payload.audience : undefined;
+}

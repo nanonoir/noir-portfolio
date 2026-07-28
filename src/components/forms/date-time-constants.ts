@@ -1,15 +1,22 @@
+import {
+  MEETING_BUFFER_MINUTES,
+  MEETING_DURATION_MINUTES,
+  SLOT_INTERVAL_MINUTES,
+} from "@/lib/meet/duration";
+
 export const AVAILABILITY_START_MINUTES = 8 * 60;
 export const AVAILABILITY_END_MINUTES = 20 * 60;
-export const MEETING_DURATION_MINUTES = 30;
-export const MEETING_BUFFER_MINUTES = 30;
-export const SLOT_INTERVAL_MINUTES = MEETING_DURATION_MINUTES + MEETING_BUFFER_MINUTES;
+export { MEETING_BUFFER_MINUTES, MEETING_DURATION_MINUTES, SLOT_INTERVAL_MINUTES };
 export const MIN_LEAD_TIME_MS = 12 * 60 * 60 * 1000;
 export const MAX_HORIZON_DAYS = 30;
 export const ENABLED_WEEKDAYS = [1, 2, 3, 4, 5, 6] as const;
 
 export type AvailabilitySlot = {
-  time: string;
   available: boolean;
+  availabilityStatus?: "verified" | "unverified";
+  endISO?: string;
+  startISO?: string;
+  time: string;
 };
 
 export type AvailabilityState =

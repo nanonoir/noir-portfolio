@@ -26,22 +26,30 @@ export type BookingLifecycleErrorCode =
 
 export const BOOKING_STATUS_TRANSITIONS: Readonly<Record<MeetingStatus, readonly MeetingStatus[]>> = {
   [MEETING_STATUSES.REQUESTED]: [
+    MEETING_STATUSES.OWNER_CONFIRMED,
+    MEETING_STATUSES.RESCHEDULE_PROPOSED,
+    MEETING_STATUSES.DECLINED,
+    MEETING_STATUSES.EXPIRED,
+    MEETING_STATUSES.CANCELLED,
+  ],
+  [MEETING_STATUSES.RESCHEDULE_PROPOSED]: [
+    MEETING_STATUSES.OWNER_CONFIRMED,
+    MEETING_STATUSES.RESCHEDULE_PROPOSED,
+    MEETING_STATUSES.DECLINED,
+    MEETING_STATUSES.EXPIRED,
+    MEETING_STATUSES.CANCELLED,
+  ],
+  [MEETING_STATUSES.OWNER_CONFIRMED]: [
     MEETING_STATUSES.CONFIRMED,
+    MEETING_STATUSES.OWNER_CONFIRMED,
     MEETING_STATUSES.RESCHEDULE_PROPOSED,
     MEETING_STATUSES.DECLINED,
     MEETING_STATUSES.CANCELLED,
-    MEETING_STATUSES.EXPIRED,
   ],
-  [MEETING_STATUSES.RESCHEDULE_PROPOSED]: [
-    MEETING_STATUSES.CONFIRMED,
-    MEETING_STATUSES.DECLINED,
-    MEETING_STATUSES.CANCELLED,
-    MEETING_STATUSES.EXPIRED,
-  ],
-  [MEETING_STATUSES.DECLINED]: [MEETING_STATUSES.RESCHEDULE_PROPOSED, MEETING_STATUSES.CANCELLED],
   [MEETING_STATUSES.CONFIRMED]: [MEETING_STATUSES.CANCELLED],
+  [MEETING_STATUSES.DECLINED]: [MEETING_STATUSES.REQUESTED, MEETING_STATUSES.CANCELLED],
+  [MEETING_STATUSES.EXPIRED]: [MEETING_STATUSES.REQUESTED],
   [MEETING_STATUSES.CANCELLED]: [],
-  [MEETING_STATUSES.EXPIRED]: [],
 };
 
 export interface BookingTransitionOptions {
@@ -102,9 +110,16 @@ export function transitionBooking(
     return { error: BOOKING_LIFECYCLE_ERROR_CODES.INVALID_STATUS_TRANSITION, success: false };
   }
 
+  // Reservation/confirmation transitions (`reschedule_proposed →
+  // owner_confirmed`, `requested → owner_confirmed`) MUST reject when the
+  // proposal window has expired. `owner_confirmed → confirmed` is a visitor
+  // RSVP callback and stays allowed after the meeting start (it is driven by
+  // the Google Calendar webhook in Phase 7).
+  const isReservationTransition = nextStatus === MEETING_STATUSES.OWNER_CONFIRMED;
   if (
-    nextStatus === MEETING_STATUSES.CONFIRMED &&
+    isReservationTransition &&
     record.expiresAt !== null &&
+    record.proposedSlot !== null &&
     new Date(record.expiresAt).getTime() <= new Date(now).getTime()
   ) {
     return { error: BOOKING_LIFECYCLE_ERROR_CODES.PROPOSAL_EXPIRED, success: false };
@@ -124,6 +139,44 @@ export function transitionBooking(
   );
 
   return { record: updatedRecord, success: true };
+}
+
+/**
+ * Phase 5 reservation transition wrapper.
+ *
+ * `reschedule_proposed → owner_confirmed` means the visitor accepted the
+ * proposed time. Promote that proposal into the canonical meeting slot,
+ * preserve the proposal-version/audit history, and clear the transient
+ * `proposedSlot` / `expiresAt` fields. `requested → owner_confirmed` is a
+ * normal owner confirmation and leaves the original meeting slot unchanged.
+ */
+export function transitionBookingWithAcceptedProposal(
+  record: BookingRecord,
+  nextStatus: MeetingStatus,
+  options: BookingTransitionOptions = {},
+): BookingTransitionResult {
+  const result = transitionBooking(record, nextStatus, options);
+  if (!result.success) return result;
+
+  const proposedSlot = record.proposedSlot;
+  if (
+    record.status === MEETING_STATUSES.RESCHEDULE_PROPOSED &&
+    nextStatus === MEETING_STATUSES.OWNER_CONFIRMED &&
+    proposedSlot
+  ) {
+    return {
+      success: true,
+      record: {
+        ...result.record,
+        meeting: { date: proposedSlot.date, time: proposedSlot.time },
+        visitorTimezone: proposedSlot.visitorTimezone,
+        proposedSlot: null,
+        expiresAt: null,
+      },
+    };
+  }
+
+  return result;
 }
 
 export function proposeAlternativeBooking(

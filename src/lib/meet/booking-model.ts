@@ -54,6 +54,8 @@ export interface BookingRecord {
   locale: Locale;
   meeting: BookingMeeting;
   origin: MeetingOrigin;
+  /** Authenticated server-only ciphertext for retrying the initial owner email. */
+  ownerNotificationRecovery: string | null;
   payloadHash: BookingPayloadHash;
   proposalVersion: string;
   proposedSlot: BookingProposedSlot | null;
@@ -128,6 +130,7 @@ export function createBookingRecord(request: BookingRequestDto, options: CreateB
     locale: request.locale as Locale,
     meeting: { date: request.meeting.date, time: request.meeting.time },
     origin: request.origin,
+    ownerNotificationRecovery: null,
     payloadHash: options.payloadHash ?? createBookingPayloadHash(request),
     proposalVersion: request.proposalMetadata.proposalVersion,
     proposedSlot: null,

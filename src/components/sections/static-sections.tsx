@@ -419,6 +419,9 @@ function ContactSection() {
   const meeting = dictionary.meeting.contact;
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionBinding, setSubmissionBinding] = useState<{ fingerprint: string; key: string } | null>(null);
   const {
     formState: { errors },
     handleSubmit,
@@ -440,9 +443,33 @@ function ContactSection() {
     return () => window.clearTimeout(timeout);
   }, [toastVisible]);
 
-  function onSubmit() {
-    setToastVisible(true);
-    reset();
+  async function onSubmit(values: GeneralContactFormValues) {
+    if (isSubmitting) return;
+
+    const fingerprint = JSON.stringify(values);
+    const idempotencyKey = submissionBinding?.fingerprint === fingerprint ? submissionBinding.key : crypto.randomUUID();
+    setSubmissionBinding({ fingerprint, key: idempotencyKey });
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/leads", {
+        body: JSON.stringify({ ...values, idempotencyKey, locale: language, type: "contact_message" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const result: unknown = await response.json().catch(() => null);
+      const success = response.ok && typeof result === "object" && result !== null && (result as { success?: unknown }).success === true;
+      setToastMessage(success ? contact.successMessage : contact.errorMessage);
+      if (success) {
+        setSubmissionBinding(null);
+        reset();
+      }
+    } catch {
+      setToastMessage(contact.errorMessage);
+    } finally {
+      setToastVisible(true);
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -545,7 +572,7 @@ function ContactSection() {
         onClose={() => setMeetingOpen(false)}
         origin="contact"
       />
-      <Toast isVisible={toastVisible} message={contact.toastPlaceholder} />
+      <Toast isVisible={toastVisible} message={toastMessage} />
     </SectionShell>
   );
 }

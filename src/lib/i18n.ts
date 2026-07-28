@@ -94,7 +94,8 @@ export type Dictionary = {
     messageLabel: string;
     messagePlaceholder: string;
     submit: string;
-    toastPlaceholder: string;
+    errorMessage: string;
+    successMessage: string;
     linksLabel: string;
   };
   meeting: {
@@ -164,6 +165,45 @@ export type Dictionary = {
       reason: string;
       schedule: string;
       message: string;
+    };
+  };
+  meet: {
+    action: {
+      title: string;
+      confirm: string;
+      propose: string;
+      decline: string;
+      acceptProposal: string;
+      invalid: string;
+      expired: string;
+      unavailable: string;
+      success: string;
+      replay: string;
+      error: string;
+      submit: string;
+      submitting: string;
+      backHome: string;
+      proposalDescription: string;
+      proposalSelectSlot: string;
+      proposalSelectedSlot: string;
+      proposalSlotUnverified: string;
+      proposalSlotUnavailable: string;
+      proposalInvalid: string;
+      proposalLinkNotActive: string;
+      proposalTemporarilyUnavailable: string;
+      proposalSuccessDescription: string;
+      proposalReplayDescription: string;
+      confirmDescription: string;
+      declineDescription: string;
+      declineReasonLabel: string;
+      declineReasonHint: string;
+      acceptProposalDescription: string;
+      actionSuccessDescription: string;
+      actionReplayDescription: string;
+      actionTemporarilyUnavailable: string;
+      actionDeliveryWarningDescription: string;
+      deliveryWarning: string;
+      proposalDeliveryWarningDescription: string;
     };
   };
   forms: {
@@ -354,8 +394,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       messageLabel: "Mensaje",
       messagePlaceholder: "Cuéntame brevemente sobre tu proyecto…",
       submit: "Enviar mensaje",
-      toastPlaceholder:
-        "El formulario real estará disponible pronto. Mientras tanto, puedes escribirme por email o WhatsApp.",
+      errorMessage: "No se pudo enviar el mensaje. Intentá nuevamente o escribime por WhatsApp.",
+      successMessage: "Recibí tu mensaje. Te responderé pronto.",
       linksLabel: "Canales de contacto",
     },
     meeting: {
@@ -429,6 +469,45 @@ export const dictionaries: Record<Language, Dictionary> = {
         reason: "Motivo",
         schedule: "Horario solicitado",
         message: "Mensaje",
+      },
+    },
+    meet: {
+      action: {
+        title: "Acción de reunión",
+        confirm: "Confirmar reunión",
+        propose: "Proponer otro horario",
+        decline: "Rechazar reunión",
+        acceptProposal: "Aceptar horario propuesto",
+        invalid: "Este enlace no es válido",
+        expired: "Este enlace venció",
+        unavailable: "La acción no está disponible",
+        success: "Acción completada",
+        replay: "Esta acción ya fue completada",
+        error: "No se pudo completar la acción",
+        submit: "Continuar",
+        submitting: "Procesando…",
+        backHome: "Volver al portfolio",
+        proposalDescription: "Elegí un nuevo día y horario disponible para enviar una propuesta.",
+        proposalSelectSlot: "Elegí un día y horario disponible.",
+        proposalSelectedSlot: "Horario propuesto",
+        proposalSlotUnverified: "No podemos confirmar este horario en este momento. Elegí otro horario o intentá más tarde.",
+        proposalSlotUnavailable: "Este horario ya no está disponible. Elegí otro horario.",
+        proposalInvalid: "No se pudo validar el horario seleccionado. Elegí otro horario e intentá nuevamente.",
+        proposalLinkNotActive: "Este enlace no es válido, venció o ya fue utilizado.",
+        proposalTemporarilyUnavailable: "No se pudo enviar la propuesta en este momento. Intentá nuevamente más tarde.",
+        proposalSuccessDescription: "La nueva propuesta fue enviada correctamente.",
+        proposalReplayDescription: "Esta propuesta ya había sido enviada. No se realizó ningún cambio adicional.",
+        confirmDescription: "Confirmá esta reunión para reservar el horario seleccionado.",
+        declineDescription: "Podés rechazar esta reunión. El motivo es opcional.",
+        declineReasonLabel: "Motivo del rechazo",
+        declineReasonHint: "Opcional. Compartí contexto útil para la otra persona.",
+        acceptProposalDescription: "Aceptá el horario propuesto para confirmar la reunión.",
+        actionSuccessDescription: "La acción se completó correctamente.",
+        actionReplayDescription: "Esta acción ya había sido completada. No se realizó ningún cambio adicional.",
+        actionTemporarilyUnavailable: "No se pudo completar esta acción en este momento. Intentá nuevamente más tarde.",
+        actionDeliveryWarningDescription: "La acción fue guardada, pero no se pudo confirmar la entrega de seguimiento.",
+        deliveryWarning: "Entrega sin confirmar",
+        proposalDeliveryWarningDescription: "La propuesta fue guardada, pero no se pudo confirmar la entrega de la notificación.",
       },
     },
     forms: {
@@ -616,8 +695,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       messageLabel: "Message",
       messagePlaceholder: "Tell me briefly about your project…",
       submit: "Send message",
-      toastPlaceholder:
-        "The real form will be available soon. In the meantime, you can contact me by email or WhatsApp.",
+      errorMessage: "Your message could not be sent. Try again or contact me on WhatsApp.",
+      successMessage: "I received your message. I will get back to you soon.",
       linksLabel: "Contact channels",
     },
     meeting: {
@@ -690,6 +769,45 @@ export const dictionaries: Record<Language, Dictionary> = {
         reason: "Reason",
         schedule: "Requested time",
         message: "Message",
+      },
+    },
+    meet: {
+      action: {
+        title: "Meeting action",
+        confirm: "Confirm meeting",
+        propose: "Propose another time",
+        decline: "Decline meeting",
+        acceptProposal: "Accept proposed time",
+        invalid: "This link is invalid",
+        expired: "This link has expired",
+        unavailable: "This action is unavailable",
+        success: "Action completed",
+        replay: "This action was already completed",
+        error: "The action could not be completed",
+        submit: "Continue",
+        submitting: "Processing…",
+        backHome: "Back to portfolio",
+        proposalDescription: "Choose a new available day and time to send a proposal.",
+        proposalSelectSlot: "Choose an available day and time.",
+        proposalSelectedSlot: "Proposed time",
+        proposalSlotUnverified: "We cannot verify this time right now. Choose another time or try again later.",
+        proposalSlotUnavailable: "This time is no longer available. Choose another time.",
+        proposalInvalid: "The selected time could not be validated. Choose another time and try again.",
+        proposalLinkNotActive: "This link is invalid, expired, or has already been used.",
+        proposalTemporarilyUnavailable: "The proposal could not be sent right now. Try again later.",
+        proposalSuccessDescription: "The new proposal was sent successfully.",
+        proposalReplayDescription: "This proposal was already sent. No additional change was made.",
+        confirmDescription: "Confirm this meeting to reserve the selected time.",
+        declineDescription: "You can decline this meeting. A reason is optional.",
+        declineReasonLabel: "Decline reason",
+        declineReasonHint: "Optional. Share helpful context with the other person.",
+        acceptProposalDescription: "Accept the proposed time to confirm the meeting.",
+        actionSuccessDescription: "The action was completed successfully.",
+        actionReplayDescription: "This action was already completed. No additional change was made.",
+        actionTemporarilyUnavailable: "This action could not be completed right now. Try again later.",
+        actionDeliveryWarningDescription: "The action was saved, but follow-up delivery could not be confirmed.",
+        deliveryWarning: "Delivery unconfirmed",
+        proposalDeliveryWarningDescription: "The proposal was saved, but notification delivery could not be confirmed.",
       },
     },
     forms: {

@@ -17,6 +17,9 @@ export const BOOKING_AUDIT_ACTIONS = {
   PROVIDER_FAILED: "provider_failed",
   PROVIDER_RECOVERED: "provider_recovered",
   STATUS_CHANGED: "status_changed",
+  ACTION_TOKEN_ISSUED: "action_token_issued",
+  ACTION_TOKEN_CONSUMED: "action_token_consumed",
+  ACTION_REJECTED: "action_rejected",
 } as const;
 
 export type BookingAuditAction = (typeof BOOKING_AUDIT_ACTIONS)[keyof typeof BOOKING_AUDIT_ACTIONS];

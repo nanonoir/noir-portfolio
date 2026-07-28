@@ -25,12 +25,20 @@ function translateError(dictionary: Dictionary, message?: string) {
   return dictionary.forms.errors[key] ?? message;
 }
 
-const NAME_CHAR_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿÑñ' -]$/;
+const NAME_CHAR_REGEX = /^[\p{L}\p{M}' -]$/u;
 const PHONE_CHAR_REGEX = /^[+0-9]$/;
+
+export function isAllowedNameInsertion(data: string) {
+  return data.length > 0 && Array.from(data).every((character) => NAME_CHAR_REGEX.test(character));
+}
+
+function isAllowedInsertion(data: string, characterRegex: RegExp) {
+  return data.length > 0 && Array.from(data).every((character) => characterRegex.test(character));
+}
 
 function handleNameBeforeInput(event: React.FormEvent<HTMLInputElement>) {
   const e = event as React.FormEvent<HTMLInputElement> & { data: string | null };
-  if (e.data && !NAME_CHAR_REGEX.test(e.data)) {
+  if (e.data && !isAllowedNameInsertion(e.data)) {
     event.preventDefault();
   }
 }
@@ -38,12 +46,15 @@ function handleNameBeforeInput(event: React.FormEvent<HTMLInputElement>) {
 function handlePhoneBeforeInput(event: React.FormEvent<HTMLInputElement>) {
   const e = event as React.FormEvent<HTMLInputElement> & { data: string | null };
   if (!e.data) return;
-  if (!PHONE_CHAR_REGEX.test(e.data)) {
+  if (!isAllowedInsertion(e.data, PHONE_CHAR_REGEX)) {
     event.preventDefault();
     return;
   }
   // Allow "+" only at the start (when the current value is empty)
-  if (e.data === "+" && (event.currentTarget as HTMLInputElement).value.length > 0) {
+  if (
+    e.data.includes("+")
+    && (e.data[0] !== "+" || e.data.indexOf("+", 1) !== -1 || event.currentTarget.value.length > 0)
+  ) {
     event.preventDefault();
   }
 }

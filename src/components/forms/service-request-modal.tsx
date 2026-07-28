@@ -136,6 +136,9 @@ export function ServiceRequestModal({
     serviceId: ServiceFormId;
     values: ServiceRequestValues;
   } | null>(null);
+  const [submissionError, setSubmissionError] = useState(false);
+  const [submissionBinding, setSubmissionBinding] = useState<{ fingerprint: string; key: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen || !service) {
     return null;
@@ -145,11 +148,46 @@ export function ServiceRequestModal({
   const formId = `service-form-${currentService.id}`;
   const submittedValues = submittedRequest?.serviceId === currentService.id ? submittedRequest.values : null;
 
-  function handleSubmit(values: ServiceRequestValues) {
-    setSubmittedRequest({
-      serviceId: currentService.id,
-      values,
-    });
+  async function handleSubmit(values: ServiceRequestValues) {
+    if (isSubmitting) return;
+
+    const fingerprint = JSON.stringify({ service: currentService.id, values });
+    const idempotencyKey = submissionBinding?.fingerprint === fingerprint ? submissionBinding.key : crypto.randomUUID();
+    setSubmissionBinding({ fingerprint, key: idempotencyKey });
+    setIsSubmitting(true);
+    setSubmissionError(false);
+
+    try {
+      const response = await fetch("/api/leads", {
+        body: JSON.stringify({
+          ...values,
+          idempotencyKey,
+          locale: language,
+          service: currentService.id,
+          type: currentService.id === "custom" ? "custom_service_request" : "service_request",
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || typeof result !== "object" || result === null || (result as { success?: unknown }).success !== true) {
+        setSubmissionError(true);
+        return;
+      }
+
+      setSubmittedRequest({ serviceId: currentService.id, values });
+    } catch {
+      setSubmissionError(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleClose() {
+    setSubmissionBinding(null);
+    setSubmissionError(false);
+    setSubmittedRequest(null);
+    onClose();
   }
 
   const modalFooter = submittedValues ? null : (
@@ -165,14 +203,15 @@ export function ServiceRequestModal({
   );
 
   return (
-    <Modal closeLabel={closeLabel} footer={modalFooter} isOpen={isOpen} onClose={onClose} size="lg" title={currentService.title[language]}>
+    <Modal closeLabel={closeLabel} footer={modalFooter} isOpen={isOpen} onClose={handleClose} size="lg" title={currentService.title[language]}>
       {submittedValues ? (
-        <SuccessState dictionary={dictionary} language={language} onParentClose={onClose} service={currentService} values={submittedValues} />
+        <SuccessState dictionary={dictionary} language={language} onParentClose={handleClose} service={currentService} values={submittedValues} />
       ) : (
         <>
           <div className="mb-4 space-y-2">
             <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{currentService.description[language]}</p>
             <p className="text-base text-muted-foreground md:text-sm">{dictionary.forms.common.requiredFieldsMessage}</p>
+            {submissionError ? <p className="text-base text-red-500 md:text-sm" role="alert">{dictionary.forms.errors.submission}</p> : null}
           </div>
           <ServiceRequestForm dictionary={dictionary} formId={formId} onSubmit={handleSubmit} serviceId={currentService.id} />
         </>

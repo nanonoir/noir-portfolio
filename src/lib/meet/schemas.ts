@@ -1,7 +1,9 @@
 import "server-only";
 
 import { z } from "zod";
+import type { BookingProposedSlotInput } from "./booking-model";
 import { CONTACT_REASONS, MEETING_ORIGINS, MEETING_STATUSES } from "./domain";
+import type { Timezone } from "./domain";
 import { MEETING_ERROR_CODES, MEETING_RESPONSE_CODES } from "./codes";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,6 +35,26 @@ export const availabilityRequestSchema = z.object({
   date: z.string().trim().regex(datePattern),
   timezone: timezoneSchema,
 });
+
+export const proposedSlotSchema = z.object({
+  date: z.string().trim().regex(datePattern),
+  time: z.string().trim().regex(timePattern),
+  visitorTimezone: timezoneSchema,
+});
+
+export function parseProposedSlot(input: unknown): BookingProposedSlotInput | null {
+  const parsed = proposedSlotSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return null;
+  }
+
+  return {
+    date: parsed.data.date,
+    time: parsed.data.time,
+    visitorTimezone: parsed.data.visitorTimezone as Timezone,
+  };
+}
 
 const identitySchema = z.object({
   name: z.string().trim().min(1),
@@ -106,12 +128,30 @@ export const availabilitySuccessResponseSchema = z.object({
   code: z.literal(MEETING_RESPONSE_CODES.AVAILABILITY_AVAILABLE),
   date: z.string().trim().regex(datePattern),
   timezone: timezoneSchema,
-  slots: z.array(z.object({ time: z.string().trim().regex(timePattern), available: z.literal(true) })),
+  slots: z.array(
+    z.object({
+      time: z.string().trim().regex(timePattern),
+      available: z.literal(true),
+      // Phase 3 canonical UTC window (PRD §4.3, §5.1). Optional for backward
+      // compatibility with the legacy mock payload.
+      startISO: z.iso.datetime().optional(),
+      endISO: z.iso.datetime().optional(),
+      // Phase 3 availability status (PRD §4.3). `verified` = FreeBusy checked
+      // against the primary calendar; `unverified` = real availability could
+      // not be checked but the slot satisfies business rules. Optional for
+      // backward compatibility with the legacy mock payload.
+      availabilityStatus: z.enum(["verified", "unverified"]).optional(),
+    }),
+  ),
 });
 
 export const availabilityErrorResponseSchema = z.object({
   success: z.literal(false),
-  error: z.literal(MEETING_ERROR_CODES.AVAILABILITY_ERROR),
+  error: z.enum([
+    MEETING_ERROR_CODES.AVAILABILITY_ERROR,
+    MEETING_ERROR_CODES.AVAILABILITY_UNAVAILABLE,
+    MEETING_ERROR_CODES.INVALID_TIMEZONE,
+  ]),
 });
 
 export const bookingSuccessResponseSchema = z.object({
@@ -119,6 +159,8 @@ export const bookingSuccessResponseSchema = z.object({
   code: z.literal(MEETING_RESPONSE_CODES.REQUEST_ACCEPTED),
   meetingId: z.string().trim().min(1),
   status: z.literal(MEETING_STATUSES.REQUESTED),
+  /** Sanitized aggregate only; provider causes remain server-side. */
+  emailDeliveryStatus: z.enum(["pending", "completed", "failed"]),
 });
 
 export const bookingErrorResponseSchema = z.object({
@@ -128,5 +170,6 @@ export const bookingErrorResponseSchema = z.object({
     MEETING_ERROR_CODES.SLOT_UNAVAILABLE,
     MEETING_ERROR_CODES.IDEMPOTENCY_REPLAY,
     MEETING_ERROR_CODES.IDEMPOTENCY_CONFLICT,
+    MEETING_ERROR_CODES.PROVIDER_UNAVAILABLE,
   ]),
 });

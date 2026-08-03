@@ -5,7 +5,7 @@ import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useTheme } from "@/components/providers/theme-provider";
-import { PdfModal } from "@/components/ui";
+import { ActionLink, Button, PdfModal } from "@/components/ui";
 
 const NAV_ITEMS = [
   { id: "about", key: "about", icon: assets.icons.about },
@@ -23,6 +23,15 @@ const FOCUSABLE_SELECTOR = [
   'select:not([disabled]):not([tabindex="-1"])',
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
+
+const DRAWER_PHASES = {
+  CLOSED: "closed",
+  ENTERING: "entering",
+  OPEN: "open",
+  EXITING: "exiting",
+} as const;
+
+type DrawerPhase = (typeof DRAWER_PHASES)[keyof typeof DRAWER_PHASES];
 
 function canReceiveFocus(element: HTMLElement | null) {
   if (!element || !document.contains(element)) {
@@ -64,27 +73,33 @@ function navigateToHash(event: MouseEvent<HTMLAnchorElement>, hash: string, onBe
   );
 }
 
-function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavigationLinks({ activeSection, onNavigate }: { activeSection: string | null; onNavigate?: () => void }) {
   const { dictionary } = useLanguage();
 
   return (
     <nav aria-label={dictionary.navigation.primaryNavigationLabel} className="flex items-center gap-1">
       {NAV_ITEMS.map((item) => (
-        <a
-          className={controlClassName(
+        <ActionLink
+          aria-current={activeSection === item.id ? "page" : undefined}
+          className={
             item.id === "services"
-              ? "gap-1.5 border border-foreground/20 px-3 py-1.5 text-sm text-foreground hover:bg-foreground/5"
-              : "px-3 py-1.5 text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-          )}
+              ? "gap-1.5 border border-foreground/20 px-3 py-1.5 text-foreground"
+              : "nav-section-link px-3 py-1.5"
+          }
+          data-nav-active={activeSection === item.id ? "true" : undefined}
           href={`#${item.id}`}
+          icon={
+            item.id === "services" ? (
+              <Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={item.icon} width={16} />
+            ) : undefined
+          }
+          iconPosition="start"
           key={item.id}
+          label={dictionary.navigation[item.key]}
           onClick={(event) => navigateToHash(event, `#${item.id}`, onNavigate)}
-        >
-          {item.id === "services" ? (
-            <Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={item.icon} width={16} />
-          ) : null}
-          {dictionary.navigation[item.key]}
-        </a>
+          size="sm"
+          variant={item.id === "services" ? "outlined" : "nav"}
+        />
       ))}
     </nav>
   );
@@ -95,21 +110,14 @@ function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <button
+    <Button
       aria-label={dictionary.navigation.themeToggleLabel}
-      className={controlClassName("size-8 text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}
+      className="text-muted-foreground"
+      icon={<Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src={theme === "dark" ? assets.icons.sun : assets.icons.moon} width={16} />}
       onClick={toggleTheme}
-      type="button"
-    >
-      <Image
-        alt=""
-        aria-hidden="true"
-        className="size-4 dark:invert"
-        height={16}
-        src={theme === "dark" ? assets.icons.sun : assets.icons.moon}
-        width={16}
-      />
-    </button>
+      size="icon"
+      variant="icon"
+    />
   );
 }
 
@@ -117,21 +125,14 @@ function LanguageToggle() {
   const { dictionary, toggleLanguage } = useLanguage();
 
   return (
-    <button
+    <Button
       aria-label={dictionary.navigation.languageToggleLabel}
-      className={controlClassName("size-8 text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}
+      className="text-muted-foreground"
+      icon={<Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={assets.icons.language} width={16} />}
       onClick={toggleLanguage}
-      type="button"
-    >
-      <Image
-        alt=""
-        aria-hidden="true"
-        className="size-4 opacity-70 dark:invert"
-        height={16}
-        src={assets.icons.language}
-        width={16}
-      />
-    </button>
+      size="icon"
+      variant="icon"
+    />
   );
 }
 
@@ -140,20 +141,19 @@ function DrawerLanguageButton({ onNavigate }: { onNavigate?: () => void }) {
   const label = language === "es" ? dictionary.navigation.changeToEnglish : dictionary.navigation.changeToSpanish;
 
   return (
-    <button
+    <Button
       aria-label={dictionary.navigation.languageToggleLabel}
-      className={controlClassName(
-        "w-full justify-start gap-3 px-4 py-3 text-base font-medium text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-      )}
+      className="w-full justify-start px-4 py-3 text-base font-medium text-muted-foreground"
+      icon={<Image alt="" aria-hidden="true" className="size-5 opacity-70 dark:invert" height={20} src={assets.icons.language} width={20} />}
+      iconPosition="start"
+      label={label}
       onClick={() => {
         toggleLanguage();
         onNavigate?.();
       }}
-      type="button"
-    >
-      <Image alt="" aria-hidden="true" className="size-5 opacity-70 dark:invert" height={20} src={assets.icons.language} width={20} />
-      {label}
-    </button>
+      size="md"
+      variant="ghost"
+    />
   );
 }
 
@@ -164,17 +164,16 @@ function DrawerThemeButton() {
   const label = theme === "dark" ? dictionary.navigation.lightTheme : dictionary.navigation.darkTheme;
 
   return (
-    <button
+    <Button
       aria-label={dictionary.navigation.themeToggleLabel}
-      className={controlClassName(
-        "w-full justify-start gap-3 px-4 py-3 text-base font-medium text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-      )}
+      className="w-full justify-start px-4 py-3 text-base font-medium text-muted-foreground"
+      icon={<Image alt="" aria-hidden="true" className="size-5 opacity-70 dark:invert" height={20} src={icon} width={20} />}
+      iconPosition="start"
+      label={label}
       onClick={toggleTheme}
-      type="button"
-    >
-      <Image alt="" aria-hidden="true" className="size-5 opacity-70 dark:invert" height={20} src={icon} width={20} />
-      {label}
-    </button>
+      size="md"
+      variant="ghost"
+    />
   );
 }
 
@@ -182,16 +181,14 @@ function ResumeButton({ className = "", onOpen }: { className?: string; onOpen: 
   const { dictionary } = useLanguage();
 
   return (
-    <button
-      className={controlClassName(
-        `gap-1.5 border border-foreground/20 px-3 py-1.5 text-sm text-foreground hover:bg-foreground/5 ${className}`,
-      )}
+    <Button
+      className={`gap-1.5 border border-foreground/20 px-3 py-1.5 text-foreground ${className}`}
+      icon={<Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={assets.icons.view} width={16} />}
+      label={dictionary.navigation.resume}
       onClick={onOpen}
-      type="button"
-    >
-      {dictionary.navigation.resume}
-      <Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={assets.icons.view} width={16} />
-    </button>
+      size="sm"
+      variant="outlined"
+    />
   );
 }
 
@@ -199,27 +196,20 @@ function MenuButton({ onClick }: { onClick: () => void }) {
   const { dictionary } = useLanguage();
 
   return (
-    <button
+    <Button
       aria-haspopup="dialog"
       aria-label={dictionary.navigation.menuLabel}
-      className={controlClassName("size-9 border border-border bg-background/60 text-muted-foreground hover:bg-foreground/5")}
+      className="border border-border bg-background/60 text-muted-foreground"
       data-portfolio-menu-button="true"
+      icon={<Image alt="" aria-hidden="true" className="size-4 opacity-60 dark:invert" height={16} src={assets.icons.menu} width={16} />}
       onClick={onClick}
-      type="button"
-    >
-      <Image
-        alt=""
-        aria-hidden="true"
-        className="size-4 opacity-60 dark:invert"
-        height={16}
-        src={assets.icons.menu}
-        width={16}
-      />
-    </button>
+      size="icon"
+      variant="icon"
+    />
   );
 }
 
-function TopHeader({ onMenuOpen, onResumeOpen }: { onMenuOpen: () => void; onResumeOpen: () => void }) {
+function TopHeader({ activeSection, onMenuOpen, onResumeOpen }: { activeSection: string | null; onMenuOpen: () => void; onResumeOpen: () => void }) {
   const { dictionary } = useLanguage();
 
   return (
@@ -230,7 +220,7 @@ function TopHeader({ onMenuOpen, onResumeOpen }: { onMenuOpen: () => void; onRes
         </a>
 
         <div className="hidden items-center gap-4 lg:flex">
-          <NavigationLinks />
+          <NavigationLinks activeSection={activeSection} />
           <div aria-hidden="true" className="h-5 w-px bg-border" />
           <div className="flex items-center gap-1">
             <ThemeToggle />
@@ -250,7 +240,7 @@ function TopHeader({ onMenuOpen, onResumeOpen }: { onMenuOpen: () => void; onRes
   );
 }
 
-function StickyHeader({ onMenuOpen, onResumeOpen, visible }: { onMenuOpen: () => void; onResumeOpen: () => void; visible: boolean }) {
+function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { activeSection: string | null; onMenuOpen: () => void; onResumeOpen: () => void; visible: boolean }) {
   const { dictionary } = useLanguage();
 
   if (!visible) {
@@ -270,28 +260,34 @@ function StickyHeader({ onMenuOpen, onResumeOpen, visible }: { onMenuOpen: () =>
         </a>
         <nav aria-label={dictionary.navigation.stickyNavigationLabel} className="flex items-center gap-1">
           {NAV_ITEMS.map((item) => (
-            <a
-              className={controlClassName(
+            <ActionLink
+              aria-current={activeSection === item.id ? "page" : undefined}
+              className={
                 item.id === "services"
-                  ? "gap-1.5 border border-foreground/20 px-3 py-1.5 text-sm text-foreground hover:bg-foreground/5"
-                  : "px-3 py-1.5 text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-              )}
+                  ? "gap-1.5 border border-foreground/20 px-3 py-1.5 text-foreground"
+                  : "nav-section-link px-3 py-1.5"
+              }
+              data-nav-active={activeSection === item.id ? "true" : undefined}
               href={`#${item.id}`}
+              icon={
+                item.id === "services" ? (
+                  <Image
+                    alt=""
+                    aria-hidden="true"
+                    className="size-4 dark:invert"
+                    height={16}
+                    src={assets.icons.service}
+                    width={16}
+                  />
+                ) : undefined
+              }
+              iconPosition="start"
               key={item.id}
+              label={dictionary.navigation[item.key]}
               onClick={(event) => navigateToHash(event, `#${item.id}`)}
-            >
-              {item.id === "services" ? (
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  className="size-4 dark:invert"
-                  height={16}
-                  src={assets.icons.service}
-                  width={16}
-                />
-              ) : null}
-              {dictionary.navigation[item.key]}
-            </a>
+              size="sm"
+              variant={item.id === "services" ? "outlined" : "nav"}
+            />
           ))}
         </nav>
         <div aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
@@ -315,22 +311,35 @@ function StickyHeader({ onMenuOpen, onResumeOpen, visible }: { onMenuOpen: () =>
   );
 }
 
-function MobileDrawer({ onClose, onResumeOpen, open }: { onClose: () => void; onResumeOpen: () => void; open: boolean }) {
+function MobileDrawer({
+  onClose,
+  onExited,
+  onResumeOpen,
+  phase,
+}: {
+  onClose: () => void;
+  onExited: () => void;
+  onResumeOpen: () => void;
+  phase: DrawerPhase;
+}) {
   const { dictionary } = useLanguage();
   const drawerRef = useRef<HTMLDivElement>(null);
+  const isVisible = phase !== DRAWER_PHASES.CLOSED;
 
   useEffect(() => {
-    if (!open) {
+    if (!isVisible) {
       return;
     }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const focusableElements = Array.from(
-      drawerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
-    );
-    focusableElements[0]?.focus();
+    const focusFirstElement = () => {
+      const focusableElements = Array.from(drawerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
+      focusableElements[0]?.focus();
+    };
+
+    focusFirstElement();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -338,6 +347,8 @@ function MobileDrawer({ onClose, onResumeOpen, open }: { onClose: () => void; on
         onClose();
         return;
       }
+
+      const focusableElements = Array.from(drawerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
 
       if (event.key !== "Tab" || focusableElements.length === 0) {
         return;
@@ -363,9 +374,9 @@ function MobileDrawer({ onClose, onResumeOpen, open }: { onClose: () => void; on
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [onClose, open]);
+  }, [isVisible, onClose]);
 
-  if (!open) {
+  if (!isVisible) {
     return null;
   }
 
@@ -373,59 +384,64 @@ function MobileDrawer({ onClose, onResumeOpen, open }: { onClose: () => void; on
     <div
       aria-modal="true"
       aria-label={dictionary.navigation.drawerLabel}
-      className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-xl lg:hidden"
+      className="drawer-scrim fixed inset-0 z-[60] lg:hidden"
+      data-drawer-phase={phase}
       ref={drawerRef}
       role="dialog"
     >
       <button
         aria-label={dictionary.navigation.closeMenuLabel}
-        className="absolute inset-0 cursor-default"
+        className="absolute inset-0"
         onClick={onClose}
         tabIndex={-1}
         type="button"
       />
-      <div className="absolute inset-0 flex translate-x-0 flex-col bg-background px-6 py-6 text-foreground transition-transform duration-300 ease-out">
+      <div
+        className="drawer-panel absolute inset-0 flex flex-col bg-background px-6 py-6 text-foreground"
+        onTransitionEnd={(event) => {
+          if (phase === DRAWER_PHASES.EXITING && event.target === event.currentTarget && event.propertyName === "transform") {
+            onExited();
+          }
+        }}
+      >
         <div className="flex items-center justify-between gap-4">
           <a className="text-sm font-medium tracking-tight" href="#top" onClick={(event) => navigateToHash(event, "#top", onClose)}>
             {dictionary.meta.siteName}
           </a>
-          <button
+          <Button
             aria-label={dictionary.navigation.closeMenuLabel}
-            className={controlClassName("size-9 text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}
+            className="text-muted-foreground"
+            icon={<Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src={assets.icons.close} width={16} />}
             onClick={onClose}
-            type="button"
-          >
-            <Image
-              alt=""
-              aria-hidden="true"
-              className="size-4 dark:invert"
-              height={16}
-              src={assets.icons.close}
-              width={16}
-            />
-          </button>
+            size="icon"
+            variant="icon"
+          />
         </div>
 
         <nav aria-label={dictionary.navigation.mobileNavigationLabel} className="mt-12 flex flex-col gap-3">
           {NAV_ITEMS.map((item) => (
-            <a
-              className={controlClassName(
+            <ActionLink
+              className={
                 item.id === "services"
-                  ? "w-full justify-start gap-4 border border-foreground/20 px-4 py-4 text-3xl font-semibold tracking-tight text-foreground hover:bg-foreground/5"
-                  : "w-full justify-start gap-4 px-4 py-4 text-3xl font-semibold tracking-tight text-foreground hover:bg-foreground/5 hover:text-muted-foreground",
-              )}
+                  ? "drawer-item w-full justify-start gap-4 border border-foreground/20 px-4 py-4 text-3xl font-semibold tracking-tight text-foreground"
+                  : "drawer-item w-full justify-start gap-4 px-4 py-4 text-3xl font-semibold tracking-tight text-foreground"
+              }
+              data-drawer-item="true"
               href={`#${item.id}`}
+              icon={<Image alt="" aria-hidden="true" className="size-6 shrink-0 opacity-70 dark:invert" height={24} src={item.icon} width={24} />}
+              iconPosition="start"
               key={item.id}
+              label={dictionary.navigation[item.key]}
               onClick={(event) => navigateToHash(event, `#${item.id}`, onClose)}
-            >
-              <Image alt="" aria-hidden="true" className="size-6 shrink-0 opacity-70 dark:invert" height={24} src={item.icon} width={24} />
-              {dictionary.navigation[item.key]}
-            </a>
+              size="md"
+              style={{ transitionDelay: phase === DRAWER_PHASES.OPEN ? `${38 * (NAV_ITEMS.indexOf(item) + 1)}ms` : "0ms" }}
+              variant={item.id === "services" ? "outlined" : "ghost"}
+            />
           ))}
         </nav>
 
         <div className="mt-3 grid gap-3 pb-4">
-          <ResumeButton className="w-full justify-between px-4 py-3 text-base font-medium" onOpen={onResumeOpen} />
+          <ResumeButton className="drawer-item w-full justify-between px-4 py-3 text-base font-medium" onOpen={onResumeOpen} />
           <DrawerLanguageButton />
           <DrawerThemeButton />
         </div>
@@ -435,28 +451,94 @@ function MobileDrawer({ onClose, onResumeOpen, open }: { onClose: () => void; on
 }
 
 export function PortfolioNavigation() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [drawerPhase, setDrawerPhase] = useState<DrawerPhase>(DRAWER_PHASES.CLOSED);
   const [resumeOpen, setResumeOpen] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
+  const resumeAfterDrawerCloseRef = useRef(false);
   const { dictionary, language } = useLanguage();
 
   useEffect(() => {
-    const updateStickyVisibility = () => setStickyVisible(window.scrollY > 350);
+    const STICKY_THRESHOLD = 350;
+    // Below this scroll offset the visitor is in the hero / top zone and no section is active.
+    const HERO_THRESHOLD = 120;
 
-    updateStickyVisibility();
-    window.addEventListener("scroll", updateStickyVisibility, { passive: true });
+    const handleScroll = () => {
+      setStickyVisible(window.scrollY > STICKY_THRESHOLD);
+      // When the visitor scrolls back to the hero area, clear the active section so no
+      // nav item appears underlined / aria-current while the hero is in view.
+      if (window.scrollY < HERO_THRESHOLD) {
+        setActiveSection(null);
+      }
+    };
 
-    return () => window.removeEventListener("scroll", updateStickyVisibility);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const sections = NAV_ITEMS.map(({ id }) => document.getElementById(id)).filter((section): section is HTMLElement => Boolean(section));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Skip observer updates while in the hero zone — scroll listener owns that state.
+        if (window.scrollY < 120) {
+          return;
+        }
+
+        const activeEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
+
+        if (activeEntry) {
+          setActiveSection(activeEntry.target.id);
+        }
+      },
+      { rootMargin: "-20% 0px -65%", threshold: [0.1, 0.35, 0.6] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (drawerPhase !== DRAWER_PHASES.ENTERING) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => setDrawerPhase(DRAWER_PHASES.OPEN));
+    return () => cancelAnimationFrame(frame);
+  }, [drawerPhase]);
+
+  useEffect(() => {
+    if (drawerPhase !== DRAWER_PHASES.EXITING) {
+      return;
+    }
+
+    const exitTimeout = window.setTimeout(finishDrawerClose, 180);
+    return () => window.clearTimeout(exitTimeout);
+  }, [drawerPhase]);
 
   function openDrawer() {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setDrawerOpen(true);
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setDrawerPhase(prefersReducedMotion ? DRAWER_PHASES.OPEN : DRAWER_PHASES.ENTERING);
   }
 
   function closeDrawer() {
-    setDrawerOpen(false);
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      finishDrawerClose();
+      return;
+    }
+
+    setDrawerPhase(DRAWER_PHASES.EXITING);
+  }
+
+  function finishDrawerClose() {
+    setDrawerPhase(DRAWER_PHASES.CLOSED);
     requestAnimationFrame(() => {
       const fallbackMenuButton = Array.from(
         document.querySelectorAll<HTMLElement>('[data-portfolio-menu-button="true"]'),
@@ -465,19 +547,28 @@ export function PortfolioNavigation() {
 
       focusTarget?.focus();
       openerRef.current = null;
+
+      if (resumeAfterDrawerCloseRef.current) {
+        resumeAfterDrawerCloseRef.current = false;
+        setResumeOpen(true);
+      }
     });
   }
 
   function openResume() {
-    setDrawerOpen(false);
     setResumeOpen(true);
+  }
+
+  function openResumeFromDrawer() {
+    resumeAfterDrawerCloseRef.current = true;
+    closeDrawer();
   }
 
   return (
     <>
-      <TopHeader onMenuOpen={openDrawer} onResumeOpen={openResume} />
-      <StickyHeader onMenuOpen={openDrawer} onResumeOpen={openResume} visible={stickyVisible} />
-      <MobileDrawer onClose={closeDrawer} onResumeOpen={openResume} open={drawerOpen} />
+      <TopHeader activeSection={activeSection} onMenuOpen={openDrawer} onResumeOpen={openResume} />
+      <StickyHeader activeSection={activeSection} onMenuOpen={openDrawer} onResumeOpen={openResume} visible={stickyVisible} />
+      <MobileDrawer onClose={closeDrawer} onExited={finishDrawerClose} onResumeOpen={openResumeFromDrawer} phase={drawerPhase} />
       <PdfModal
         closeLabel={dictionary.modals.closeLabel}
         isOpen={resumeOpen}

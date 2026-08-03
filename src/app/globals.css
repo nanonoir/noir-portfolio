@@ -180,6 +180,73 @@ html {
   pointer-events: none;
 }
 
+.nav-section-link {
+  position: relative;
+  color: var(--muted-foreground);
+}
+
+.nav-section-link::after {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.35rem;
+  left: 0.75rem;
+  height: 1px;
+  content: "";
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 180ms var(--ease-emphasized);
+}
+
+.nav-section-link[data-nav-active="true"],
+.nav-section-link:focus-visible {
+  color: var(--foreground);
+}
+
+.nav-section-link[data-nav-active="true"]::after,
+.nav-section-link:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+.drawer-scrim {
+  background: color-mix(in oklab, var(--background) 80%, transparent);
+  backdrop-filter: blur(18px);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-emphasized);
+}
+
+.drawer-panel {
+  opacity: 0;
+  transform: translateX(12px);
+  transition: opacity 200ms var(--ease-emphasized), transform 200ms var(--ease-emphasized);
+  will-change: opacity, transform;
+}
+
+.drawer-item {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 180ms var(--ease-emphasized), transform 180ms var(--ease-emphasized);
+}
+
+.drawer-scrim[data-drawer-phase="open"] {
+  opacity: 1;
+}
+
+.drawer-scrim[data-drawer-phase="open"] .drawer-panel,
+.drawer-scrim[data-drawer-phase="open"] .drawer-item {
+  opacity: 1;
+  transform: translate(0);
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] {
+  transition-duration: 160ms;
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] .drawer-panel {
+  transition-duration: 160ms;
+}
+
 .button-outlined::before {
   inset: 0;
   z-index: 0;
@@ -227,6 +294,26 @@ html {
     color: var(--background);
   }
 
+  /* Monochrome image icons inside outlined buttons must stay fully visible during the
+     left-to-right fill animation. Two concerns:
+     1. filter: the fill becomes --foreground (dark in light mode, light in dark mode), so
+        we invert the icon to match. In dark mode the icon already carries dark:invert
+        (invert(1)) at rest; on hover the fill becomes light (--foreground), so we revert
+        to natural (invert(0)).
+     2. opacity: icons use opacity-70 at rest for subtle treatment; on hover we must raise
+        opacity to 1 so the icon reads fully against the now-filled background.
+     Selectors use :where(.dark, .dark *) parity so the dark-mode rule always wins the
+     dark:invert Tailwind utility (which uses :where() and has zero specificity). */
+  .button-outlined:hover [data-action-icon] img {
+    filter: invert(1);
+    opacity: 1;
+  }
+
+  :where(.dark, .dark *) .button-outlined:hover [data-action-icon] img {
+    filter: invert(0);
+    opacity: 1;
+  }
+
   .button-outlined:hover::before,
   .button-ghost:hover::after {
     transform: scaleX(1);
@@ -238,6 +325,15 @@ html {
   .button-icon:hover {
     background: color-mix(in oklab, var(--foreground) 5%, transparent);
     color: var(--foreground);
+  }
+
+  .nav-section-link:hover {
+    color: var(--foreground);
+  }
+
+  .nav-section-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: left center;
   }
 
   .button-primary > [data-action-icon],
@@ -352,6 +448,22 @@ html {
   .button-ghost:hover::after {
     transition: none !important;
     transform: scaleX(0) !important;
+  }
+
+  .drawer-scrim,
+  .drawer-panel,
+  .drawer-item {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .drawer-scrim[data-drawer-phase="entering"],
+  .drawer-scrim[data-drawer-phase="open"] {
+    opacity: 1;
+  }
+
+  .drawer-item {
+    opacity: 1;
   }
 }
 

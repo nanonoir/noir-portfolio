@@ -1,52 +1,145 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "outlined" | "ghost" | "nav" | "language" | "icon";
+export const ACTION_VARIANTS = {
+  PRIMARY: "primary",
+  OUTLINED: "outlined",
+  GHOST: "ghost",
+  INVERSE: "inverse",
+  NAV: "nav",
+  LANGUAGE: "language",
+  ICON: "icon",
+} as const;
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  children: ReactNode;
-  variant?: ButtonVariant;
+export type ActionVariant = (typeof ACTION_VARIANTS)[keyof typeof ACTION_VARIANTS];
+
+export const ACTION_SIZES = {
+  SM: "sm",
+  MD: "md",
+  LG: "lg",
+  ICON: "icon",
+} as const;
+
+export type ActionSize = (typeof ACTION_SIZES)[keyof typeof ACTION_SIZES];
+
+export const ACTION_ICON_POSITIONS = {
+  START: "start",
+  END: "end",
+} as const;
+
+export type ActionIconPosition = (typeof ACTION_ICON_POSITIONS)[keyof typeof ACTION_ICON_POSITIONS];
+
+export type SharedActionProps = {
+  children?: ReactNode;
+  icon?: ReactNode;
+  iconPosition?: ActionIconPosition;
+  label?: ReactNode;
+  size?: ActionSize;
+  variant?: ActionVariant;
 };
+
+export type ButtonProps = SharedActionProps & ButtonHTMLAttributes<HTMLButtonElement>;
+export type ActionLinkProps = SharedActionProps & AnchorHTMLAttributes<HTMLAnchorElement>;
 
 const baseClasses =
-  "button-feedback inline-flex items-center justify-center gap-2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:pointer-events-none disabled:opacity-50";
+  "action-control button-feedback inline-flex items-center justify-center gap-2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:opacity-50";
 
-const variantClasses: Record<ButtonVariant, string> = {
+const variantClasses: Record<ActionVariant, string> = {
   primary:
-    "button-primary bg-primary px-6 py-3 text-sm font-medium text-primary-foreground",
+    "button-primary bg-primary text-sm font-medium text-primary-foreground",
   outlined:
-    "button-outlined border border-foreground/20 px-5 py-2.5 text-sm font-medium text-foreground",
+    "button-outlined border border-foreground/20 text-sm font-medium text-foreground",
   ghost:
-    "button-ghost px-3 py-1.5 text-sm text-foreground",
-  nav: "button-nav px-3 py-1.5 text-sm text-muted-foreground",
+    "button-ghost text-sm text-foreground",
+  inverse: "button-inverse bg-background text-sm font-medium text-foreground",
+  nav: "button-nav text-sm text-muted-foreground",
   language:
-    "button-language mono px-2.5 py-1.5 text-[11px] uppercase tracking-widest text-muted-foreground",
-  icon: "button-icon button-icon-feedback size-8 p-0 text-muted-foreground",
+    "button-language mono text-[11px] uppercase tracking-widest text-muted-foreground",
+  icon: "button-icon button-icon-feedback p-0 text-muted-foreground",
 };
 
-export function Button({
-  children,
+const sizeClasses: Record<ActionSize, string> = {
+  sm: "px-3 py-1.5",
+  md: "px-5 py-2.5",
+  lg: "px-6 py-3",
+  icon: "size-8",
+};
+
+export function getActionClassName({
   className,
-  type = "button",
-  variant = "primary",
-  ...props
-}: ButtonProps) {
+  size = ACTION_SIZES.LG,
+  variant = ACTION_VARIANTS.PRIMARY,
+}: Pick<SharedActionProps, "size" | "variant"> & { className?: string }) {
   const hasExplicitDisplayClass = Boolean(
     className && /\b(hidden|block|inline-block|flex|inline-flex|grid|inline-grid)\b/.test(className),
   );
 
+  return [
+    hasExplicitDisplayClass ? baseClasses.replace("inline-flex ", "") : baseClasses,
+    variantClasses[variant],
+    sizeClasses[size],
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function ActionContent({ children, icon, iconPosition = ACTION_ICON_POSITIONS.END, label }: SharedActionProps) {
+  const actionLabel = label ?? children;
+  const iconSlot = icon ? <span aria-hidden="true" data-action-icon="true">{icon}</span> : null;
+
+  return (
+    <>
+      {iconPosition === ACTION_ICON_POSITIONS.START ? iconSlot : null}
+      {actionLabel ? <span data-action-label="true">{actionLabel}</span> : null}
+      {iconPosition === ACTION_ICON_POSITIONS.END ? iconSlot : null}
+    </>
+  );
+}
+
+export function Button({
+  children,
+  className,
+  icon,
+  iconPosition,
+  label,
+  size,
+  type = "button",
+  variant,
+  ...props
+}: ButtonProps) {
   return (
     <button
-      className={[
-        hasExplicitDisplayClass ? baseClasses.replace("inline-flex ", "") : baseClasses,
-        variantClasses[variant],
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={getActionClassName({ className, size, variant })}
+      data-action="button"
+      data-action-size={size ?? ACTION_SIZES.LG}
+      data-action-variant={variant ?? ACTION_VARIANTS.PRIMARY}
       type={type}
       {...props}
     >
-      {children}
+      <ActionContent icon={icon} iconPosition={iconPosition} label={label}>{children}</ActionContent>
     </button>
+  );
+}
+
+export function ActionLink({
+  children,
+  className,
+  icon,
+  iconPosition,
+  label,
+  size,
+  variant,
+  ...props
+}: ActionLinkProps) {
+  return (
+    <a
+      className={getActionClassName({ className, size, variant })}
+      data-action="link"
+      data-action-size={size ?? ACTION_SIZES.LG}
+      data-action-variant={variant ?? ACTION_VARIANTS.PRIMARY}
+      {...props}
+    >
+      <ActionContent icon={icon} iconPosition={iconPosition} label={label}>{children}</ActionContent>
+    </a>
   );
 }

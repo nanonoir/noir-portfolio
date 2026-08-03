@@ -12,7 +12,7 @@ export default defineConfig({
   },
   forbidOnly: true,
   fullyParallel: false,
-  globalTimeout: 120_000,
+  globalTimeout: 240_000,
   projects: [
     {
       name: "chromium-foundation",
@@ -32,10 +32,11 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `pnpm exec next dev -H 127.0.0.1 -p ${port}`,
+    command: `pnpm run build && pnpm exec next start -H 127.0.0.1 -p ${port}`,
     env: {
       ...testEnvironment,
-      NODE_ENV: "test",
+      NEXT_DIST_DIR: ".next-verify",
+      NODE_ENV: "production",
     },
     gracefulShutdown: {
       signal: "SIGTERM",
@@ -44,7 +45,7 @@ export default defineConfig({
     reuseExistingServer: false,
     stderr: "pipe",
     stdout: "pipe",
-    timeout: 30_000,
+    timeout: 120_000,
     url: baseURL,
   },
   workers: 1,

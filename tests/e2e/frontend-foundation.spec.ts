@@ -107,6 +107,7 @@ test.describe("@wu1 @foundation frontend foundation", () => {
     await expect(button).toBeVisible();
     await button.focus();
     await expect(button).toBeFocused();
+    await button.scrollIntoViewIfNeeded();
 
     const box = await button.boundingBox();
     expect(box).not.toBeNull();
@@ -119,6 +120,81 @@ test.describe("@wu1 @foundation frontend foundation", () => {
     await page.mouse.up();
 
     expect(transform).not.toBe("none");
+  });
+
+  test("keeps the shared action contract semantic and perceptible", async ({ page }) => {
+    await openHomepage(page);
+
+    const actionContract = await page.evaluate(() => {
+      const button = document.createElement("button");
+      button.className = "action-control button-feedback button-primary px-6 py-3";
+      button.dataset.action = "button";
+      button.textContent = "Primary action";
+
+      const link = document.createElement("a");
+      link.className = "action-control button-feedback button-outlined px-5 py-2.5";
+      link.dataset.action = "link";
+      link.href = "#contract";
+      link.id = "foundation-outlined-contract";
+      link.textContent = "Outlined action";
+
+      const ghost = document.createElement("a");
+      ghost.className = "action-control button-feedback button-ghost px-3 py-1.5";
+      ghost.dataset.action = "link";
+      ghost.href = "#ghost";
+      ghost.id = "foundation-ghost-contract";
+      ghost.textContent = "Ghost action";
+
+      const disabled = document.createElement("button");
+      disabled.disabled = true;
+      disabled.textContent = "Disabled action";
+
+      document.body.append(button, link, ghost, disabled);
+      const result = {
+        buttonCursor: getComputedStyle(button).cursor,
+        buttonTag: button.tagName,
+        disabledCursor: getComputedStyle(disabled).cursor,
+        linkCursor: getComputedStyle(link).cursor,
+        linkTag: link.tagName,
+        outlineStart: getComputedStyle(link, "::before").transform,
+        ghostStart: getComputedStyle(ghost, "::after").transform,
+      };
+      disabled.remove();
+      return result;
+    });
+
+    expect(actionContract).toMatchObject({
+      buttonCursor: "pointer",
+      buttonTag: "BUTTON",
+      disabledCursor: "not-allowed",
+      linkCursor: "pointer",
+      linkTag: "A",
+    });
+    expect(actionContract.outlineStart).toBe("matrix(0, 0, 0, 1, 0, 0)");
+    expect(actionContract.ghostStart).toBe("matrix(0, 0, 0, 1, 0, 0)");
+
+    const outlined = page.locator("#foundation-outlined-contract");
+    const ghost = page.locator("#foundation-ghost-contract");
+    await outlined.hover();
+    await page.waitForTimeout(260);
+    await expect(outlined).toHaveCSS("color", await page.locator("body").evaluate((element) => getComputedStyle(element).backgroundColor));
+    expect(await outlined.evaluate((element) => getComputedStyle(element, "::before").transform)).toBe("matrix(1, 0, 0, 1, 0, 0)");
+    await ghost.hover();
+    await page.waitForTimeout(260);
+    expect(await ghost.evaluate((element) => getComputedStyle(element, "::after").transform)).toBe("matrix(1, 0, 0, 1, 0, 0)");
+    await outlined.evaluate((element) => element.remove());
+    await ghost.evaluate((element) => element.remove());
+
+    const primary = page.locator("button.button-primary").filter({ visible: true }).first();
+    await expect(primary).toBeEnabled();
+    await primary.evaluate((element) => {
+      element.dataset.foundationClickCount = "0";
+      element.addEventListener("click", () => {
+        element.dataset.foundationClickCount = String(Number(element.dataset.foundationClickCount) + 1);
+      }, { once: true });
+    });
+    await primary.click();
+    expect(await primary.evaluate((element) => element.dataset.foundationClickCount)).toBe("1");
   });
 
   test("exposes accessible status-token contrast in both themes", async ({ page }) => {
@@ -181,9 +257,8 @@ test.describe("@wu1 @foundation frontend foundation", () => {
 });
 
 test.describe("@wu1 @foundation reduced motion", () => {
-  test.use({ reducedMotion: "reduce" });
-
   test("removes press movement without removing focus", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await openHomepage(page);
 
     const button = page.locator("button.button-feedback").filter({ visible: true }).first();
@@ -201,5 +276,33 @@ test.describe("@wu1 @foundation reduced motion", () => {
     await page.mouse.up();
 
     expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(transform);
+  });
+
+  test("suppresses action sweeps while preserving focus", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openHomepage(page);
+
+    const reducedMotionStyles = await page.evaluate(() => {
+      const outlined = document.createElement("a");
+      outlined.className = "action-control button-feedback button-outlined px-5 py-2.5";
+      outlined.href = "#outlined";
+      const ghost = document.createElement("a");
+      ghost.className = "action-control button-feedback button-ghost px-3 py-1.5";
+      ghost.href = "#ghost";
+      document.body.append(outlined, ghost);
+      outlined.focus();
+      const result = {
+        focusVisible: document.activeElement === outlined,
+        ghostSweep: getComputedStyle(ghost, "::after").transform,
+        outlinedSweep: getComputedStyle(outlined, "::before").transform,
+      };
+      outlined.remove();
+      ghost.remove();
+      return result;
+    });
+
+    expect(reducedMotionStyles.focusVisible).toBe(true);
+    expect(reducedMotionStyles.outlinedSweep).toBe("matrix(0, 0, 0, 1, 0, 0)");
+    expect(reducedMotionStyles.ghostSweep).toBe("matrix(0, 0, 0, 1, 0, 0)");
   });
 });

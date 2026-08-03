@@ -24,7 +24,7 @@
   --shadow-pill: 0 10px 40px -12px rgb(0 0 0 / 0.18),
     0 2px 8px -2px rgb(0 0 0 / 0.06);
   --duration-press: 140ms;
-  --duration-interactive: 200ms;
+  --duration-interactive: 240ms;
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
   --space-section-heading-end: 4rem;
   --space-section-heading-gap: 1.75rem;
@@ -136,6 +136,9 @@ html {
 }
 
 .button-feedback {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   transition-property: background-color, border-color, color, opacity, transform;
   transition-duration: var(--duration-interactive);
   transition-timing-function: var(--ease-emphasized);
@@ -148,6 +151,53 @@ html {
 
 .button-icon-feedback:active {
   transform: scale(0.95);
+}
+
+:where(button:enabled),
+:where(a[data-action]) {
+  cursor: pointer;
+}
+
+:where(button:disabled),
+:where([data-action][aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+.action-control > [data-action-label],
+.action-control > [data-action-icon] {
+  position: relative;
+  z-index: 1;
+}
+
+.action-control > [data-action-icon] {
+  display: inline-flex;
+}
+
+.button-outlined::before,
+.button-ghost::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.button-outlined::before {
+  inset: 0;
+  z-index: 0;
+  background: var(--foreground);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--duration-interactive) var(--ease-emphasized);
+}
+
+.button-ghost::after {
+  right: 0.75rem;
+  bottom: 0.35rem;
+  left: 0.75rem;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--duration-interactive) var(--ease-emphasized);
 }
 
 .section-heading-rhythm {
@@ -164,12 +214,22 @@ html {
 
 @media (hover: hover) and (pointer: fine) {
   .button-primary:hover {
-    opacity: 0.9;
+    background: color-mix(in oklab, var(--primary) 88%, var(--primary-foreground));
+    transform: translateY(-1px);
+  }
+
+  .button-inverse:hover {
+    background: color-mix(in oklab, var(--background) 88%, var(--foreground));
+    transform: translateY(-1px);
   }
 
   .button-outlined:hover {
-    background: var(--foreground);
     color: var(--background);
+  }
+
+  .button-outlined:hover::before,
+  .button-ghost:hover::after {
+    transform: scaleX(1);
   }
 
   .button-ghost:hover,
@@ -180,13 +240,24 @@ html {
     color: var(--foreground);
   }
 
-  .button-primary > :is(img, svg)[aria-hidden="true"] {
+  .button-primary > [data-action-icon],
+  .button-inverse > [data-action-icon],
+  .button-primary > :is(img, svg)[aria-hidden="true"],
+  .button-inverse > :is(img, svg)[aria-hidden="true"] {
     transition: transform var(--duration-interactive) var(--ease-emphasized);
   }
 
-  .button-primary:hover > :is(img, svg)[aria-hidden="true"] {
-    transform: translate(2px, -2px);
+  .button-primary:hover > [data-action-icon],
+  .button-inverse:hover > [data-action-icon],
+  .button-primary:hover > :is(img, svg)[aria-hidden="true"],
+  .button-inverse:hover > :is(img, svg)[aria-hidden="true"] {
+    transform: translate(4px, -2px);
   }
+}
+
+.button-primary:active,
+.button-inverse:active {
+  transform: scale(0.97);
 }
 
 @keyframes orbit-cw {
@@ -273,6 +344,14 @@ html {
   .button-feedback:active,
   .button-icon-feedback:active {
     transform: none !important;
+  }
+
+  .button-outlined::before,
+  .button-ghost::after,
+  .button-outlined:hover::before,
+  .button-ghost:hover::after {
+    transition: none !important;
+    transform: scaleX(0) !important;
   }
 }
 

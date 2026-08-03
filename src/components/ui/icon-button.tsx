@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { ACTION_SIZES, ACTION_VARIANTS, Button } from "./button";
 
 type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -13,18 +14,14 @@ export function IconButton({
   ...props
 }: IconButtonProps) {
   return (
-    <button
+    <Button
       aria-label={label}
-      className={[
-        "grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:pointer-events-none disabled:opacity-50",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={className}
+      icon={children}
+      size={ACTION_SIZES.ICON}
       type={type}
+      variant={ACTION_VARIANTS.ICON}
       {...props}
-    >
-      {children}
-    </button>
+    />
   );
 }

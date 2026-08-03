@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useId, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { useLanguage } from "@/components/providers/language-provider";
 import { assets, projects, type Project, type ProjectMedia } from "@/data/content";
 import { Chip, SectionHeading, SectionShell } from "@/components/ui";
@@ -37,21 +37,7 @@ function ProjectAction({ link }: { link: Project["links"][number] }) {
   );
 }
 
-function getMediaFrameClassName(aspect: ProjectMedia["aspect"]) {
-  const base = "relative mx-auto overflow-hidden rounded-[20px] border border-border bg-surface";
-
-  if (aspect === "mobile") {
-    return `${base} aspect-[9/19] min-h-[28rem] w-full max-w-[17rem] sm:max-w-[18rem]`;
-  }
-
-  if (aspect === "desktop-wide") {
-    return `${base} aspect-video min-h-56 w-full`;
-  }
-
-  return `${base} aspect-[16/10] min-h-64 w-full`;
-}
-
-function VideoFrame({ media, paused }: { media: ProjectMedia; paused: boolean }) {
+function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMediaError: () => void; paused: boolean }) {
   const { language } = useLanguage();
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -92,33 +78,34 @@ function VideoFrame({ media, paused }: { media: ProjectMedia; paused: boolean })
   }, [media.src, paused]);
 
   return (
-    <div className={getMediaFrameClassName(media.aspect)}>
-      <video
-        aria-label={media.alt[language]}
-        autoPlay={!paused}
-        className="size-full object-contain"
-        loop
-        muted
-        playsInline
-        preload="auto"
-        ref={videoRef}
-        src={media.src}
-      />
-    </div>
+    <video
+      aria-label={media.alt[language]}
+      autoPlay={!paused}
+      className="size-full object-contain"
+      loop
+      muted
+      onError={onMediaError}
+      playsInline
+      preload="auto"
+      ref={videoRef}
+      src={media.src}
+    />
   );
 }
 
-function MediaFrame({ media, paused }: { media: ProjectMedia; paused: boolean }) {
-  const { language } = useLanguage();
+function MediaFrame({ media, onMediaError, paused }: { media?: ProjectMedia; onMediaError: () => void; paused: boolean }) {
+  const { dictionary, language } = useLanguage();
+
+  if (!media) {
+    return <p className="max-w-56 text-center text-sm leading-6 text-muted-foreground">{dictionary.projects.videoPlaceholder}</p>;
+  }
 
   if (media.type === "video") {
-    return <VideoFrame media={media} paused={paused} />;
+    return <VideoFrame media={media} onMediaError={onMediaError} paused={paused} />;
   }
 
   return (
-    <div className={getMediaFrameClassName(media.aspect)}>
-      <Image alt={media.alt[language]} className="object-contain" fill sizes="(min-width: 1024px) 520px, 100vw" src={media.src} />
-    </div>
+    <Image alt={media.alt[language]} className="object-contain" fill onError={onMediaError} sizes="(min-width: 1024px) 520px, 100vw" src={media.src} />
   );
 }
 
@@ -126,19 +113,44 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
   const { dictionary } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [mediaFailed, setMediaFailed] = useState(false);
+  const pointerStartRef = useRef<{ id: number; x: number } | null>(null);
   const currentMedia = project.media[activeIndex];
   const hasMultipleMedia = project.media.length > 1;
   const isVideoMedia = currentMedia.type === "video";
 
   function goToMedia(nextIndex: number) {
+    if (!project.media.length) return;
     setActiveIndex((nextIndex + project.media.length) % project.media.length);
+    setMediaFailed(false);
     setPaused(false);
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" || !hasMultipleMedia) return;
+    pointerStartRef.current = { id: event.pointerId, x: event.clientX };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    const pointerStart = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!pointerStart || pointerStart.id !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+
+    const distance = event.clientX - pointerStart.x;
+    if (Math.abs(distance) < 40) return;
+    goToMedia(activeIndex + (distance < 0 ? 1 : -1));
   }
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <MediaFrame media={currentMedia} paused={paused || !active} />
+      <div className="relative mx-auto flex aspect-[4/5] w-full max-w-xl items-center justify-center overflow-hidden rounded-[20px] border border-border bg-surface lg:aspect-[16/11]" onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
+        {mediaFailed ? (
+          <p className="max-w-56 text-center text-sm leading-6 text-muted-foreground">{dictionary.projects.videoPlaceholder}</p>
+        ) : (
+          <MediaFrame media={currentMedia} onMediaError={() => setMediaFailed(true)} paused={paused || !active} />
+        )}
 
         {isVideoMedia ? (
           <button
@@ -180,21 +192,7 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
         ) : null}
       </div>
 
-      {hasMultipleMedia ? (
-        <div className="flex justify-center gap-2">
-          {project.media.map((media, index) => (
-            <button
-              aria-label={`${dictionary.projects.title} ${index + 1}`}
-              className={`size-2.5 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground ${
-                index === activeIndex ? "bg-foreground" : "bg-border hover:bg-muted-foreground"
-              }`}
-              key={`${project.id}-${media.type}-${index}`}
-              onClick={() => goToMedia(index)}
-              type="button"
-            />
-          ))}
-        </div>
-      ) : null}
+      {hasMultipleMedia ? <p aria-live="polite" className="mono whitespace-nowrap text-center text-[11px] tracking-[0.12em] text-muted-foreground uppercase">{dictionary.projects.mediaProgress.replace("{current}", String(activeIndex + 1)).replace("{total}", String(project.media.length))}</p> : null}
     </div>
   );
 }

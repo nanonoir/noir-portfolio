@@ -106,7 +106,6 @@ export function Hero() {
     setMetricVisible(true);
     setMetricCount(3);
     setMetricCharacters(finalMetricText.length);
-    hasAnimatedRef.current = true;
 
     timeouts.push(
       window.setTimeout(() => {
@@ -135,6 +134,9 @@ export function Hero() {
                 timeouts.push(
                   window.setTimeout(() => {
                     setDescriptionVisible(true);
+                    // Mark animation complete only after the full timeline finishes,
+                    // so StrictMode double-invoke and language changes correctly skip replay.
+                    hasAnimatedRef.current = true;
                     timeouts.push(window.setTimeout(() => setIllustrationVisible(true), ILLUSTRATION_DELAY_MS));
                   }, DESCRIPTION_DELAY_MS),
                 );

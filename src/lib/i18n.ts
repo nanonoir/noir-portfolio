@@ -69,6 +69,7 @@ export type Dictionary = {
     pauseLabel: string;
     previousMediaLabel: string;
     nextMediaLabel: string;
+    mediaProgress: string;
   };
   services: {
     label: string;
@@ -367,6 +368,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       pauseLabel: "Pausar media",
       previousMediaLabel: "Ver media anterior",
       nextMediaLabel: "Ver media siguiente",
+      mediaProgress: "Media {current} de {total}",
     },
     services: {
       label: "— SERVICIOS",
@@ -669,6 +671,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       pauseLabel: "Pause media",
       previousMediaLabel: "View previous media",
       nextMediaLabel: "View next media",
+      mediaProgress: "Media {current} of {total}",
     },
     services: {
       label: "— SERVICES",

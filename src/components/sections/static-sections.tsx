@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { MeetingModal } from "@/components/forms/meeting-modal";
 import { generalContactFormSchema, type GeneralContactFormValues } from "@/components/forms/schemas";
@@ -31,7 +31,7 @@ function translateFormError(dictionary: ReturnType<typeof useLanguage>["dictiona
 function AboutDesktopIllustration({ profileAlt }: { profileAlt: string }) {
   return (
     // Compact column: max-w-sm keeps it from being too large on lg
-    <div className="relative mx-auto hidden aspect-square w-full max-w-sm lg:block">
+    <div className="about-orbit relative mx-auto hidden aspect-square w-full max-w-sm lg:block">
       {/* Outer ring track */}
       <div className="absolute inset-0 rounded-full border border-border/50" />
       {/* Inner ring track */}
@@ -119,7 +119,7 @@ function AboutDesktopIllustration({ profileAlt }: { profileAlt: string }) {
 // Responsive card shown on tablet/mobile (hidden on lg+)
 function AboutResponsiveCard({ profileAlt }: { profileAlt: string }) {
   return (
-    <div className="lg:hidden">
+    <div className="about-static lg:hidden">
       <CardSurface className="flex items-center gap-5 py-6 hover:border-border">
         {/* Circular B&W profile */}
         <div className="size-28 shrink-0 overflow-hidden rounded-full border border-border">
@@ -196,36 +196,36 @@ function AboutSection() {
           </CardSurface>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              className="group inline-flex items-center justify-center gap-2 rounded-full border border-foreground/20 px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+            <Button
+              icon={
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="size-4 dark:invert"
+                  height={16}
+                  src="/handwritten-icons/diploma.svg"
+                  width={16}
+                />
+              }
+              label={about.diplomaCta}
               onClick={() => setOpenDocument("diploma")}
-              type="button"
-            >
-              {about.diplomaCta}
-              <Image
-                alt=""
-                aria-hidden="true"
-                className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
-                height={16}
-                src="/handwritten-icons/diploma.svg"
-                width={16}
-              />
-            </button>
-            <button
-              className="group inline-flex items-center justify-center gap-2 rounded-full border border-foreground/20 px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+              variant="outlined"
+            />
+            <Button
+              icon={
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="size-4 dark:invert"
+                  height={16}
+                  src={assets.icons.view}
+                  width={16}
+                />
+              }
+              label={about.resumeCta}
               onClick={() => setOpenDocument("resume")}
-              type="button"
-            >
-              {about.resumeCta}
-              <Image
-                alt=""
-                aria-hidden="true"
-                className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
-                height={16}
-                src={assets.icons.view}
-                width={16}
-              />
-            </button>
+              variant="outlined"
+            />
           </div>
 
           <div className="mt-8">
@@ -281,7 +281,7 @@ function ServicesSection() {
       <SectionHeading description={t.description} label={t.label} title={t.title} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {services.map((service) => (
-          <CardSurface className="group flex min-h-72 flex-col" key={service.id}>
+          <CardSurface className="service-card group flex min-h-72 flex-col" key={service.id}>
             <span className="grid size-10 place-items-center rounded-2xl border border-border bg-surface transition-colors group-hover:bg-foreground">
               <Image
                 alt=""
@@ -294,38 +294,42 @@ function ServicesSection() {
             </span>
             <h3 className="mt-6 text-base font-semibold tracking-[-0.01em] text-foreground">{service.title[language]}</h3>
             <p className="mt-4 flex-1 text-sm leading-6 text-body-foreground">{service.description[language]}</p>
+            <p className="service-outcome mt-4 text-sm leading-6 text-muted-foreground">{service.details.result[language]}</p>
             {/* Divider above CTA row */}
             <div className="hairline-t mt-6 pt-4 flex items-center justify-between gap-4">
-              <button
-                className="mono inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              <Button
+                icon={
+                  <Image
+                    alt=""
+                    aria-hidden="true"
+                    className="size-3.5 dark:invert"
+                    height={14}
+                    src={assets.icons.about}
+                    width={14}
+                  />
+                }
+                iconPosition="start"
+                label={t.moreInfo}
                 onClick={() => setInfoService(service)}
-                type="button"
-              >
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  className="size-3.5 dark:invert"
-                  height={14}
-                  src={assets.icons.about}
-                  width={14}
-                />
-                {t.moreInfo}
-              </button>
-              <button
-                className="mono inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                size="sm"
+                variant="ghost"
+              />
+              <Button
+                icon={
+                  <Image
+                    alt=""
+                    aria-hidden="true"
+                    className="size-3.5 dark:invert"
+                    height={14}
+                    src={assets.icons.request}
+                    width={14}
+                  />
+                }
+                label={t.request}
                 onClick={() => setRequestService(service)}
-                type="button"
-              >
-                {t.request}
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  className="size-3.5 dark:invert"
-                  height={14}
-                  src={assets.icons.request}
-                  width={14}
-                />
-              </button>
+                size="sm"
+                variant="ghost"
+              />
             </div>
           </CardSurface>
         ))}
@@ -337,22 +341,13 @@ function ServicesSection() {
           <h3 className="text-2xl font-semibold tracking-[-0.03em] text-background">{t.customTitle}</h3>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-background/70">{t.customDescription}</p>
         </div>
-        <button
-          aria-label={t.request}
-          className="group inline-flex items-center justify-center gap-2 rounded-full border border-background/30 px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
+        <Button
+          className="w-full md:w-auto"
+          icon={<Image alt="" aria-hidden="true" className="size-3.5 dark:invert" height={14} src={assets.icons.request} width={14} />}
+          label={t.request}
           onClick={() => setRequestService(customService)}
-          type="button"
-        >
-          {t.request}
-          <Image
-            alt=""
-            aria-hidden="true"
-            className="size-3.5 invert transition group-hover:invert-0 dark:invert-0 dark:group-hover:invert"
-            height={14}
-            src={assets.icons.request}
-            width={14}
-          />
-        </button>
+          variant="inverse"
+        />
       </div>
       <ServiceInfoModal
         closeLabel={dictionary.modals.closeLabel}
@@ -422,6 +417,8 @@ function ContactSection() {
   const [toastMessage, setToastMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionBinding, setSubmissionBinding] = useState<{ fingerprint: string; key: string } | null>(null);
+  const scheduleBannerRef = useRef<HTMLDivElement | null>(null);
+  const [isContactIllustrationVisible, setIsContactIllustrationVisible] = useState(false);
   const {
     formState: { errors },
     handleSubmit,
@@ -442,6 +439,24 @@ function ContactSection() {
     const timeout = window.setTimeout(() => setToastVisible(false), 4500);
     return () => window.clearTimeout(timeout);
   }, [toastVisible]);
+
+  useEffect(() => {
+    const banner = scheduleBannerRef.current;
+    if (!banner) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsContactIllustrationVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.45 },
+    );
+
+    observer.observe(banner);
+    return () => observer.disconnect();
+  }, []);
 
   async function onSubmit(values: GeneralContactFormValues) {
     if (isSubmitting) return;
@@ -524,7 +539,8 @@ function ContactSection() {
               ["WhatsApp", contactLinks.whatsApp, "/handwritten-icons/whatsapp.svg"],
             ].map(([label, href, icon]) => (
               <a
-                className="flex items-center justify-between gap-4 rounded-[20px] border border-border bg-card px-5 py-4 text-sm text-foreground transition-colors hover:border-border-strong"
+                className="flex items-center justify-between gap-4 rounded-[20px] border border-border bg-card px-5 py-4 text-sm text-foreground transition-colors hover:border-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+                data-action="link"
                 href={href}
                 key={label}
                 rel="noreferrer"
@@ -540,26 +556,38 @@ function ContactSection() {
           </div>
         </aside>
       </div>
-      <div className="mt-8 rounded-[24px] border border-foreground bg-foreground px-6 py-5 shadow-sm md:flex md:items-center md:justify-between md:gap-8 md:px-7">
-        <div>
-          <p className="text-lg font-semibold tracking-[-0.02em] text-background">{meeting.title}</p>
-          <p className="mt-2 text-base leading-7 text-background/70 md:text-sm md:leading-6">{meeting.subtitle}</p>
-        </div>
-        <button
-          className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-background/30 bg-background px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-background/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background md:mt-0 md:w-auto md:text-sm"
-          onClick={() => setMeetingOpen(true)}
-          type="button"
-        >
-          {meeting.cta}
-          <Image
-            alt=""
+      <div className="mt-8" ref={scheduleBannerRef}>
+        <div className="relative">
+          <div className="rounded-[24px] border border-foreground bg-foreground px-6 py-5 shadow-sm md:flex md:items-center md:justify-between md:gap-8 md:px-7">
+            <div>
+              <p className="text-lg font-semibold tracking-[-0.02em] text-background">{meeting.title}</p>
+              <p className="mt-2 text-base leading-7 text-background/70 md:text-sm md:leading-6">{meeting.subtitle}</p>
+            </div>
+            <Button
+              className="mt-5 w-full md:mt-0 md:w-auto"
+              icon={
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="size-4 dark:invert"
+                  height={16}
+                  src="/handwritten-icons/phone.svg"
+                  width={16}
+                />
+              }
+              label={meeting.cta}
+              onClick={() => setMeetingOpen(true)}
+              variant="inverse"
+            />
+          </div>
+          <div
             aria-hidden="true"
-            className="size-4 dark:invert"
-            height={16}
-            src="/handwritten-icons/calendar.svg"
-            width={16}
-          />
-        </button>
+            className="contact-illustration-reveal pointer-events-none absolute top-[calc(50%-1.75rem)] left-[calc(100%-1.25rem)] hidden h-[175px] w-[150px] -translate-y-1/2 min-[1460px]:block"
+            data-contact-illustration-visible={isContactIllustrationVisible}
+          >
+            <Image alt="" className="h-full w-full dark:invert" height={175} src="/contactIlustration.svg" width={150} />
+          </div>
+        </div>
       </div>
       <MeetingModal
         closeLabel={dictionary.modals.closeLabel}

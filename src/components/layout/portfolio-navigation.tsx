@@ -182,8 +182,8 @@ function ResumeButton({ className = "", onOpen }: { className?: string; onOpen: 
 
   return (
     <Button
-      className={`gap-1.5 border border-foreground/20 px-3 py-1.5 text-foreground ${className}`}
-      icon={<Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={assets.icons.view} width={16} />}
+      className={`resume-action border border-foreground/20 px-5 py-1.5 text-foreground ${className}`}
+      icon={<Image alt="" aria-hidden="true" className="size-4 shrink-0 opacity-70 dark:invert" height={16} src={assets.icons.view} width={16} />}
       label={dictionary.navigation.resume}
       onClick={onOpen}
       size="sm"

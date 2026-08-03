@@ -503,18 +503,15 @@ function ContactSection() {
           </div>
           {/* Submit button centered below the form */}
           <div className="flex justify-center">
-            <Button type="submit">
-              {contact.submit}
-              {/* airplane icon: white on dark primary button in light mode, dark on light primary button in dark mode */}
-              <Image
-                alt=""
-                aria-hidden="true"
-                className="size-4 invert dark:invert-0"
-                height={16}
-                src={assets.icons.airplane}
-                width={16}
-              />
-            </Button>
+            <Button
+              icon={
+                // airplane icon: white on dark primary button in light mode, dark on light primary button in dark mode
+                // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
+                <img alt="" aria-hidden="true" className="size-4 invert dark:invert-0" src={assets.icons.airplane} />
+              }
+              label={contact.submit}
+              type="submit"
+            />
           </div>
         </form>
 

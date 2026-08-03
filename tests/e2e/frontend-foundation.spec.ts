@@ -306,3 +306,178 @@ test.describe("@wu1 @foundation reduced motion", () => {
     expect(reducedMotionStyles.ghostSweep).toBe("matrix(0, 0, 0, 1, 0, 0)");
   });
 });
+
+test.describe("@wu2 @layout icon-label horizontal layout", () => {
+  test("drawer nav items render icon and label side-by-side (horizontal)", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openHomepage(page);
+
+    // Open the mobile drawer
+    const menuButton = page.getByRole("button", { name: /menu|menú/i });
+    await expect(menuButton).toBeVisible();
+    await menuButton.click();
+
+    // Wait for drawer to open
+    await page.waitForTimeout(300);
+    const drawerDialog = page.locator('[role="dialog"]');
+    await expect(drawerDialog).toBeVisible();
+
+    // Check all drawer nav items have horizontal (side-by-side) icon and label layout
+    const drawerItems = page.locator('[data-drawer-item="true"]');
+    const count = await drawerItems.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const item = drawerItems.nth(i);
+      const icon = item.locator("[data-action-icon]");
+      const label = item.locator("[data-action-label]");
+
+      const iconBox = await icon.boundingBox();
+      const labelBox = await label.boundingBox();
+
+      expect(iconBox).not.toBeNull();
+      expect(labelBox).not.toBeNull();
+
+      // In a horizontal layout, the icon and label tops are within 20px of each other
+      // (same row), and the icon is to the LEFT of the label
+      const verticalDiff = Math.abs((iconBox!.y + iconBox!.height / 2) - (labelBox!.y + labelBox!.height / 2));
+      expect(verticalDiff).toBeLessThan(20);
+      expect(iconBox!.x).toBeLessThan(labelBox!.x);
+    }
+  });
+
+  test("desktop Services nav item renders icon and label side-by-side", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHomepage(page);
+
+    // Find the Services nav link (outlined variant with an icon)
+    const servicesLink = page.locator('[data-action-variant="outlined"]').filter({ hasText: /service|servicio/i }).first();
+    await expect(servicesLink).toBeVisible();
+
+    const icon = servicesLink.locator("[data-action-icon]");
+    const label = servicesLink.locator("[data-action-label]");
+
+    await expect(icon).toBeVisible();
+    await expect(label).toBeVisible();
+
+    const iconBox = await icon.boundingBox();
+    const labelBox = await label.boundingBox();
+
+    expect(iconBox).not.toBeNull();
+    expect(labelBox).not.toBeNull();
+
+    // Icon and label must be horizontally aligned (same row)
+    const verticalDiff = Math.abs((iconBox!.y + iconBox!.height / 2) - (labelBox!.y + labelBox!.height / 2));
+    expect(verticalDiff).toBeLessThan(10);
+  });
+
+  test("hero CTAs render label before icon (icon at END)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHomepage(page);
+
+    // All hero CTA links should have the label to the LEFT of the icon (icon at END position)
+    const heroCtas = page.locator("main section").first().locator("[data-action]");
+    const count = await heroCtas.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const cta = heroCtas.nth(i);
+      const icon = cta.locator("[data-action-icon]");
+      const label = cta.locator("[data-action-label]");
+
+      const hasIcon = await icon.count();
+      if (hasIcon === 0) continue;
+
+      const iconBox = await icon.boundingBox();
+      const labelBox = await label.boundingBox();
+
+      if (!iconBox || !labelBox) continue;
+
+      // Label must be to the LEFT of the icon (label first, icon at END)
+      expect(labelBox.x).toBeLessThan(iconBox.x);
+    }
+  });
+
+  test("contact form submit button (Enviar) renders with explicit icon slot, label and icon horizontally aligned", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHomepage(page);
+
+    // Scroll to contact section
+    await page.locator("#contact").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+
+    const submitButton = page.locator("#contact button[type='submit']");
+    await expect(submitButton).toBeVisible();
+
+    const icon = submitButton.locator("[data-action-icon]");
+    const label = submitButton.locator("[data-action-label]");
+
+    await expect(icon).toBeVisible();
+    await expect(label).toBeVisible();
+
+    const iconBox = await icon.boundingBox();
+    const labelBox = await label.boundingBox();
+
+    expect(iconBox).not.toBeNull();
+    expect(labelBox).not.toBeNull();
+
+    // Icon and label are horizontally aligned (same row, label before icon at END)
+    const verticalDiff = Math.abs((iconBox!.y + iconBox!.height / 2) - (labelBox!.y + labelBox!.height / 2));
+    expect(verticalDiff).toBeLessThan(10);
+    expect(labelBox!.x).toBeLessThan(iconBox!.x);
+  });
+
+  test("outlined button icon remains visible on hover (not hidden by fill)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHomepage(page);
+
+    // Inject an outlined action link with a real [data-action-icon] img into the live page,
+    // then hover it with the mouse so the @media (hover: hover) rule applies.
+    await page.evaluate(() => {
+      const link = document.createElement("a");
+      link.id = "wu2-outlined-hover-icon-test";
+      link.className = "action-control button-feedback button-outlined px-5 py-2.5";
+      link.dataset.action = "link";
+      link.href = "#test-icon-visibility";
+      link.style.cssText = "position:fixed;top:10px;left:10px;z-index:9999;";
+
+      const iconSpan = document.createElement("span");
+      iconSpan.dataset.actionIcon = "true";
+      iconSpan.style.display = "inline-flex";
+
+      const img = document.createElement("img");
+      img.id = "wu2-outlined-hover-icon-img";
+      img.alt = "";
+      img.src = "/handwritten-icons/card.svg";
+      img.className = "size-4";
+      iconSpan.appendChild(img);
+
+      const labelSpan = document.createElement("span");
+      labelSpan.dataset.actionLabel = "true";
+      labelSpan.textContent = "Test";
+      link.append(iconSpan, labelSpan);
+      document.body.appendChild(link);
+    });
+
+    const testLink = page.locator("#wu2-outlined-hover-icon-test");
+    const testImg = page.locator("#wu2-outlined-hover-icon-img");
+    await expect(testLink).toBeVisible();
+
+    // Baseline filter before hover
+    const filterBefore = await testImg.evaluate((el) => getComputedStyle(el).filter);
+
+    // Hover the link — triggers the @media (hover: hover) rule
+    await testLink.hover();
+    await page.waitForTimeout(300);
+
+    const filterAfter = await testImg.evaluate((el) => getComputedStyle(el).filter);
+
+    // Clean up
+    await page.evaluate(() => document.getElementById("wu2-outlined-hover-icon-test")?.remove());
+
+    // After hover the filter must be invert(1) (the icon flips to stay visible on foreground fill)
+    // Before hover it should be none (no filter applied)
+    expect(filterBefore).toBe("none");
+    expect(filterAfter).toBe("invert(1)");
+  });
+});

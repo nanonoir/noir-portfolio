@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
+import { ActionLink } from "@/components/ui";
 
 const TYPE_SPEED_MS = 26;
 const LABEL_DELAY_MS = 180;
 const HEADLINE_DELAY_MS = 220;
 const DESCRIPTION_DELAY_MS = 180;
 const ILLUSTRATION_DELAY_MS = 120;
-const CTA_DELAY_MS = 160;
-const METRIC_STEP_MS = 120;
 
 function useReducedMotion() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -64,44 +63,6 @@ function renderTypedHeadline(headline: string, italicFragment: string, visibleCh
   );
 }
 
-function HeroCta({
-  href,
-  children,
-  variant,
-  icon,
-  iconPosition = "right",
-}: {
-  href: string;
-  children: string;
-  variant: "primary" | "outlined";
-  icon?: string;
-  iconPosition?: "left" | "right";
-}) {
-  const variantClassName = {
-    primary: "bg-primary text-primary-foreground hover:opacity-90",
-    outlined: "border border-foreground/20 text-foreground hover:bg-foreground hover:text-background",
-  }[variant];
-  const iconClassName = {
-    primary: "size-4 shrink-0 invert dark:invert-0",
-    outlined: "size-4 shrink-0 transition group-hover:invert dark:invert dark:group-hover:invert-0",
-  }[variant];
-  const iconElement = icon ? (
-    // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
-    <img alt="" aria-hidden="true" className={iconClassName} src={icon} />
-  ) : null;
-
-  return (
-    <a
-      className={`group inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground ${variantClassName}`}
-      href={href}
-    >
-      {iconPosition === "left" ? iconElement : null}
-      {children}
-      {iconPosition === "right" ? iconElement : null}
-    </a>
-  );
-}
-
 export function Hero() {
   const { dictionary } = useLanguage();
   const prefersReducedMotion = useReducedMotion();
@@ -113,6 +74,7 @@ export function Hero() {
   const [metricVisible, setMetricVisible] = useState(false);
   const [metricCount, setMetricCount] = useState(0);
   const [metricCharacters, setMetricCharacters] = useState(0);
+  const hasAnimatedRef = useRef(false);
   const hero = dictionary.hero;
   const finalMetricText = useMemo(() => metricText(hero.metric, hero.metricPrefix), [hero.metric, hero.metricPrefix]);
 
@@ -120,100 +82,72 @@ export function Hero() {
     const timeouts: number[] = [];
     const intervals: number[] = [];
 
-    const startAnimation = () => {
-      setLabelCharacters(prefersReducedMotion ? hero.label.length : 0);
-      setHeadlineCharacters(prefersReducedMotion ? hero.headline.length : 0);
-      setDescriptionVisible(prefersReducedMotion);
-      setIllustrationVisible(prefersReducedMotion);
-      setCtasVisible(prefersReducedMotion);
-      setMetricVisible(prefersReducedMotion);
-      setMetricCount(prefersReducedMotion ? 3 : 0);
-      setMetricCharacters(prefersReducedMotion ? finalMetricText.length : 0);
+    const showFinalContent = () => {
+      setLabelCharacters(hero.label.length);
+      setHeadlineCharacters(hero.headline.length);
+      setDescriptionVisible(true);
+      setIllustrationVisible(true);
+      setCtasVisible(true);
+      setMetricVisible(true);
+      setMetricCount(3);
+      setMetricCharacters(finalMetricText.length);
+    };
 
-      if (prefersReducedMotion) {
-        return;
-      }
+    if (prefersReducedMotion || hasAnimatedRef.current) {
+      showFinalContent();
+      return;
+    }
 
-      timeouts.push(
-        window.setTimeout(() => {
+    setLabelCharacters(0);
+    setHeadlineCharacters(0);
+    setDescriptionVisible(false);
+    setIllustrationVisible(false);
+    setCtasVisible(true);
+    setMetricVisible(true);
+    setMetricCount(3);
+    setMetricCharacters(finalMetricText.length);
+    hasAnimatedRef.current = true;
+
+    timeouts.push(
+      window.setTimeout(() => {
         let currentLabelCharacters = 0;
         const labelInterval = window.setInterval(() => {
           currentLabelCharacters += 1;
           setLabelCharacters(Math.min(currentLabelCharacters, hero.label.length));
 
-          if (currentLabelCharacters >= hero.label.length) {
-            window.clearInterval(labelInterval);
-
-            timeouts.push(
-              window.setTimeout(() => {
-                let currentHeadlineCharacters = 0;
-                const headlineInterval = window.setInterval(() => {
-                  currentHeadlineCharacters += 1;
-                  setHeadlineCharacters(Math.min(currentHeadlineCharacters, hero.headline.length));
-
-                  if (currentHeadlineCharacters >= hero.headline.length) {
-                    window.clearInterval(headlineInterval);
-
-                    timeouts.push(
-                      window.setTimeout(() => {
-                        setDescriptionVisible(true);
-
-                        timeouts.push(
-                          window.setTimeout(() => {
-                            setIllustrationVisible(true);
-
-                            timeouts.push(
-                              window.setTimeout(() => {
-                                setCtasVisible(true);
-
-                                timeouts.push(
-                                  window.setTimeout(() => {
-                                    setMetricVisible(true);
-
-                                    let currentCount = 0;
-                                    const countInterval = window.setInterval(() => {
-                                      currentCount += 1;
-                                      setMetricCount(Math.min(currentCount, 3));
-
-                                      if (currentCount >= 3) {
-                                        window.clearInterval(countInterval);
-                                      }
-                                    }, METRIC_STEP_MS);
-
-                                    let currentMetricCharacters = 0;
-                                    const metricInterval = window.setInterval(() => {
-                                      currentMetricCharacters += 1;
-                                      setMetricCharacters(Math.min(currentMetricCharacters, finalMetricText.length));
-
-                                      if (currentMetricCharacters >= finalMetricText.length) {
-                                        window.clearInterval(metricInterval);
-                                      }
-                                    }, TYPE_SPEED_MS);
-
-                                    intervals.push(countInterval, metricInterval);
-                                  }, CTA_DELAY_MS),
-                                );
-                              }, CTA_DELAY_MS),
-                            );
-                          }, ILLUSTRATION_DELAY_MS),
-                        );
-                      }, DESCRIPTION_DELAY_MS),
-                    );
-                  }
-                }, TYPE_SPEED_MS);
-
-                intervals.push(headlineInterval);
-              }, HEADLINE_DELAY_MS),
-            );
+          if (currentLabelCharacters < hero.label.length) {
+            return;
           }
+
+          window.clearInterval(labelInterval);
+          timeouts.push(
+            window.setTimeout(() => {
+              let currentHeadlineCharacters = 0;
+              const headlineInterval = window.setInterval(() => {
+                currentHeadlineCharacters += 1;
+                setHeadlineCharacters(Math.min(currentHeadlineCharacters, hero.headline.length));
+
+                if (currentHeadlineCharacters < hero.headline.length) {
+                  return;
+                }
+
+                window.clearInterval(headlineInterval);
+                timeouts.push(
+                  window.setTimeout(() => {
+                    setDescriptionVisible(true);
+                    timeouts.push(window.setTimeout(() => setIllustrationVisible(true), ILLUSTRATION_DELAY_MS));
+                  }, DESCRIPTION_DELAY_MS),
+                );
+              }, TYPE_SPEED_MS);
+
+              intervals.push(headlineInterval);
+            }, HEADLINE_DELAY_MS),
+          );
         }, TYPE_SPEED_MS);
 
         intervals.push(labelInterval);
       }, LABEL_DELAY_MS),
-      );
-    };
-
-    timeouts.push(window.setTimeout(startAnimation, 0));
+    );
 
     return () => {
       timeouts.forEach((timeout) => window.clearTimeout(timeout));
@@ -255,15 +189,36 @@ export function Hero() {
                 ctasVisible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
               }`}
             >
-              <HeroCta href="#contact" icon={assets.icons.card} iconPosition="left" variant="primary">
-                {hero.ctaContact}
-              </HeroCta>
-              <HeroCta href="#projects" icon={assets.icons.view} variant="outlined">
-                {hero.ctaProjects}
-              </HeroCta>
-              <HeroCta href="#services" icon={assets.icons.service} variant="outlined">
-                {hero.ctaServices}
-              </HeroCta>
+              <ActionLink
+                href="#contact"
+                icon={
+                  // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
+                  <img alt="" aria-hidden="true" className="size-4 shrink-0 invert dark:invert-0" src={assets.icons.card} />
+                }
+                label={hero.ctaContact}
+                size="lg"
+                variant="primary"
+              />
+              <ActionLink
+                href="#projects"
+                icon={
+                  // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
+                  <img alt="" aria-hidden="true" className="size-4 shrink-0 dark:invert" src={assets.icons.view} />
+                }
+                label={hero.ctaProjects}
+                size="lg"
+                variant="outlined"
+              />
+              <ActionLink
+                href="#services"
+                icon={
+                  // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
+                  <img alt="" aria-hidden="true" className="size-4 shrink-0 dark:invert" src={assets.icons.service} />
+                }
+                label={hero.ctaServices}
+                size="lg"
+                variant="outlined"
+              />
             </div>
 
             <p

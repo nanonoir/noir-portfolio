@@ -8,19 +8,19 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const baseClasses =
-  "inline-flex items-center justify-center gap-2 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:pointer-events-none disabled:opacity-50";
+  "button-feedback inline-flex items-center justify-center gap-2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:pointer-events-none disabled:opacity-50";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:opacity-90",
+    "button-primary bg-primary px-6 py-3 text-sm font-medium text-primary-foreground",
   outlined:
-    "border border-foreground/20 px-5 py-2.5 text-sm font-medium text-foreground hover:bg-foreground hover:text-background",
+    "button-outlined border border-foreground/20 px-5 py-2.5 text-sm font-medium text-foreground",
   ghost:
-    "px-3 py-1.5 text-sm text-foreground hover:bg-foreground/5 hover:text-foreground",
-  nav: "px-3 py-1.5 text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+    "button-ghost px-3 py-1.5 text-sm text-foreground",
+  nav: "button-nav px-3 py-1.5 text-sm text-muted-foreground",
   language:
-    "mono px-2.5 py-1.5 text-[11px] uppercase tracking-widest text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-  icon: "size-8 p-0 text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+    "button-language mono px-2.5 py-1.5 text-[11px] uppercase tracking-widest text-muted-foreground",
+  icon: "button-icon button-icon-feedback size-8 p-0 text-muted-foreground",
 };
 
 export function Button({

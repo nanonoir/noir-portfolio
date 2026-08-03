@@ -13,10 +13,21 @@
   --border-strong: oklch(0.82 0 0);
   --primary: oklch(0.1 0 0);
   --primary-foreground: oklch(0.995 0 0);
+  --success: oklch(0.36 0.1 150);
+  --success-surface: oklch(0.94 0.04 150);
+  --warning: oklch(0.4 0.1 80);
+  --warning-surface: oklch(0.95 0.04 80);
+  --danger: oklch(0.42 0.16 25);
+  --danger-surface: oklch(0.94 0.045 25);
   --glass-background: oklab(1 0 0 / 0.7);
   --glass-border: oklab(0 0 0 / 0.1);
   --shadow-pill: 0 10px 40px -12px rgb(0 0 0 / 0.18),
     0 2px 8px -2px rgb(0 0 0 / 0.06);
+  --duration-press: 140ms;
+  --duration-interactive: 200ms;
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --space-section-heading-end: 4rem;
+  --space-section-heading-gap: 1.75rem;
 }
 
 .dark {
@@ -30,6 +41,12 @@
   --border-strong: oklch(0.36 0 0);
   --primary: oklch(0.96 0 0);
   --primary-foreground: oklch(0.12 0 0);
+  --success: oklch(0.82 0.1 150);
+  --success-surface: oklch(0.22 0.04 150);
+  --warning: oklch(0.85 0.1 80);
+  --warning-surface: oklch(0.23 0.04 80);
+  --danger: oklch(0.78 0.14 25);
+  --danger-surface: oklch(0.23 0.045 25);
   --glass-background: oklab(0 0 0 / 0.55);
   --glass-border: oklab(1 0 0 / 0.12);
   --shadow-pill: 0 18px 50px -16px rgb(0 0 0 / 0.7),
@@ -47,8 +64,15 @@
   --color-border-strong: var(--border-strong);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-editorial: var(--font-newsreader);
   --shadow-pill: var(--shadow-pill);
 }
 
@@ -72,6 +96,31 @@ html {
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
+@utility editorial {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+@utility status-success {
+  border: 1px solid color-mix(in oklab, var(--success) 30%, var(--border));
+  background: var(--success-surface);
+  color: var(--success);
+}
+
+@utility status-warning {
+  border: 1px solid color-mix(in oklab, var(--warning) 30%, var(--border));
+  background: var(--warning-surface);
+  color: var(--warning);
+}
+
+@utility status-danger {
+  border: 1px solid color-mix(in oklab, var(--danger) 30%, var(--border));
+  background: var(--danger-surface);
+  color: var(--danger);
+}
+
 @utility glass {
   background: var(--glass-background);
   border: 1px solid var(--glass-border);
@@ -84,6 +133,60 @@ html {
 
 @utility hairline-b {
   border-bottom: 1px solid var(--border);
+}
+
+.button-feedback {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: var(--duration-interactive);
+  transition-timing-function: var(--ease-emphasized);
+}
+
+.button-feedback:active {
+  transform: scale(0.97);
+  transition-duration: var(--duration-press);
+}
+
+.button-icon-feedback:active {
+  transform: scale(0.95);
+}
+
+.section-heading-rhythm {
+  gap: var(--space-section-heading-gap);
+  margin-bottom: var(--space-section-heading-end);
+}
+
+@media (min-width: 64rem) {
+  .section-heading-rhythm {
+    --space-section-heading-end: 5rem;
+    --space-section-heading-gap: 3rem;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button-primary:hover {
+    opacity: 0.9;
+  }
+
+  .button-outlined:hover {
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  .button-ghost:hover,
+  .button-nav:hover,
+  .button-language:hover,
+  .button-icon:hover {
+    background: color-mix(in oklab, var(--foreground) 5%, transparent);
+    color: var(--foreground);
+  }
+
+  .button-primary > :is(img, svg)[aria-hidden="true"] {
+    transition: transform var(--duration-interactive) var(--ease-emphasized);
+  }
+
+  .button-primary:hover > :is(img, svg)[aria-hidden="true"] {
+    transform: translate(2px, -2px);
+  }
 }
 
 @keyframes orbit-cw {
@@ -164,6 +267,12 @@ html {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .button-feedback,
+  .button-feedback:active,
+  .button-icon-feedback:active {
+    transform: none !important;
   }
 }
 

@@ -14,6 +14,7 @@
     "test:integration:guard": "node tests/scripts/assert-test-environment.mjs",
     "test:api": "vitest run tests/api",
     "test:e2e": "playwright test",
+    "test:e2e:foundation": "playwright test tests/e2e/frontend-foundation.spec.ts --config=playwright.verify.config.ts",
     "test:e2e:backend": "node tests/scripts/run-backend-e2e.mjs",
     "test:e2e:ui": "playwright test --ui",
     "test:focus-check": "node tests/scripts/assert-no-focused-tests.mjs",

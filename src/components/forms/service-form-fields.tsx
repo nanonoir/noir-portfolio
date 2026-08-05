@@ -164,7 +164,17 @@ export function RadioGroup({
   const translatedError = translateError(dictionary, error);
 
   return (
-    <fieldset aria-describedby={translatedError ? errorId : helper ? helperId : undefined} className={["space-y-2", wrapperClassName].filter(Boolean).join(" ")}>
+    <fieldset
+      aria-describedby={translatedError ? errorId : helper ? helperId : undefined}
+      aria-invalid={Boolean(translatedError)}
+      className={[
+        "space-y-2 rounded-2xl",
+        translatedError ? "border border-danger bg-danger-surface p-3" : "",
+        wrapperClassName,
+      ].filter(Boolean).join(" ")}
+      id={name}
+      tabIndex={-1}
+    >
       <legend className="text-base font-medium text-foreground md:text-sm">
         {legend}
         {required ? <span className="ml-1 text-muted-foreground" aria-hidden="true">*</span> : null}
@@ -201,8 +211,9 @@ export function RequestFormShell({
   return (
     <form id={formId} className="space-y-5" noValidate onSubmit={onSubmit}>
       {hasErrors ? (
-        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-base text-red-500 md:text-sm" role="alert">
-          {dictionary.forms.common.requiredFieldsMessage}
+        <div className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-base md:text-sm" role="alert">
+          <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" />
+          <span>{dictionary.forms.common.requiredFieldsMessage}</span>
         </div>
       ) : null}
       {children}
@@ -224,6 +235,9 @@ export function scrollToFirstError<TValues extends FieldValues>(errors: FieldErr
     return;
   }
 
-  document.getElementById(firstKey)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  document.getElementById(firstKey)?.focus();
+  const target = document.getElementById(firstKey)
+    ?? document.querySelector<HTMLElement>(`[data-field-id~="${firstKey}"]`);
+
+  target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  target?.focus();
 }

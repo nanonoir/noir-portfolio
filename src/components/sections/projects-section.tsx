@@ -93,6 +93,36 @@ function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMe
   );
 }
 
+/**
+ * Picks the responsive container aspect-ratio class from the media's aspect
+ * metadata so that mobile/portrait images don't get letterboxed into a fixed
+ * 16:11 box.
+ *
+ * aspect === "mobile"        → 9:16 portrait (phone screenshots)
+ * aspect === "desktop"       → 16:11 (standard desktop capture)
+ * aspect === "desktop-wide"  → 21:9  (ultra-wide / panoramic)
+ *
+ * Falls back to the previous 4:5 (mobile) / 16:11 (desktop) breakpoint split
+ * when the media type is video, because video intrinsic size is determined at
+ * load time and no pre-render box is needed.
+ */
+function mediaContainerClass(media: ProjectMedia | undefined): string {
+  if (!media || media.type === "video") {
+    // Videos: keep the original responsive breakpoint behaviour.
+    return "aspect-[4/5] lg:aspect-[16/11]";
+  }
+
+  switch (media.aspect) {
+    case "mobile":
+      return "aspect-[9/16] max-w-xs sm:max-w-sm";
+    case "desktop-wide":
+      return "aspect-[21/9] lg:aspect-[21/9]";
+    case "desktop":
+    default:
+      return "aspect-[16/11]";
+  }
+}
+
 function MediaFrame({ media, onMediaError, paused }: { media?: ProjectMedia; onMediaError: () => void; paused: boolean }) {
   const { dictionary, language } = useLanguage();
 
@@ -114,6 +144,7 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
+  // Tracks the active pointer so concurrent touches don't cause jumps.
   const pointerStartRef = useRef<{ id: number; x: number } | null>(null);
   const currentMedia = project.media[activeIndex];
   const hasMultipleMedia = project.media.length > 1;
@@ -127,7 +158,8 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType === "mouse" || !hasMultipleMedia) return;
+    // Only track touch/pen; ignore mouse and multi-touch after first pointer.
+    if (event.pointerType === "mouse" || !hasMultipleMedia || pointerStartRef.current !== null) return;
     pointerStartRef.current = { id: event.pointerId, x: event.clientX };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -143,9 +175,33 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
     goToMedia(activeIndex + (distance < 0 ? 1 : -1));
   }
 
+  function handlePointerCancel(event: PointerEvent<HTMLDivElement>) {
+    // Release capture and reset state on cancel so subsequent gestures start clean.
+    if (pointerStartRef.current?.id === event.pointerId) {
+      pointerStartRef.current = null;
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  const containerClass = mediaContainerClass(mediaFailed ? undefined : currentMedia);
+
   return (
     <div className="space-y-4">
-      <div className="relative mx-auto flex aspect-[4/5] w-full max-w-xl items-center justify-center overflow-hidden rounded-[20px] border border-border bg-surface lg:aspect-[16/11]" onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
+      {/*
+        touch-action: pan-y — lets the browser handle vertical page scroll
+        while this element handles horizontal pointer tracking for swipe.
+        This prevents Android Chrome from cancelling the pointer after a
+        diagonal swipe is detected (which would previously drop the gesture).
+      */}
+      <div
+        className={`relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-[20px] border border-border bg-surface ${containerClass}`}
+        onPointerCancel={handlePointerCancel}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        style={{ touchAction: hasMultipleMedia ? "pan-y" : undefined }}
+      >
         {mediaFailed ? (
           <p className="max-w-56 text-center text-sm leading-6 text-muted-foreground">{dictionary.projects.videoPlaceholder}</p>
         ) : (
@@ -172,9 +228,10 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
 
         {hasMultipleMedia ? (
           <>
+            {/* Chevrons visible on all viewports (not just lg) for touch parity */}
             <button
               aria-label={dictionary.projects.previousMediaLabel}
-              className="absolute top-1/2 left-4 hidden size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/80 backdrop-blur transition-colors hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground lg:grid"
+              className="absolute top-1/2 left-4 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/80 backdrop-blur transition-colors hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
               onClick={() => goToMedia(activeIndex - 1)}
               type="button"
             >
@@ -182,7 +239,7 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
             </button>
             <button
               aria-label={dictionary.projects.nextMediaLabel}
-              className="absolute top-1/2 right-4 hidden size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/80 backdrop-blur transition-colors hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground lg:grid"
+              className="absolute top-1/2 right-4 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/80 backdrop-blur transition-colors hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
               onClick={() => goToMedia(activeIndex + 1)}
               type="button"
             >
@@ -240,6 +297,10 @@ export function ProjectsSection() {
   const idPrefix = useId();
   const [openedProject, setOpenedProject] = useState<Project["id"] | null>(null);
   const [mediaResetKey, setMediaResetKey] = useState(0);
+  // Tracks whether the auto-open has already fired. Starts as true to block
+  // auto-open at page load; flips to false only once the section is scrolled
+  // into view for the first time, then back to true after one auto-open fires.
+  const hasEnteredView = useRef(false);
   const hasAutoOpened = useRef(false);
 
   useEffect(() => {
@@ -251,7 +312,12 @@ export function ProjectsSection() {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !hasAutoOpened.current) {
+        if (entry.isIntersecting && !hasEnteredView.current) {
+          // Section has scrolled into view for the first time.
+          hasEnteredView.current = true;
+        }
+
+        if (entry.isIntersecting && hasEnteredView.current && !hasAutoOpened.current) {
           hasAutoOpened.current = true;
           setMediaResetKey((current) => current + 1);
           setOpenedProject("entrenar");
@@ -265,10 +331,52 @@ export function ProjectsSection() {
     return () => observer.disconnect();
   }, []);
 
+  /**
+   * Scrolls the article row for `projectId` into view so its top edge clears
+   * the sticky header.  Uses `scroll-margin-top` (set via the CSS custom
+   * property `--scroll-header-offset` in globals.css) together with
+   * `scrollIntoView({ block: "start" })` so the browser applies the correct
+   * responsive offset automatically.
+   *
+   * Timing: the project panel opens/closes via a 500 ms CSS grid-rows
+   * transition.  A single rAF fires only ~16 ms after state change — far too
+   * early: `getBoundingClientRect` still reflects the old layout, so the
+   * manual `scrollTo` approach overshoots once an adjacent panel collapses.
+   * Instead we call `scrollIntoView` after a delay that covers the transition,
+   * so the target's final position is already stable.  Reduced-motion visitors
+   * get an instant scroll with no delay.
+   */
+  function scrollProjectIntoView(projectId: Project["id"]) {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const doScroll = () => {
+      const articleEl = sectionRef.current?.querySelector<HTMLElement>(`[data-project-id="${projectId}"]`);
+      if (!articleEl) return;
+      articleEl.scrollIntoView({ behavior: prefersReducedMotion ? "instant" : "smooth", block: "start" });
+    };
+
+    if (prefersReducedMotion) {
+      // No transition plays, so the layout is already final after the React
+      // state update flushes.  A single rAF is enough.
+      window.requestAnimationFrame(doScroll);
+    } else {
+      // Wait for the 500 ms panel transition to stabilise before measuring.
+      // Using setTimeout rather than transitionend because the collapsing
+      // *other* panel fires transitionend on its own element, not the target.
+      setTimeout(doScroll, 520);
+    }
+  }
+
   function toggleProject(projectId: Project["id"]) {
     hasAutoOpened.current = true;
     setMediaResetKey((resetKey) => resetKey + 1);
-    setOpenedProject((current) => (current === projectId ? null : projectId));
+    setOpenedProject((current) => {
+      const nextOpen = current === projectId ? null : projectId;
+      if (nextOpen !== null) {
+        scrollProjectIntoView(nextOpen);
+      }
+      return nextOpen;
+    });
   }
 
   return (
@@ -280,7 +388,12 @@ export function ProjectsSection() {
           const active = openedProject === project.id;
 
           return (
-            <article className={index > 0 ? "border-t border-border" : undefined} key={project.id}>
+            <article
+              className={index > 0 ? "border-t border-border" : undefined}
+              data-project-id={project.id}
+              key={project.id}
+              style={{ scrollMarginTop: "var(--scroll-header-offset)" }}
+            >
               <button
                 aria-controls={panelId}
                 aria-expanded={active}

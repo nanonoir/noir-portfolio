@@ -53,8 +53,9 @@ export function MeetingModalForm({
       </div>
 
       {Object.keys(errors).length > 0 && form.formState.isSubmitted ? (
-        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-base text-red-500 md:text-sm" role="alert" aria-live="assertive">
-          {dictionary.forms.common.requiredFieldsMessage}
+        <div className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-base md:text-sm" role="alert" aria-live="assertive">
+          <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" />
+          <span>{dictionary.forms.common.requiredFieldsMessage}</span>
         </div>
       ) : null}
 
@@ -88,10 +89,21 @@ export function MeetingModalForm({
         </div>
 
         <div className="min-w-0 space-y-3">
-          <div aria-describedby={errors.date || errors.time ? "meeting-date-time-error" : undefined} aria-live="polite" className="rounded-2xl border border-border bg-surface/20 px-4 py-4" role="group">
+          <div aria-live="polite" className="rounded-2xl border border-border bg-surface/20 px-4 py-4" role="group">
             <p className="text-sm font-medium text-foreground">{dictionary.meeting.fields.date} / {dictionary.meeting.fields.time}</p>
             <p className="mt-1 text-base text-body-foreground md:text-sm">{selectedDate && selectedTime ? `${selectedDate} · ${selectedTime}` : dictionary.meeting.dateTime.open}</p>
-            <Button className="mt-3" type="button" variant="outlined" onClick={onOpenDateTime}>{dictionary.meeting.dateTime.open}</Button>
+            <Button
+              aria-describedby={errors.date || errors.time ? "meeting-date-time-error" : undefined}
+              aria-invalid={Boolean(errors.date || errors.time)}
+              className="mt-3"
+              data-field-id="date time"
+              id="meeting-date-time-selector"
+              onClick={onOpenDateTime}
+              type="button"
+              variant="outlined"
+            >
+              {dictionary.meeting.dateTime.open}
+            </Button>
           </div>
           {errors.date?.message || errors.time?.message ? <FieldError dictionary={dictionary} id="meeting-date-time-error" message={errors.date?.message || errors.time?.message} /> : null}
         </div>

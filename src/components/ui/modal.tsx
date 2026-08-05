@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 type ModalProps = {
   children: React.ReactNode;
   closeLabel?: string;
   footer?: React.ReactNode;
+  /** Extra controls rendered to the left of the close button in the modal header. */
+  headerActions?: React.ReactNode;
+  /** When true the title is rendered as sr-only (visually hidden). */
+  hideTitle?: boolean;
+  initialFocus?: "dialog" | "heading" | "first-interactive";
   isOpen: boolean;
   onClose: () => void;
+  restoreFocus?: boolean;
   size?: "md" | "lg" | "xl";
   title: string;
 };
@@ -33,13 +39,20 @@ export function Modal({
   children,
   closeLabel = "Close modal",
   footer,
+  headerActions,
+  hideTitle,
+  initialFocus = "dialog",
   isOpen,
   onClose,
+  restoreFocus = true,
   size = "md",
   title,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const restoreFocusRef = useRef(restoreFocus);
+  const [isPresent, setIsPresent] = useState(isOpen);
+  const [phase, setPhase] = useState<"open" | "closing">("open");
   // Stable ref so the keydown handler always has the latest onClose without
   // being in the useEffect dependency array (which would re-register and
   // steal focus from active inputs on every render).
@@ -50,6 +63,27 @@ export function Modal({
   useEffect(() => {
     onCloseRef.current = onClose;
   });
+
+  useEffect(() => {
+    restoreFocusRef.current = restoreFocus;
+  }, [restoreFocus]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const frame = window.requestAnimationFrame(() => {
+        setIsPresent(true);
+        setPhase("open");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const frame = window.requestAnimationFrame(() => setPhase("closing"));
+    const timeout = window.setTimeout(() => setIsPresent(false), 180);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,9 +107,13 @@ export function Modal({
       document.body.style.overflow = "hidden";
     }
 
-    // Focus the modal container once on open. Subsequent re-renders must NOT
-    // re-call focus() — that is what steals focus from inputs.
-    dialogRef.current?.focus();
+    // Focus once on open. Subsequent renders must NOT steal focus from inputs.
+    const focusTarget = initialFocus === "heading"
+      ? dialogRef.current?.querySelector<HTMLElement>("h2")
+      : initialFocus === "first-interactive"
+        ? dialogRef.current?.querySelector<HTMLElement>('a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled])')
+        : dialogRef.current;
+    focusTarget?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
       const topmostToken = modalStack.entries[modalStack.entries.length - 1];
@@ -136,17 +174,19 @@ export function Modal({
         modalStack.originalOverflow = "";
       }
 
-      openerRef.current?.focus();
+      if (restoreFocusRef.current) {
+        openerRef.current?.focus();
+      }
     };
     // Intentionally omit onClose — it is captured via onCloseRef.
-  }, [isOpen]);
+  }, [initialFocus, isOpen]);
 
-  if (!isOpen) {
+  if (!isPresent) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center px-4 py-8">
+    <div className="fixed inset-0 z-50 grid place-items-center px-4 py-8" data-modal-phase={phase}>
       <button
         aria-label={closeLabel}
         className="absolute inset-0 bg-background/80 backdrop-blur-xl"
@@ -156,7 +196,7 @@ export function Modal({
       <div
         aria-labelledby={titleId}
         aria-modal="true"
-        className={`relative flex max-h-full w-full flex-col overflow-hidden rounded-[20px] border border-border bg-card text-foreground shadow-pill outline-none motion-safe:animate-[fade-in_240ms_ease-out_both] ${
+        className={`relative flex max-h-full w-full flex-col overflow-hidden rounded-[20px] border border-border bg-card text-foreground shadow-pill outline-none transition-[opacity,transform] duration-180 ${phase === "closing" ? "scale-[0.98] opacity-0" : "scale-100 opacity-100"} ${
           size === "xl" ? "max-w-5xl" : size === "lg" ? "max-w-3xl" : "max-w-2xl"
         }`}
         ref={dialogRef}
@@ -164,16 +204,25 @@ export function Modal({
         tabIndex={-1}
       >
         {/* Sticky header */}
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-4 py-4">
-          <h2 className="text-2xl font-semibold tracking-tight" id={titleId}>{title}</h2>
-          <button
-            aria-label={closeLabel}
-            className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-            onClick={onClose}
-            type="button"
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-4 py-4">
+          <h2
+            className={hideTitle ? "sr-only" : "text-2xl font-semibold tracking-tight"}
+            id={titleId}
+            tabIndex={-1}
           >
-            <Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src="/handwritten-icons/close.svg" width={16} />
-          </button>
+            {title}
+          </h2>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {headerActions ?? null}
+            <button
+              aria-label={closeLabel}
+              className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+              onClick={onClose}
+              type="button"
+            >
+              <Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src="/handwritten-icons/close.svg" width={16} />
+            </button>
+          </div>
         </div>
         {/* Scrollable body */}
         <div className="modal-scroll-area flex-1 overflow-y-auto px-4 py-4">

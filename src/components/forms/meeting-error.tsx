@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dictionary } from "@/lib/i18n";
-import { Button } from "@/components/ui";
+import { ActionLink, Button } from "@/components/ui";
 import { createWhatsAppUrl } from "./whatsapp-link";
 
 type MeetingErrorProps = {
@@ -31,14 +31,14 @@ export function MeetingError({ code, dictionary, message, onBackToForm, onRetry,
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button variant="outlined" onClick={onBackToForm}>{dictionary.meeting.actions.backToForm}</Button>
         <Button onClick={onRetry}>{dictionary.meeting.actions.retry}</Button>
-        <a
-          className="inline-flex items-center justify-center rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+        <ActionLink
           href={whatsappUrl}
+          label={dictionary.meeting.actions.whatsapp}
           rel="noreferrer"
+          size="md"
           target="_blank"
-        >
-          {dictionary.meeting.actions.whatsapp}
-        </a>
+          variant="outlined"
+        />
       </div>
     </div>
   );

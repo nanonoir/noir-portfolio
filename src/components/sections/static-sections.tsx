@@ -10,6 +10,7 @@ import { createCustomServiceRequestTarget, ServiceRequestModal, type ServiceRequ
 import { useLanguage } from "@/components/providers/language-provider";
 import { assets, aboutOrbitTech, contactLinks, services, stackCategories, type Service } from "@/data/content";
 import { Button, CardSurface, Chip, FormError, Input, Label, PdfModal, SectionHeading, SectionShell, ServiceInfoModal, Textarea, Toast } from "@/components/ui";
+import type { DocumentConfig } from "@/components/ui/pdf-modal";
 
 // Outer orbit ring: 7 icons, clockwise rotation.
 // Each icon counter-rotates so it stays upright.
@@ -157,6 +158,23 @@ function AboutSection() {
   const about = dictionary.about;
   const [openDocument, setOpenDocument] = useState<"diploma" | "resume" | null>(null);
 
+  const resumeConfig: DocumentConfig = {
+    title: dictionary.modals.resumeTitle,
+    hideTitle: true,
+    previewSrc: language === "es" ? assets.documentPreviews.resumeEs : assets.documentPreviews.resumeEn,
+    downloadHref: assets.resume[language],
+    downloadLabel: dictionary.modals.resumeDownloadLabel,
+    openLabel: dictionary.modals.resumeOpenLabel,
+  };
+
+  const diplomaConfig: DocumentConfig = {
+    title: dictionary.modals.diplomaTitle,
+    previewSrc: assets.documentPreviews.diploma,
+    // pdfSrc powers the iframe preview on desktop; no downloadHref means
+    // no Download or Open-in-new-tab actions are rendered in the header.
+    pdfSrc: assets.diploma,
+  };
+
   return (
     <SectionShell id="about">
       {/* 2/3 + 1/3 compact desktop layout */}
@@ -248,17 +266,15 @@ function AboutSection() {
       </div>
       <PdfModal
         closeLabel={dictionary.modals.closeLabel}
+        config={diplomaConfig}
         isOpen={openDocument === "diploma"}
         onClose={() => setOpenDocument(null)}
-        src={assets.diploma}
-        title={dictionary.modals.diplomaTitle}
       />
       <PdfModal
         closeLabel={dictionary.modals.closeLabel}
+        config={resumeConfig}
         isOpen={openDocument === "resume"}
         onClose={() => setOpenDocument(null)}
-        src={assets.resume[language]}
-        title={dictionary.modals.resumeTitle}
       />
     </SectionShell>
   );
@@ -269,9 +285,11 @@ function ServicesSection() {
   const t = dictionary.services;
   const [infoService, setInfoService] = useState<Service | null>(null);
   const [requestService, setRequestService] = useState<ServiceRequestTarget | null>(null);
+  const [isHandingOffRequest, setIsHandingOffRequest] = useState(false);
   const customService = createCustomServiceRequestTarget(t.customTitle, t.customDescription);
 
   function handleRequestFromInfo(service: Service) {
+    setIsHandingOffRequest(true);
     setInfoService(null);
     setRequestService(service);
   }
@@ -310,7 +328,10 @@ function ServicesSection() {
                 }
                 iconPosition="start"
                 label={t.moreInfo}
-                onClick={() => setInfoService(service)}
+                onClick={() => {
+                  setIsHandingOffRequest(false);
+                  setInfoService(service);
+                }}
                 size="sm"
                 variant="ghost"
               />
@@ -355,6 +376,7 @@ function ServicesSection() {
         language={language}
         onClose={() => setInfoService(null)}
         onRequest={handleRequestFromInfo}
+        restoreFocus={!isHandingOffRequest}
         service={infoService}
       />
       {requestService ? (
@@ -388,7 +410,7 @@ function StackSection() {
             </div>
             <div className="flex flex-wrap gap-2">
               {category.tools.map((tool) => (
-                <Chip className="gap-1.5 hover:bg-foreground hover:text-background" key={`${category.id}-${tool.name}`}>
+                <Chip className="gap-1.5 stack-tech-chip" key={`${category.id}-${tool.name}`}>
                   <Image
                     alt=""
                     aria-hidden="true"
@@ -524,7 +546,9 @@ function ContactSection() {
                 // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
                 <img alt="" aria-hidden="true" className="size-4 invert dark:invert-0" src={assets.icons.airplane} />
               }
-              label={contact.submit}
+              label={isSubmitting ? dictionary.forms.common.submitting : contact.submit}
+              aria-busy={isSubmitting}
+              disabled={isSubmitting}
               type="submit"
             />
           </div>

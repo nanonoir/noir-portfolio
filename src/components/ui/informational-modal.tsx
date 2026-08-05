@@ -12,6 +12,7 @@ type ServiceInfoModalProps = {
   language: Language;
   onClose: () => void;
   onRequest: (service: Service) => void;
+  restoreFocus?: boolean;
   service: Service | null;
 };
 
@@ -34,6 +35,7 @@ export function ServiceInfoModal({
   language,
   onClose,
   onRequest,
+  restoreFocus = true,
   service,
 }: ServiceInfoModalProps) {
   if (!service) {
@@ -58,6 +60,7 @@ export function ServiceInfoModal({
       footer={<Button onClick={handleRequest}>{details.ctaLabel[language]}</Button>}
       isOpen={isOpen}
       onClose={onClose}
+      restoreFocus={restoreFocus}
       size="lg"
       title={service.title[language]}
     >

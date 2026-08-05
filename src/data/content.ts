@@ -73,6 +73,12 @@ export const assets = {
     es: "/Noir_Nahuel_Nicolas_ES.pdf",
     en: "/Noir_Nahuel_Nicolas_EN.pdf",
   },
+  /** Static preview images for PDF modals (used on iOS/mobile where iframes cannot render PDFs). */
+  documentPreviews: {
+    resumeEs: "/cvPreviewES.webp",
+    resumeEn: "/cvPreviewEN.webp",
+    diploma: "/titlePreview.webp",
+  },
   iconFallback: "/handwritten-icons/cross.svg",
   icons: {
     airplane: "/handwritten-icons/airplane.svg",
@@ -99,10 +105,10 @@ export const projects: Project[] = [
   {
     id: "entrenar",
     name: "EntrenAR",
-    tag: "Frontend prototype · Mock data",
+    tag: "Sports Nutrition Store & CRM",
     description: {
-      es: "Prototipo frontend con datos mock para una experiencia de nutrición deportiva: recomendaciones, catálogo, seguimiento, perfiles y pantallas orientadas a CRM. Demuestra arquitectura de interfaz, flujos de producto y trabajo responsive; no incluye APIs ni backend operativo.",
-      en: "Mock-backed frontend prototype for a sports-nutrition experience: recommendations, listings, tracking, profiles, and CRM-oriented screens. It demonstrates interface architecture, product flows, and responsive work; it has no APIs or operational backend.",
+      es: "Plataforma de e-commerce especializada en nutrición deportiva, complementada con un CRM de gestión para administrar productos, pedidos, clientes y ventas. Desarrollada con foco en rendimiento, experiencia de usuario y escalabilidad.",
+      en: "E-commerce platform focused on sports nutrition, complemented by a management CRM to handle products, orders, customers, and sales. Built with a focus on performance, user experience, and scalability.",
     },
     tech: ["Next.js", "TypeScript", "TailwindCSS"],
     inDevelopment: true,
@@ -124,8 +130,8 @@ export const projects: Project[] = [
     name: "GymPoint Fitness App",
     tag: "Mobile · Fitness",
     description: {
-      es: "GymPoint Mobile es una aplicación fitness colaborativa en React Native. Lideré el desarrollo frontend y aporté soporte limitado de backend para descubrir gimnasios, gestionar rutinas y seguir el progreso.",
-      en: "GymPoint Mobile is a collaborative React Native fitness app. I led frontend development and contributed limited backend support for gym discovery, routine management, and progress tracking.",
+      es: "GymPoint Mobile es una aplicación fitness colaborativa en React Native. Lideré el desarrollo frontend y participé activamente en el desarrollo backend para descubrir gimnasios, gestionar rutinas y seguir el progreso.",
+      en: "GymPoint Mobile is a collaborative React Native fitness app. I led frontend development and actively contributed to backend development for gym discovery, routine management, and progress tracking.",
     },
     tech: ["React Native", "Node.js", "Express", "PostgreSQL", "Docker", "JWT"],
     links: [{ kind: "github", href: "https://github.com/gonzaloogv/GymPoint", labelKey: "github" }],

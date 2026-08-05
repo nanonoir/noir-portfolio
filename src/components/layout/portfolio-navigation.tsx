@@ -6,6 +6,7 @@ import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useTheme } from "@/components/providers/theme-provider";
 import { ActionLink, Button, PdfModal } from "@/components/ui";
+import type { DocumentConfig } from "@/components/ui/pdf-modal";
 
 const NAV_ITEMS = [
   { id: "about", key: "about", icon: assets.icons.about },
@@ -215,7 +216,7 @@ function TopHeader({ activeSection, onMenuOpen, onResumeOpen }: { activeSection:
   return (
     <header className="relative z-40 px-6 pt-6 lg:pt-8">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-        <a className="text-sm font-medium tracking-tight text-foreground" href="#top" onClick={(event) => navigateToHash(event, "#top")}>
+        <a className="text-2xl font-semibold tracking-tight text-foreground" href="#top" onClick={(event) => navigateToHash(event, "#top")}>
           {dictionary.meta.siteName}
         </a>
 
@@ -297,7 +298,7 @@ function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { ac
       </div>
 
       <div className="flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-xl lg:hidden">
-        <a className="min-w-0 truncate text-sm font-medium tracking-tight text-foreground" href="#top" onClick={(event) => navigateToHash(event, "#top")}>
+        <a className="min-w-0 truncate text-lg font-semibold tracking-tight text-foreground" href="#top" onClick={(event) => navigateToHash(event, "#top")}>
           {dictionary.meta.siteName}
         </a>
         <div className="flex shrink-0 items-center gap-1">
@@ -405,7 +406,7 @@ function MobileDrawer({
         }}
       >
         <div className="flex items-center justify-between gap-4">
-          <a className="text-sm font-medium tracking-tight" href="#top" onClick={(event) => navigateToHash(event, "#top", onClose)}>
+          <a className="text-2xl font-semibold tracking-tight" href="#top" onClick={(event) => navigateToHash(event, "#top", onClose)}>
             {dictionary.meta.siteName}
           </a>
           <Button
@@ -571,10 +572,16 @@ export function PortfolioNavigation() {
       <MobileDrawer onClose={closeDrawer} onExited={finishDrawerClose} onResumeOpen={openResumeFromDrawer} phase={drawerPhase} />
       <PdfModal
         closeLabel={dictionary.modals.closeLabel}
+        config={{
+          title: dictionary.modals.resumeTitle,
+          hideTitle: true,
+          previewSrc: language === "es" ? assets.documentPreviews.resumeEs : assets.documentPreviews.resumeEn,
+          downloadHref: assets.resume[language],
+          downloadLabel: dictionary.modals.resumeDownloadLabel,
+          openLabel: dictionary.modals.resumeOpenLabel,
+        } satisfies DocumentConfig}
         isOpen={resumeOpen}
         onClose={() => setResumeOpen(false)}
-        src={assets.resume[language]}
-        title={dictionary.modals.resumeTitle}
       />
     </>
   );

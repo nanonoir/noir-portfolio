@@ -3,6 +3,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Responsive sticky-header offset used for scroll-margin-top and
+     scroll-padding-top. Mobile: ~72px; tablet/desktop: ~88px. */
+  --scroll-header-offset: 72px;
   --background: oklch(0.995 0 0);
   --foreground: oklch(0.1 0 0);
   --body-foreground: oklch(0.32 0 0);
@@ -85,7 +88,14 @@ body {
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 88px;
+  scroll-padding-top: var(--scroll-header-offset);
+}
+
+/* Tablet/desktop: header is taller (~88px) */
+@media (min-width: 48rem) {
+  :root {
+    --scroll-header-offset: 88px;
+  }
 }
 
 ::selection {
@@ -556,4 +566,38 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
 textarea,
 select {
   font-size: max(1rem, 16px);
+}
+
+/* Stack technology chip — low-cost hover interaction.
+   Uses transform + border-color + restrained tonal surface only.
+   No filter/invert, no layout dimension animation.
+   Gated behind pointer:fine so touch users never see a stuck hover state. */
+@media (hover: hover) and (pointer: fine) {
+  .stack-tech-chip {
+    transition:
+      transform var(--duration-interactive) var(--ease-emphasized),
+      border-color var(--duration-interactive) var(--ease-emphasized),
+      background-color var(--duration-interactive) var(--ease-emphasized),
+      color var(--duration-interactive) var(--ease-emphasized);
+  }
+
+  .stack-tech-chip:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+    background-color: color-mix(in oklab, var(--foreground) 7%, var(--surface));
+    color: var(--foreground);
+  }
+}
+
+/* Reduced motion: remove movement, keep border/surface contrast change for state clarity */
+@media (prefers-reduced-motion: reduce) {
+  .stack-tech-chip {
+    transition: border-color var(--duration-interactive), background-color var(--duration-interactive) !important;
+  }
+
+  .stack-tech-chip:hover {
+    transform: none !important;
+    border-color: var(--border-strong);
+    background-color: color-mix(in oklab, var(--foreground) 7%, var(--surface));
+  }
 }

@@ -26,8 +26,9 @@ export function FormError({ children, id }: FormErrorProps) {
   }
 
   return (
-    <p className="text-base text-red-500 md:text-sm" id={id} role="alert">
-      {children}
+    <p className="inline-flex items-start gap-2 text-base text-danger md:text-sm" id={id} role="alert">
+      <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" />
+      <span>{children}</span>
     </p>
   );
 }

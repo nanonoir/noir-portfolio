@@ -53,15 +53,17 @@ function createMeetingWhatsAppMessage({
 }: Omit<MeetingModalLifecycleInput, "onClose" | "onComplete"> & {
   values: Partial<MeetingFormValues>;
 }) {
-  const empty = dictionary.forms.success.emptyMessageFallback;
-  const contactName = values.name || previousValues?.name || empty;
-  const contactEmail = values.email || previousValues?.email || empty;
-  const contactPhone = values.phone || previousValues?.phone || empty;
+  const fallbacks = dictionary.forms.success.fallbacks;
+  const contactName = values.name || previousValues?.name || fallbacks.name;
+  const contactEmail = values.email || previousValues?.email || fallbacks.email;
+  const contactPhone = values.phone || previousValues?.phone || fallbacks.phone;
   const reason = values.reason
     ? dictionary.meeting.reasons[values.reason]
     : service?.title[language] || dictionary.meeting.title;
-  const message = values.message?.trim() || previousValues?.message?.trim() || empty;
-  const schedule = values.date && values.time ? `${values.date} ${values.time}` : empty;
+  const message = values.message?.trim() || previousValues?.message?.trim() || fallbacks.message;
+  const schedule = values.date && values.time
+    ? `${values.date} ${values.time}`
+    : `${values.date || fallbacks.date} · ${values.time || fallbacks.time}`;
 
   if (origin === "contact") {
     return [

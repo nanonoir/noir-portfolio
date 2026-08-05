@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import type { Dictionary, Language, LocalizedString } from "@/lib/i18n";
 import type { Service } from "@/data/content";
-import { Modal } from "@/components/ui";
+import { ActionLink, Button, Modal } from "@/components/ui";
 import type { ServiceFormId } from "./schemas";
 import { ServiceFormAudit } from "./service-form-audit";
 import { ServiceFormAutomation } from "./service-form-automation";
@@ -67,7 +67,7 @@ function SuccessState({
 }) {
   const [meetingOpen, setMeetingOpen] = useState(false);
   const whatsAppMessage = createWhatsAppMessage({
-    emptyMessageFallback: dictionary.forms.success.emptyMessageFallback,
+    fallbacks: dictionary.forms.success.fallbacks,
     language,
     serviceId: service.id,
     serviceName: service.title[language],
@@ -81,29 +81,30 @@ function SuccessState({
       <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">{dictionary.forms.success.title}</h3>
       <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{dictionary.forms.success.message}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button
-          className="group inline-flex items-center justify-center gap-2 rounded-full border border-foreground/20 px-5 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+        <Button
+          className="group"
+          icon={
+            <Image
+              alt=""
+              aria-hidden="true"
+              className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
+              height={16}
+              src="/handwritten-icons/calendar.svg"
+              width={16}
+            />
+          }
+          label={dictionary.meeting.contact.cta}
           onClick={() => setMeetingOpen(true)}
           type="button"
-        >
-          {dictionary.meeting.contact.cta}
-          <Image
-            alt=""
-            aria-hidden="true"
-            className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
-            height={16}
-            src="/handwritten-icons/calendar.svg"
-            width={16}
-          />
-        </button>
-        <a
-          className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-base font-medium text-primary-foreground transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+          variant="outlined"
+        />
+        <ActionLink
           href={whatsAppUrl}
+          label={dictionary.forms.success.whatsApp}
           rel="noreferrer"
+          size="lg"
           target="_blank"
-        >
-          {dictionary.forms.success.whatsApp}
-        </a>
+        />
       </div>
       <MeetingModal
         closeLabel={dictionary.modals.closeLabel}
@@ -192,18 +193,18 @@ export function ServiceRequestModal({
 
   const modalFooter = submittedValues ? null : (
     <div className="flex justify-center sm:justify-start">
-      <button
-        className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-base font-medium text-primary-foreground transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:text-sm"
+      <Button
+        aria-busy={isSubmitting}
+        disabled={isSubmitting}
         form={formId}
+        label={isSubmitting ? dictionary.forms.common.submitting : dictionary.forms.common.submit}
         type="submit"
-      >
-        {dictionary.forms.common.submit}
-      </button>
+      />
     </div>
   );
 
   return (
-    <Modal closeLabel={closeLabel} footer={modalFooter} isOpen={isOpen} onClose={handleClose} size="lg" title={currentService.title[language]}>
+    <Modal closeLabel={closeLabel} footer={modalFooter} initialFocus="heading" isOpen={isOpen} onClose={handleClose} size="lg" title={currentService.title[language]}>
       {submittedValues ? (
         <SuccessState dictionary={dictionary} language={language} onParentClose={handleClose} service={currentService} values={submittedValues} />
       ) : (
@@ -211,7 +212,7 @@ export function ServiceRequestModal({
           <div className="mb-4 space-y-2">
             <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{currentService.description[language]}</p>
             <p className="text-base text-muted-foreground md:text-sm">{dictionary.forms.common.requiredFieldsMessage}</p>
-            {submissionError ? <p className="text-base text-red-500 md:text-sm" role="alert">{dictionary.forms.errors.submission}</p> : null}
+            {submissionError ? <p className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-base md:text-sm" role="alert"><span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" /><span>{dictionary.forms.errors.submission}</span></p> : null}
           </div>
           <ServiceRequestForm dictionary={dictionary} formId={formId} onSubmit={handleSubmit} serviceId={currentService.id} />
         </>

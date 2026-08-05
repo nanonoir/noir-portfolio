@@ -222,6 +222,7 @@ export type Dictionary = {
       optional: string;
       requiredFieldsMessage: string;
       submit: string;
+      submitting: string;
       retry: string;
       contactWhatsApp: string;
     };
@@ -270,12 +271,24 @@ export type Dictionary = {
       meetingUnavailable: string;
       whatsApp: string;
       emptyMessageFallback: string;
+      fallbacks: {
+        name: string;
+        email: string;
+        phone: string;
+        message: string;
+        date: string;
+        time: string;
+        optional: string;
+      };
     };
   };
   modals: {
     closeLabel: string;
     diplomaTitle: string;
     resumeTitle: string;
+    directAccessLabel: string;
+    resumeDownloadLabel: string;
+    resumeOpenLabel: string;
   };
   footer: {
     name: string;
@@ -527,6 +540,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         optional: "Opcional",
         requiredFieldsMessage: "Completá los campos obligatorios para enviar tu solicitud.",
         submit: "Enviar solicitud",
+        submitting: "Enviando solicitud…",
         retry: "Reintentar",
         contactWhatsApp: "Contactar por WhatsApp →",
       },
@@ -576,12 +590,24 @@ export const dictionaries: Record<Language, Dictionary> = {
         meetingUnavailable: "Agendá una reunión directamente desde el portfolio — próximamente",
         whatsApp: "Continuar por WhatsApp →",
         emptyMessageFallback: "Sin mensaje adicional",
+        fallbacks: {
+          name: "Nombre no indicado",
+          email: "Correo no indicado",
+          phone: "Teléfono no indicado",
+          message: "Sin mensaje adicional",
+          date: "Fecha no seleccionada",
+          time: "Horario no seleccionado",
+          optional: "No indicado",
+        },
       },
     },
     modals: {
       closeLabel: "Cerrar modal",
       diplomaTitle: "Título",
       resumeTitle: "Resumen",
+      directAccessLabel: "Abrir o descargar documento",
+      resumeDownloadLabel: "Descargar",
+      resumeOpenLabel: "Abrir en nueva pestaña",
     },
     footer: {
       name: "Nahuel Nicolas Noir",
@@ -828,6 +854,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         optional: "Optional",
         requiredFieldsMessage: "Complete the required fields to send your request.",
         submit: "Send request",
+        submitting: "Sending request…",
         retry: "Retry",
         contactWhatsApp: "Contact via WhatsApp →",
       },
@@ -877,12 +904,24 @@ export const dictionaries: Record<Language, Dictionary> = {
         meetingUnavailable: "Schedule a meeting directly from the portfolio — coming soon",
         whatsApp: "Continue on WhatsApp →",
         emptyMessageFallback: "No additional message",
+        fallbacks: {
+          name: "Name not provided",
+          email: "Email not provided",
+          phone: "Phone not provided",
+          message: "No additional message",
+          date: "Date not selected",
+          time: "Time not selected",
+          optional: "Not provided",
+        },
       },
     },
     modals: {
       closeLabel: "Close modal",
       diplomaTitle: "Diploma",
       resumeTitle: "Resume",
+      directAccessLabel: "Open or download document",
+      resumeDownloadLabel: "Download",
+      resumeOpenLabel: "Open in new tab",
     },
     footer: {
       name: "Nahuel Nicolas Noir",

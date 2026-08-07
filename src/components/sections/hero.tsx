@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
 import { ActionLink, HandwrittenIcon } from "@/components/ui";
+import { InteractiveWarpGrid } from "../ui/interactive-warp-grid/interactive-warp-grid";
 
 const TYPE_SPEED_MS = 26;
 const LABEL_DELAY_MS = 180;
@@ -210,11 +211,15 @@ export function Hero() {
   }
 
   return (
-    <main className="bg-background text-foreground">
+    <main className="theme-transition-hero text-foreground">
       <section className="relative overflow-hidden px-6 pt-32 pb-20 lg:pt-40 lg:pb-28" id="top">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_7%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_7%,transparent)_1px,transparent_1px)] bg-[size:56px_56px] opacity-60 [mask-image:radial-gradient(ellipse_at_top_left,black,transparent_72%)]"
+        <InteractiveWarpGrid
+          spacing={56}
+          radius={530}
+          maxDisplacement={27}
+          followSpeed={0.025}
+          lineOpacity={0.12}
+          reducedMotion={prefersReducedMotion}
         />
         <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 lg:grid-cols-3 lg:gap-16">
           <div className="lg:col-span-2">

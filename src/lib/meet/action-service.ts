@@ -617,6 +617,7 @@ export class ActionService {
       toStatus: "owner_confirmed",
       transitionOptions: {
         actor: auditActor,
+        now: this.now().toISOString(),
         payload: { action: "confirm", tokenHash },
       },
     });
@@ -820,6 +821,7 @@ export class ActionService {
       toStatus: "owner_confirmed",
       transitionOptions: {
         actor: auditActor,
+        now: this.now().toISOString(),
         payload: { action: "accept_proposal", tokenHash, proposedSlot },
       },
     });

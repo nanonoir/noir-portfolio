@@ -224,6 +224,10 @@ describe("Phase 3 mocked Meet service flows", () => {
     await harness.bookingRepository.create(replacement);
 
     expect(accepted).toMatchObject({ status: "ok", meeting: { meeting: { date: "2026-08-05", time: "11:00" }, status: "owner_confirmed" } });
+    expect(accepted.meeting?.auditLog).toContainEqual(expect.objectContaining({
+      payload: expect.objectContaining({ action: "accept_proposal" }),
+      timestamp: CLOCK,
+    }));
     expect(await reserveCurrentSlot(harness.bookingRepository, replacement)).toMatchObject({ success: true });
   });
 

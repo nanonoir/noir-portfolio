@@ -31,6 +31,9 @@ const DRAWER_PHASES = {
   EXITING: "exiting",
 } as const;
 
+const DRAWER_EXIT_DURATION_MS = 760;
+const DRAWER_EXIT_WATCHDOG_MS = DRAWER_EXIT_DURATION_MS + 75;
+
 type DrawerPhase = (typeof DRAWER_PHASES)[keyof typeof DRAWER_PHASES];
 
 function canReceiveFocus(element: HTMLElement | null) {
@@ -53,9 +56,10 @@ function controlClassName(extra = "") {
     .join(" ");
 }
 
-function navigateToHash(event: MouseEvent<HTMLAnchorElement>, hash: string, onBeforeScroll?: () => void) {
-  event.preventDefault();
-  onBeforeScroll?.();
+function scrollToHash(hash: string, delay = 0) {
+  window.dispatchEvent(new CustomEvent("portfolio:navigation-intent", {
+    detail: { target: hash.replace("#", "") },
+  }));
 
   window.setTimeout(
     () => {
@@ -66,11 +70,19 @@ function navigateToHash(event: MouseEvent<HTMLAnchorElement>, hash: string, onBe
       }
 
       const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      target.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
+      const headerOffset = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scroll-header-offset")) || 0;
+      const targetTop = target.getBoundingClientRect().top + window.scrollY - headerOffset;
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: prefersReducedMotion ? "auto" : "smooth" });
       window.history.pushState(null, "", hash);
     },
-    onBeforeScroll ? 80 : 0,
+    delay,
   );
+}
+
+function navigateToHash(event: MouseEvent<HTMLAnchorElement>, hash: string, onBeforeScroll?: () => void) {
+  event.preventDefault();
+  onBeforeScroll?.();
+  scrollToHash(hash);
 }
 
 function NavigationLinks({ activeSection, onNavigate }: { activeSection: string | null; onNavigate?: () => void }) {
@@ -107,14 +119,17 @@ function NavigationLinks({ activeSection, onNavigate }: { activeSection: string 
 
 function ThemeToggle() {
   const { dictionary } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleThemeAt } = useTheme();
 
   return (
     <Button
       aria-label={dictionary.navigation.themeToggleLabel}
       className="text-muted-foreground"
       icon={<HandwrittenIcon className="size-4" icon={theme === "dark" ? "sun" : "moon"} />}
-      onClick={toggleTheme}
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        toggleThemeAt({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      }}
       size="icon"
       variant="icon"
     />
@@ -159,7 +174,7 @@ function DrawerLanguageButton({ onNavigate }: { onNavigate?: () => void }) {
 
 function DrawerThemeButton() {
   const { dictionary } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleThemeAt } = useTheme();
   const icon = theme === "dark" ? "sun" : "moon";
   const label = theme === "dark" ? dictionary.navigation.lightTheme : dictionary.navigation.darkTheme;
 
@@ -170,7 +185,10 @@ function DrawerThemeButton() {
       icon={<HandwrittenIcon className="size-5 opacity-70" icon={icon} size={20} />}
       iconPosition="start"
       label={label}
-      onClick={toggleTheme}
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        toggleThemeAt({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      }}
       size="md"
       variant="ghost"
     />
@@ -248,7 +266,7 @@ function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { ac
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 lg:inset-x-auto lg:left-1/2 lg:top-4 lg:-translate-x-1/2">
+    <header className="sticky-header fixed inset-x-0 top-0 z-50 lg:inset-x-auto lg:left-1/2 lg:top-4 lg:-translate-x-1/2">
       <div className="hidden items-center gap-1 rounded-full px-4 py-2 shadow-pill glass lg:flex">
         <a
           aria-label={dictionary.navigation.homeLabel}
@@ -307,17 +325,46 @@ function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { ac
 function MobileDrawer({
   onClose,
   onExited,
+  onNavigate,
   onResumeOpen,
   phase,
 }: {
   onClose: () => void;
   onExited: () => void;
+  onNavigate: (hash: string) => void;
   onResumeOpen: () => void;
   phase: DrawerPhase;
 }) {
   const { dictionary } = useLanguage();
   const drawerRef = useRef<HTMLDivElement>(null);
+  const hasExitedRef = useRef(false);
   const isVisible = phase !== DRAWER_PHASES.CLOSED;
+
+  const finishExit = () => {
+    if (hasExitedRef.current) {
+      return;
+    }
+
+    hasExitedRef.current = true;
+    onExited();
+  };
+
+  useEffect(() => {
+    if (phase !== DRAWER_PHASES.EXITING) {
+      hasExitedRef.current = false;
+      return;
+    }
+
+    const watchdog = window.setTimeout(() => {
+      if (hasExitedRef.current) {
+        return;
+      }
+
+      hasExitedRef.current = true;
+      onExited();
+    }, DRAWER_EXIT_WATCHDOG_MS);
+    return () => window.clearTimeout(watchdog);
+  }, [onExited, phase]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -393,12 +440,19 @@ function MobileDrawer({
         className="drawer-panel absolute inset-0 flex flex-col bg-background px-6 py-6 text-foreground"
         onTransitionEnd={(event) => {
           if (phase === DRAWER_PHASES.EXITING && event.target === event.currentTarget && event.propertyName === "transform") {
-            onExited();
+            finishExit();
           }
         }}
       >
         <div className="flex items-center justify-between gap-4">
-          <a className="text-2xl font-semibold tracking-tight" href="#top" onClick={(event) => navigateToHash(event, "#top", onClose)}>
+          <a
+            className="text-2xl font-semibold tracking-tight"
+            href="#top"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate("#top");
+            }}
+          >
             {dictionary.meta.siteName}
           </a>
           <Button
@@ -425,9 +479,12 @@ function MobileDrawer({
               iconPosition="start"
               key={item.id}
               label={dictionary.navigation[item.key]}
-              onClick={(event) => navigateToHash(event, `#${item.id}`, onClose)}
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate(`#${item.id}`);
+              }}
               size="md"
-              style={{ transitionDelay: phase === DRAWER_PHASES.OPEN ? `${38 * (NAV_ITEMS.indexOf(item) + 1)}ms` : "0ms" }}
+              style={phase === DRAWER_PHASES.OPEN ? { transitionDelay: `${90 * (NAV_ITEMS.indexOf(item) + 1)}ms` } : undefined}
               variant={item.id === "services" ? "outlined" : "ghost"}
             />
           ))}
@@ -450,6 +507,7 @@ export function PortfolioNavigation() {
   const [stickyVisible, setStickyVisible] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
   const resumeAfterDrawerCloseRef = useRef(false);
+  const pendingNavigationRef = useRef<string | null>(null);
   const { dictionary, language } = useLanguage();
 
   useEffect(() => {
@@ -519,15 +577,6 @@ export function PortfolioNavigation() {
     return () => cancelAnimationFrame(frame);
   }, [drawerPhase]);
 
-  useEffect(() => {
-    if (drawerPhase !== DRAWER_PHASES.EXITING) {
-      return;
-    }
-
-    const exitTimeout = window.setTimeout(finishDrawerClose, 180);
-    return () => window.clearTimeout(exitTimeout);
-  }, [drawerPhase]);
-
   function openDrawer() {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -552,8 +601,14 @@ export function PortfolioNavigation() {
       ).find(canReceiveFocus);
       const focusTarget = canReceiveFocus(openerRef.current) ? openerRef.current : fallbackMenuButton;
 
-      focusTarget?.focus();
+      focusTarget?.focus({ preventScroll: true });
       openerRef.current = null;
+
+      const pendingNavigation = pendingNavigationRef.current;
+      pendingNavigationRef.current = null;
+      if (pendingNavigation) {
+        scrollToHash(pendingNavigation);
+      }
 
       if (resumeAfterDrawerCloseRef.current) {
         resumeAfterDrawerCloseRef.current = false;
@@ -571,11 +626,16 @@ export function PortfolioNavigation() {
     closeDrawer();
   }
 
+  function navigateFromDrawer(hash: string) {
+    pendingNavigationRef.current = hash;
+    closeDrawer();
+  }
+
   return (
     <>
       <TopHeader activeSection={activeSection} onMenuOpen={openDrawer} onResumeOpen={openResume} />
       <StickyHeader activeSection={activeSection} onMenuOpen={openDrawer} onResumeOpen={openResume} visible={stickyVisible} />
-      <MobileDrawer onClose={closeDrawer} onExited={finishDrawerClose} onResumeOpen={openResumeFromDrawer} phase={drawerPhase} />
+      <MobileDrawer onClose={closeDrawer} onExited={finishDrawerClose} onNavigate={navigateFromDrawer} onResumeOpen={openResumeFromDrawer} phase={drawerPhase} />
       <PdfModal
         closeLabel={dictionary.modals.closeLabel}
         config={{

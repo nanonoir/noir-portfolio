@@ -119,16 +119,13 @@ function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMe
  * load time and no pre-render box is needed.
  */
 function mediaContainerClass(media: ProjectMedia | undefined): string {
-  if (!media || media.type === "video") {
-    // Videos: keep the original responsive breakpoint behaviour.
-    return "aspect-[4/5] lg:aspect-[16/11]";
-  }
+  if (!media) return "aspect-video";
 
   switch (media.aspect) {
     case "mobile":
       return "aspect-[9/16] max-w-xs sm:max-w-sm";
     case "desktop-wide":
-      return "aspect-[21/9] lg:aspect-[21/9]";
+      return "aspect-[21/9]";
     case "desktop":
     default:
       return "aspect-[16/11]";
@@ -307,11 +304,20 @@ export function ProjectsSection() {
   // into view for the first time, then back to true after one auto-open fires.
   const hasEnteredView = useRef(false);
   const hasAutoOpened = useRef(false);
+  const navigationIntentRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const handleNavigationIntent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ target?: string }>;
+      navigationIntentRef.current = customEvent.detail?.target ?? null;
+    };
+
+    window.addEventListener("portfolio:navigation-intent", handleNavigationIntent);
+
     const section = sectionRef.current;
 
     if (!section) {
+      window.removeEventListener("portfolio:navigation-intent", handleNavigationIntent);
       return;
     }
 
@@ -322,10 +328,17 @@ export function ProjectsSection() {
           hasEnteredView.current = true;
         }
 
-        if (entry.isIntersecting && hasEnteredView.current && !hasAutoOpened.current) {
+        const navigationIntent = navigationIntentRef.current;
+        const shouldAutoOpen = navigationIntent === null || navigationIntent === "home" || navigationIntent === "projects";
+
+        if (entry.isIntersecting && hasEnteredView.current && !hasAutoOpened.current && shouldAutoOpen) {
           hasAutoOpened.current = true;
           setMediaResetKey((current) => current + 1);
           setOpenedProject("entrenar");
+        }
+
+        if (entry.isIntersecting && navigationIntent !== null) {
+          navigationIntentRef.current = null;
         }
       },
       { threshold: 0.28 },
@@ -333,7 +346,10 @@ export function ProjectsSection() {
 
     observer.observe(section);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("portfolio:navigation-intent", handleNavigationIntent);
+    };
   }, []);
 
   /**

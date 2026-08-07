@@ -1,6 +1,5 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import type { Dictionary, Language } from "@/lib/i18n";
 import { Button, Modal } from "@/components/ui";
 import { DateTimeModal } from "./date-time-modal";
@@ -53,9 +52,7 @@ export function MeetingModal({
     </div>
   ) : null;
 
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
+  return (
     <>
       <Modal closeLabel={closeLabel || dictionary.modals.closeLabel} footer={footer} isOpen={isOpen} onClose={lifecycle.handleDismiss} size="lg" title={dictionary.meeting.title}>
         {lifecycle.step === "success" ? (
@@ -90,7 +87,6 @@ export function MeetingModal({
           whatsappUrl={lifecycle.whatsAppUrl}
         />
       ) : null}
-    </>,
-    document.body,
+    </>
   );
 }

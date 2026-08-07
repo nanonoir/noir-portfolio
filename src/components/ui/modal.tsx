@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { HandwrittenIcon } from "./handwritten-icon";
 
@@ -181,11 +182,11 @@ export function Modal({
     // Intentionally omit onClose — it is captured via onCloseRef.
   }, [initialFocus, isOpen]);
 
-  if (!isPresent) {
+  if (!isPresent || typeof document === "undefined") {
     return null;
   }
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 grid place-items-center px-4 py-8" data-modal-phase={phase}>
       <button
         aria-label={closeLabel}
@@ -237,4 +238,6 @@ export function Modal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

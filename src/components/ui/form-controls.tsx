@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from "react";
+import { HandwrittenIcon } from "./handwritten-icon";
 
 type LabelProps = {
   children: ReactNode;
@@ -27,7 +28,7 @@ export function FormError({ children, id }: FormErrorProps) {
 
   return (
     <p className="inline-flex items-start gap-2 text-base text-danger md:text-sm" id={id} role="alert">
-      <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" />
+      <HandwrittenIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" icon="error" />
       <span>{children}</span>
     </p>
   );

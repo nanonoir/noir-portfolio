@@ -17,6 +17,7 @@ export { CardSurface } from "./card-surface";
 export { Chip } from "./chip";
 export { FormError, Label, Radio } from "./form-controls";
 export { IconButton } from "./icon-button";
+export { HandwrittenIcon, type HandwrittenIconName } from "./handwritten-icon";
 export { Input, Select, Textarea } from "./form-field";
 export { Modal } from "./modal";
 export { PdfModal } from "./pdf-modal";

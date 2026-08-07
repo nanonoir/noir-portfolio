@@ -1,19 +1,18 @@
 "use client";
 
-import Image from "next/image";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useTheme } from "@/components/providers/theme-provider";
-import { ActionLink, Button, PdfModal } from "@/components/ui";
+import { ActionLink, Button, HandwrittenIcon, PdfModal } from "@/components/ui";
 import type { DocumentConfig } from "@/components/ui/pdf-modal";
 
 const NAV_ITEMS = [
-  { id: "about", key: "about", icon: assets.icons.about },
-  { id: "projects", key: "projects", icon: assets.icons.project },
-  { id: "services", key: "services", icon: assets.icons.service },
-  { id: "stack", key: "stack", icon: assets.icons.toolbox },
-  { id: "contact", key: "contact", icon: assets.icons.card },
+  { id: "about", key: "about", icon: "about" },
+  { id: "projects", key: "projects", icon: "project" },
+  { id: "services", key: "services", icon: "service" },
+  { id: "stack", key: "stack", icon: "toolbox" },
+  { id: "contact", key: "contact", icon: "card" },
 ] as const;
 
 const FOCUSABLE_SELECTOR = [
@@ -91,7 +90,7 @@ function NavigationLinks({ activeSection, onNavigate }: { activeSection: string 
           href={`#${item.id}`}
           icon={
             item.id === "services" ? (
-              <Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={item.icon} width={16} />
+              <HandwrittenIcon className="size-4 opacity-70" icon={item.icon} />
             ) : undefined
           }
           iconPosition="start"
@@ -114,7 +113,7 @@ function ThemeToggle() {
     <Button
       aria-label={dictionary.navigation.themeToggleLabel}
       className="text-muted-foreground"
-      icon={<Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src={theme === "dark" ? assets.icons.sun : assets.icons.moon} width={16} />}
+      icon={<HandwrittenIcon className="size-4" icon={theme === "dark" ? "sun" : "moon"} />}
       onClick={toggleTheme}
       size="icon"
       variant="icon"
@@ -129,7 +128,7 @@ function LanguageToggle() {
     <Button
       aria-label={dictionary.navigation.languageToggleLabel}
       className="text-muted-foreground"
-      icon={<Image alt="" aria-hidden="true" className="size-4 opacity-70 dark:invert" height={16} src={assets.icons.language} width={16} />}
+      icon={<HandwrittenIcon className="size-4 opacity-70" icon="language" />}
       onClick={toggleLanguage}
       size="icon"
       variant="icon"
@@ -145,7 +144,7 @@ function DrawerLanguageButton({ onNavigate }: { onNavigate?: () => void }) {
     <Button
       aria-label={dictionary.navigation.languageToggleLabel}
       className="w-full justify-start px-4 py-3 text-base font-medium text-muted-foreground"
-      icon={<Image alt="" aria-hidden="true" className="size-5 opacity-70 dark:invert" height={20} src={assets.icons.language} width={20} />}
+      icon={<HandwrittenIcon className="size-5 opacity-70" icon="language" size={20} />}
       iconPosition="start"
       label={label}
       onClick={() => {
@@ -161,14 +160,14 @@ function DrawerLanguageButton({ onNavigate }: { onNavigate?: () => void }) {
 function DrawerThemeButton() {
   const { dictionary } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const icon = theme === "dark" ? assets.icons.sun : assets.icons.moon;
+  const icon = theme === "dark" ? "sun" : "moon";
   const label = theme === "dark" ? dictionary.navigation.lightTheme : dictionary.navigation.darkTheme;
 
   return (
     <Button
       aria-label={dictionary.navigation.themeToggleLabel}
       className="w-full justify-start px-4 py-3 text-base font-medium text-muted-foreground"
-      icon={<Image alt="" aria-hidden="true" className="size-5 opacity-70 dark:invert" height={20} src={icon} width={20} />}
+      icon={<HandwrittenIcon className="size-5 opacity-70" icon={icon} size={20} />}
       iconPosition="start"
       label={label}
       onClick={toggleTheme}
@@ -184,7 +183,7 @@ function ResumeButton({ className = "", onOpen }: { className?: string; onOpen: 
   return (
     <Button
       className={`resume-action border border-foreground/20 px-5 py-1.5 text-foreground ${className}`}
-      icon={<Image alt="" aria-hidden="true" className="size-4 shrink-0 opacity-70 dark:invert" height={16} src={assets.icons.view} width={16} />}
+      icon={<HandwrittenIcon className="size-4 shrink-0 opacity-70" icon="view" />}
       label={dictionary.navigation.resume}
       onClick={onOpen}
       size="sm"
@@ -202,7 +201,7 @@ function MenuButton({ onClick }: { onClick: () => void }) {
       aria-label={dictionary.navigation.menuLabel}
       className="border border-border bg-background/60 text-muted-foreground"
       data-portfolio-menu-button="true"
-      icon={<Image alt="" aria-hidden="true" className="size-4 opacity-60 dark:invert" height={16} src={assets.icons.menu} width={16} />}
+      icon={<HandwrittenIcon className="size-4 opacity-60" icon="menu" />}
       onClick={onClick}
       size="icon"
       variant="icon"
@@ -257,7 +256,7 @@ function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { ac
           href="#top"
           onClick={(event) => navigateToHash(event, "#top")}
         >
-          <Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src={assets.icons.home} width={16} />
+          <HandwrittenIcon className="size-4" icon="home" />
         </a>
         <nav aria-label={dictionary.navigation.stickyNavigationLabel} className="flex items-center gap-1">
           {NAV_ITEMS.map((item) => (
@@ -272,14 +271,7 @@ function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { ac
               href={`#${item.id}`}
               icon={
                 item.id === "services" ? (
-                  <Image
-                    alt=""
-                    aria-hidden="true"
-                    className="size-4 dark:invert"
-                    height={16}
-                    src={assets.icons.service}
-                    width={16}
-                  />
+                  <HandwrittenIcon className="size-4" icon="service" />
                 ) : undefined
               }
               iconPosition="start"
@@ -412,7 +404,7 @@ function MobileDrawer({
           <Button
             aria-label={dictionary.navigation.closeMenuLabel}
             className="text-muted-foreground"
-            icon={<Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src={assets.icons.close} width={16} />}
+            icon={<HandwrittenIcon className="size-4" icon="close" />}
             onClick={onClose}
             size="icon"
             variant="icon"
@@ -429,7 +421,7 @@ function MobileDrawer({
               }
               data-drawer-item="true"
               href={`#${item.id}`}
-              icon={<Image alt="" aria-hidden="true" className="size-6 shrink-0 opacity-70 dark:invert" height={24} src={item.icon} width={24} />}
+              icon={<HandwrittenIcon className="size-6 shrink-0 opacity-70" icon={item.icon} size={24} />}
               iconPosition="start"
               key={item.id}
               label={dictionary.navigation[item.key]}
@@ -465,7 +457,10 @@ export function PortfolioNavigation() {
     // Below this scroll offset the visitor is in the hero / top zone and no section is active.
     const HERO_THRESHOLD = 120;
 
-    const handleScroll = () => {
+    let animationFrame: number | null = null;
+
+    const updateScrollState = () => {
+      animationFrame = null;
       setStickyVisible(window.scrollY > STICKY_THRESHOLD);
       // When the visitor scrolls back to the hero area, clear the active section so no
       // nav item appears underlined / aria-current while the hero is in view.
@@ -474,10 +469,21 @@ export function PortfolioNavigation() {
       }
     };
 
-    handleScroll();
+    const handleScroll = () => {
+      if (animationFrame === null) {
+        animationFrame = window.requestAnimationFrame(updateScrollState);
+      }
+    };
+
+    updateScrollState();
     window.addEventListener("scroll", handleScroll, { passive: true });
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+    };
   }, []);
 
   useEffect(() => {

@@ -88,11 +88,11 @@ function ActionContent({ children, icon, iconPosition = ACTION_ICON_POSITIONS.EN
   const iconSlot = icon ? <span aria-hidden="true" data-action-icon="true">{icon}</span> : null;
 
   return (
-    <>
+    <span className="relative inline-flex items-center justify-center gap-2 transition-colors">
       {iconPosition === ACTION_ICON_POSITIONS.START ? iconSlot : null}
       {actionLabel ? <span data-action-label="true">{actionLabel}</span> : null}
       {iconPosition === ACTION_ICON_POSITIONS.END ? iconSlot : null}
-    </>
+    </span>
   );
 }
 

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import type { Dictionary, Language, LocalizedString } from "@/lib/i18n";
 import type { Service } from "@/data/content";
-import { ActionLink, Button, Modal } from "@/components/ui";
+import { ActionLink, Button, HandwrittenIcon, Modal } from "@/components/ui";
 import type { ServiceFormId } from "./schemas";
 import { ServiceFormAudit } from "./service-form-audit";
 import { ServiceFormAutomation } from "./service-form-automation";
@@ -78,20 +77,15 @@ function SuccessState({
   return (
     <div className="space-y-4">
       <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">{service.title[language]}</p>
-      <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">{dictionary.forms.success.title}</h3>
+      <div className="flex items-center gap-3">
+        <HandwrittenIcon className="size-6 shrink-0 text-success" icon="check" />
+        <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">{dictionary.forms.success.title}</h3>
+      </div>
       <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{dictionary.forms.success.message}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
-          className="group"
           icon={
-            <Image
-              alt=""
-              aria-hidden="true"
-              className="size-4 transition group-hover:invert dark:invert dark:group-hover:invert-0"
-              height={16}
-              src="/handwritten-icons/calendar.svg"
-              width={16}
-            />
+            <HandwrittenIcon className="size-4" icon="calendar" />
           }
           label={dictionary.meeting.contact.cta}
           onClick={() => setMeetingOpen(true)}
@@ -212,7 +206,7 @@ export function ServiceRequestModal({
           <div className="mb-4 space-y-2">
             <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">{currentService.description[language]}</p>
             <p className="text-base text-muted-foreground md:text-sm">{dictionary.forms.common.requiredFieldsMessage}</p>
-            {submissionError ? <p className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-base md:text-sm" role="alert"><span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" /><span>{dictionary.forms.errors.submission}</span></p> : null}
+             {submissionError ? <p className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-base md:text-sm" role="alert"><HandwrittenIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" icon="networkError" /><span>{dictionary.forms.errors.submission}</span></p> : null}
           </div>
           <ServiceRequestForm dictionary={dictionary} formId={formId} onSubmit={handleSubmit} serviceId={currentService.id} />
         </>

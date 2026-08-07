@@ -4,7 +4,7 @@ import type { FormEventHandler } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import type { Dictionary } from "@/lib/i18n";
-import { Button, FormError, Label, Select } from "@/components/ui";
+import { Button, FormError, HandwrittenIcon, Label, Select } from "@/components/ui";
 import type { MeetingFormValues } from "./meeting-payload-mapper";
 import { TextAreaField, TextField } from "./service-form-fields";
 
@@ -54,7 +54,7 @@ export function MeetingModalForm({
 
       {Object.keys(errors).length > 0 && form.formState.isSubmitted ? (
         <div className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-base md:text-sm" role="alert" aria-live="assertive">
-          <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" />
+          <HandwrittenIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" icon="warning" />
           <span>{dictionary.forms.common.requiredFieldsMessage}</span>
         </div>
       ) : null}
@@ -97,6 +97,8 @@ export function MeetingModalForm({
               aria-invalid={Boolean(errors.date || errors.time)}
               className="mt-3"
               data-field-id="date time"
+              icon={<HandwrittenIcon className="size-4" icon="calendar" />}
+              iconPosition="start"
               id="meeting-date-time-selector"
               onClick={onOpenDateTime}
               type="button"

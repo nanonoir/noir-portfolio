@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { HandwrittenIcon } from "./handwritten-icon";
 import { Modal } from "./modal";
 
 // ---------------------------------------------------------------------------
@@ -66,22 +67,7 @@ export function PdfModal({ closeLabel, config, isOpen, onClose }: PdfModalProps)
           download
           href={downloadHref}
         >
-          {/* Download icon */}
-          <svg
-            aria-hidden="true"
-            className="size-4 shrink-0"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.75}
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" x2="12" y1="3" y2="15" />
-          </svg>
+          <HandwrittenIcon className="size-4 shrink-0" icon="download" />
           {downloadLabel}
         </a>
 
@@ -95,21 +81,7 @@ export function PdfModal({ closeLabel, config, isOpen, onClose }: PdfModalProps)
             target="_blank"
           >
             {openLabel}
-            {/* Right-arrow icon */}
-            <svg
-              aria-hidden="true"
-              className="size-4 shrink-0"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <line x1="5" x2="19" y1="12" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
+            <HandwrittenIcon className="size-4 shrink-0" icon="rightArrow" />
           </a>
         ) : null}
       </div>

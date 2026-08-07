@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dictionary } from "@/lib/i18n";
-import { ActionLink, Button } from "@/components/ui";
+import { ActionLink, Button, HandwrittenIcon } from "@/components/ui";
 
 type MeetingSuccessProps = {
   dictionary: Dictionary;
@@ -16,9 +16,12 @@ export function MeetingSuccess({ dictionary, onClose, whatsappUrl }: MeetingSucc
         <p className="mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
           {dictionary.meeting.title}
         </p>
-        <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">
-          {dictionary.meeting.success.title}
-        </h3>
+        <div className="flex items-center gap-3">
+          <HandwrittenIcon className="size-6 shrink-0 text-success" icon="checkDouble" />
+          <h3 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">
+            {dictionary.meeting.success.title}
+          </h3>
+        </div>
         <p className="text-base leading-7 text-body-foreground md:text-sm md:leading-6">
           {dictionary.meeting.success.message}
         </p>

@@ -308,24 +308,12 @@ html {
     color: var(--background);
   }
 
-  /* Monochrome image icons inside outlined buttons must stay fully visible during the
-     left-to-right fill animation. Two concerns:
-     1. filter: the fill becomes --foreground (dark in light mode, light in dark mode), so
-        we invert the icon to match. In dark mode the icon already carries dark:invert
-        (invert(1)) at rest; on hover the fill becomes light (--foreground), so we revert
-        to natural (invert(0)).
-     2. opacity: icons use opacity-70 at rest for subtle treatment; on hover we must raise
-        opacity to 1 so the icon reads fully against the now-filled background.
-     Selectors use :where(.dark, .dark *) parity so the dark-mode rule always wins the
-     dark:invert Tailwind utility (which uses :where() and has zero specificity). */
   .button-outlined:hover [data-action-icon] img {
     filter: invert(1);
-    opacity: 1;
   }
 
   :where(.dark, .dark *) .button-outlined:hover [data-action-icon] img {
     filter: invert(0);
-    opacity: 1;
   }
 
   .button-outlined:hover::before,
@@ -416,6 +404,16 @@ html {
   transform-origin: center center;
 }
 
+/* Pause orbit animations when the about section is outside the viewport.
+   IntersectionObserver sets data-orbit-visible="false" on the wrapper div,
+   which pauses all child animations without per-scroll React state updates. */
+.about-orbit[data-orbit-visible="false"] .orbit-ring-outer,
+.about-orbit[data-orbit-visible="false"] .orbit-ring-inner,
+.about-orbit[data-orbit-visible="false"] .orbit-icon-cw,
+.about-orbit[data-orbit-visible="false"] .orbit-icon-ccw {
+  animation-play-state: paused;
+}
+
 /* container-type:size enables cqmin units in child transforms */
 .orbit-ring {
   container-type: size;
@@ -500,12 +498,9 @@ html {
     transform: scaleX(0) !important;
   }
 
-  /* Prevent hover from forcing text/icon to background color when the fill sweep is disabled */
-  .button-outlined:hover,
-  .button-outlined:hover [data-action-icon] img {
+  /* Prevent hover from forcing foreground-inheriting icon/text color when the fill sweep is disabled */
+  .button-outlined:hover {
     color: var(--foreground);
-    filter: none !important;
-    opacity: 1;
   }
 
   .drawer-scrim,

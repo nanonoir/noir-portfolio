@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { HandwrittenIcon } from "./handwritten-icon";
 
 type ModalProps = {
   children: React.ReactNode;
@@ -220,7 +220,7 @@ export function Modal({
               onClick={onClose}
               type="button"
             >
-              <Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src="/handwritten-icons/close.svg" width={16} />
+              <HandwrittenIcon className="size-4" icon="close" />
             </button>
           </div>
         </div>

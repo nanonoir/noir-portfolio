@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
-import { ActionLink } from "@/components/ui";
+import { ActionLink, HandwrittenIcon } from "@/components/ui";
 
 const TYPE_SPEED_MS = 26;
 const LABEL_DELAY_MS = 180;
@@ -55,7 +55,7 @@ function renderTypedHeadline(headline: string, italicFragment: string, visibleCh
     <>
       {visiblePrefix}
       {italicVisibleCount > 0 ? (
-        <em className="font-serif italic text-foreground/75">{italic.slice(0, italicVisibleCount)}</em>
+        <em className="editorial text-foreground/75">{italic.slice(0, italicVisibleCount)}</em>
       ) : null}
       {suffix.slice(0, suffixVisibleCount)}
       {visibleCharacters < headline.length ? <span aria-hidden="true" className="text-foreground/40">|</span> : null}
@@ -63,28 +63,89 @@ function renderTypedHeadline(headline: string, italicFragment: string, visibleCh
   );
 }
 
+function HeadlineTypewriter({
+  headline,
+  italicFragment,
+  onComplete,
+  prefersReducedMotion,
+  showFinal,
+  shouldAnimate,
+}: {
+  headline: string;
+  italicFragment: string;
+  onComplete: () => void;
+  prefersReducedMotion: boolean;
+  showFinal: boolean;
+  shouldAnimate: boolean;
+}) {
+  const [visibleCharacters, setVisibleCharacters] = useState(0);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    if (!shouldAnimate) {
+      return;
+    }
+
+    let currentCharacters = 0;
+    const interval = window.setInterval(() => {
+      currentCharacters += 1;
+      setVisibleCharacters(Math.min(currentCharacters, headline.length));
+
+      if (currentCharacters >= headline.length) {
+        window.clearInterval(interval);
+        onCompleteRef.current();
+      }
+    }, TYPE_SPEED_MS);
+
+    return () => window.clearInterval(interval);
+  }, [headline, shouldAnimate]);
+
+  const renderedCharacters = prefersReducedMotion || showFinal ? headline.length : visibleCharacters;
+
+  return (
+    <h1
+      aria-label={headline}
+      className="relative mt-7 max-w-4xl text-[36px] leading-[1.05] font-semibold tracking-[-0.06em] text-balance sm:text-5xl lg:text-[68px]"
+    >
+      <span aria-hidden="true" className="invisible block select-none">
+        {renderTypedHeadline(headline, italicFragment, headline.length)}
+      </span>
+      <span className="absolute inset-0">
+        {renderTypedHeadline(headline, italicFragment, renderedCharacters)}
+      </span>
+    </h1>
+  );
+}
+
 export function Hero() {
   const { dictionary } = useLanguage();
   const prefersReducedMotion = useReducedMotion();
   const [labelCharacters, setLabelCharacters] = useState(0);
-  const [headlineCharacters, setHeadlineCharacters] = useState(0);
+  const [headlineStarted, setHeadlineStarted] = useState(false);
   const [descriptionVisible, setDescriptionVisible] = useState(false);
   const [illustrationVisible, setIllustrationVisible] = useState(false);
   const [ctasVisible, setCtasVisible] = useState(false);
   const [metricVisible, setMetricVisible] = useState(false);
   const [metricCount, setMetricCount] = useState(0);
   const [metricCharacters, setMetricCharacters] = useState(0);
-  const hasAnimatedRef = useRef(false);
+  const [animationComplete, setAnimationComplete] = useState(false);
+  const completionTimeoutsRef = useRef<number[]>([]);
   const hero = dictionary.hero;
   const finalMetricText = useMemo(() => metricText(hero.metric, hero.metricPrefix), [hero.metric, hero.metricPrefix]);
 
   useEffect(() => {
     const timeouts: number[] = [];
     const intervals: number[] = [];
+    completionTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
+    completionTimeoutsRef.current = [];
 
     const showFinalContent = () => {
       setLabelCharacters(hero.label.length);
-      setHeadlineCharacters(hero.headline.length);
+      setHeadlineStarted(true);
       setDescriptionVisible(true);
       setIllustrationVisible(true);
       setCtasVisible(true);
@@ -93,13 +154,15 @@ export function Hero() {
       setMetricCharacters(finalMetricText.length);
     };
 
-    if (prefersReducedMotion || hasAnimatedRef.current) {
+    if (prefersReducedMotion || animationComplete) {
       showFinalContent();
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting the timeline is required when locale or motion preference changes.
     setLabelCharacters(0);
-    setHeadlineCharacters(0);
+    setHeadlineStarted(false);
+    setAnimationComplete(false);
     setDescriptionVisible(false);
     setIllustrationVisible(false);
     setCtasVisible(true);
@@ -120,30 +183,7 @@ export function Hero() {
 
           window.clearInterval(labelInterval);
           timeouts.push(
-            window.setTimeout(() => {
-              let currentHeadlineCharacters = 0;
-              const headlineInterval = window.setInterval(() => {
-                currentHeadlineCharacters += 1;
-                setHeadlineCharacters(Math.min(currentHeadlineCharacters, hero.headline.length));
-
-                if (currentHeadlineCharacters < hero.headline.length) {
-                  return;
-                }
-
-                window.clearInterval(headlineInterval);
-                timeouts.push(
-                  window.setTimeout(() => {
-                    setDescriptionVisible(true);
-                    // Mark animation complete only after the full timeline finishes,
-                    // so StrictMode double-invoke and language changes correctly skip replay.
-                    hasAnimatedRef.current = true;
-                    timeouts.push(window.setTimeout(() => setIllustrationVisible(true), ILLUSTRATION_DELAY_MS));
-                  }, DESCRIPTION_DELAY_MS),
-                );
-              }, TYPE_SPEED_MS);
-
-              intervals.push(headlineInterval);
-            }, HEADLINE_DELAY_MS),
+            window.setTimeout(() => setHeadlineStarted(true), HEADLINE_DELAY_MS),
           );
         }, TYPE_SPEED_MS);
 
@@ -154,8 +194,20 @@ export function Hero() {
     return () => {
       timeouts.forEach((timeout) => window.clearTimeout(timeout));
       intervals.forEach((interval) => window.clearInterval(interval));
+      completionTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
+      completionTimeoutsRef.current = [];
     };
-  }, [finalMetricText, hero.headline, hero.label, prefersReducedMotion]);
+  }, [animationComplete, finalMetricText, hero.headline, hero.label, prefersReducedMotion]);
+
+  function handleHeadlineComplete() {
+    const descriptionTimeout = window.setTimeout(() => {
+      setDescriptionVisible(true);
+      setAnimationComplete(true);
+      const illustrationTimeout = window.setTimeout(() => setIllustrationVisible(true), ILLUSTRATION_DELAY_MS);
+      completionTimeoutsRef.current.push(illustrationTimeout);
+    }, DESCRIPTION_DELAY_MS);
+    completionTimeoutsRef.current.push(descriptionTimeout);
+  }
 
   return (
     <main className="bg-background text-foreground">
@@ -171,12 +223,15 @@ export function Hero() {
               {labelCharacters < hero.label.length ? <span aria-hidden="true" className="text-foreground/40">|</span> : null}
             </p>
 
-            <h1
-              aria-label={hero.headline}
-              className="mt-7 max-w-4xl text-[36px] leading-[1.05] font-semibold tracking-[-0.06em] text-balance sm:text-5xl lg:text-[68px]"
-            >
-              {renderTypedHeadline(hero.headline, hero.italicFragment, headlineCharacters)}
-            </h1>
+            <HeadlineTypewriter
+              headline={hero.headline}
+              italicFragment={hero.italicFragment}
+              key={hero.headline}
+              onComplete={handleHeadlineComplete}
+              prefersReducedMotion={prefersReducedMotion}
+              showFinal={animationComplete}
+              shouldAnimate={headlineStarted && !animationComplete}
+            />
 
             <p
               className={`mt-7 max-w-xl text-base leading-8 text-body-foreground transition duration-500 ease-out motion-reduce:transition-none sm:text-[17px] ${
@@ -194,8 +249,7 @@ export function Hero() {
               <ActionLink
                 href="#contact"
                 icon={
-                  // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
-                  <img alt="" aria-hidden="true" className="size-4 shrink-0 invert dark:invert-0" src={assets.icons.card} />
+                  <HandwrittenIcon className="size-4 shrink-0" icon="card" />
                 }
                 label={hero.ctaContact}
                 size="lg"
@@ -204,8 +258,7 @@ export function Hero() {
               <ActionLink
                 href="#projects"
                 icon={
-                  // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
-                  <img alt="" aria-hidden="true" className="size-4 shrink-0 dark:invert" src={assets.icons.view} />
+                  <HandwrittenIcon className="size-4 shrink-0" icon="view" />
                 }
                 label={hero.ctaProjects}
                 size="lg"
@@ -214,8 +267,7 @@ export function Hero() {
               <ActionLink
                 href="#services"
                 icon={
-                  // eslint-disable-next-line @next/next/no-img-element -- Handwritten SVG icons are static public assets.
-                  <img alt="" aria-hidden="true" className="size-4 shrink-0 dark:invert" src={assets.icons.service} />
+                  <HandwrittenIcon className="size-4 shrink-0" icon="service" />
                 }
                 label={hero.ctaServices}
                 size="lg"
@@ -249,21 +301,21 @@ export function Hero() {
               <img
                 alt=""
                 aria-hidden="true"
-                className="hero-organic-mask pointer-events-none absolute inset-0 h-auto w-full scale-[1.035] object-contain opacity-45 blur-md dark:opacity-15 dark:blur-lg dark:invert dark:brightness-[0.85] dark:contrast-[1.08]"
+                className="hero-organic-mask pointer-events-none absolute inset-0 h-auto w-full scale-[1.035] object-contain opacity-45 blur-md dark:opacity-15 dark:blur-lg dark:brightness-[0.85] dark:contrast-[1.08]"
                 decoding="async"
-                loading="eager"
+                loading="lazy"
                 src={assets.hero}
               />
               {/* eslint-disable-next-line @next/next/no-img-element -- PRD requires native AVIF rendering to avoid optimization issues. */}
               <img
                 alt=""
                 aria-hidden="true"
-                className="hero-organic-mask relative h-auto w-full object-contain dark:opacity-[0.88] dark:invert dark:brightness-[0.85] dark:contrast-[1.08]"
+                className="hero-organic-mask relative h-auto w-full object-contain dark:opacity-[0.88] dark:brightness-[0.85] dark:contrast-[1.08]"
                 decoding="async"
-                loading="eager"
+                loading="lazy"
                 src={assets.hero}
               />
-              <p className="mt-3 text-right font-serif text-sm italic text-muted-foreground">
+              <p className="editorial mt-3 text-right text-sm text-muted-foreground">
                 {hero.illustrationPhrase}
               </p>
             </div>

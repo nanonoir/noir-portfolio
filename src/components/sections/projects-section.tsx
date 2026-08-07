@@ -3,13 +3,13 @@
 import Image from "next/image";
 import { type PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { useLanguage } from "@/components/providers/language-provider";
-import { assets, projects, type Project, type ProjectMedia } from "@/data/content";
-import { Chip, SectionHeading, SectionShell } from "@/components/ui";
+import { projects, type Project, type ProjectMedia } from "@/data/content";
+import { Chip, HandwrittenIcon, SectionHeading, SectionShell } from "@/components/ui";
 
 function ProjectAction({ link }: { link: Project["links"][number] }) {
   const { dictionary } = useLanguage();
   const label = dictionary.projects[link.labelKey];
-  const icon = link.kind === "github" ? "/handwritten-icons/github.svg" : assets.icons.request;
+  const icon = link.kind === "github" ? "github" : "request";
 
   if (!link.href) {
     return (
@@ -19,7 +19,7 @@ function ProjectAction({ link }: { link: Project["links"][number] }) {
         type="button"
       >
         {label}
-        <Image alt="" aria-hidden="true" className="size-3.5 dark:invert" height={14} src={icon} width={14} />
+        <HandwrittenIcon className="size-3.5" fallbackSrc={link.kind === "github" ? undefined : "request"} icon={icon} size={14} />
       </button>
     );
   }
@@ -32,7 +32,7 @@ function ProjectAction({ link }: { link: Project["links"][number] }) {
       target="_blank"
     >
       {label}
-      <Image alt="" aria-hidden="true" className="size-3.5 dark:invert" height={14} src={icon} width={14} />
+      <HandwrittenIcon className="size-3.5" fallbackSrc={link.kind === "github" ? undefined : "request"} icon={icon} size={14} />
     </a>
   );
 }
@@ -50,6 +50,19 @@ function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMe
 
     if (paused) {
       video.pause();
+      return;
+    }
+
+    // The source stays unset for collapsed panels and user-paused media so
+    // browsers cannot buffer the project videos before a visitor requests it.
+    if (!video.src || video.src !== new URL(media.src, location.href).href) {
+      video.src = media.src;
+      video.load();
+    }
+
+    // Respect reduced motion: keep video paused when preference is active.
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
       return;
     }
 
@@ -80,15 +93,14 @@ function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMe
   return (
     <video
       aria-label={media.alt[language]}
-      autoPlay={!paused}
+      autoPlay={false}
       className="size-full object-contain"
       loop
       muted
       onError={onMediaError}
       playsInline
-      preload="auto"
+      preload="none"
       ref={videoRef}
-      src={media.src}
     />
   );
 }
@@ -215,14 +227,7 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
             onClick={() => setPaused((value) => !value)}
             type="button"
           >
-            <Image
-              alt=""
-              aria-hidden="true"
-              className="size-4 dark:invert"
-              height={16}
-              src={paused ? assets.icons.play : assets.icons.pause}
-              width={16}
-            />
+            <HandwrittenIcon className="size-4" icon={paused ? "play" : "pause"} />
           </button>
         ) : null}
 
@@ -235,7 +240,7 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
               onClick={() => goToMedia(activeIndex - 1)}
               type="button"
             >
-              <Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src="/handwritten-icons/leftChevron.svg" width={16} />
+              <HandwrittenIcon className="size-4 -scale-x-100" icon="rightArrow" />
             </button>
             <button
               aria-label={dictionary.projects.nextMediaLabel}
@@ -243,7 +248,7 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
               onClick={() => goToMedia(activeIndex + 1)}
               type="button"
             >
-              <Image alt="" aria-hidden="true" className="size-4 dark:invert" height={16} src="/handwritten-icons/rightChevron.svg" width={16} />
+              <HandwrittenIcon className="size-4" icon="rightArrow" />
             </button>
           </>
         ) : null}

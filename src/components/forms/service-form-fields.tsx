@@ -1,6 +1,6 @@
 import type { FieldErrors, FieldValues, Path, UseFormRegisterReturn } from "react-hook-form";
 import type { Dictionary } from "@/lib/i18n";
-import { Button, FormError, Input, Label, Radio, Textarea } from "@/components/ui";
+import { Button, FormError, HandwrittenIcon, Input, Label, Radio, Textarea } from "@/components/ui";
 
 type FieldVariant = "name" | "phone";
 
@@ -212,7 +212,7 @@ export function RequestFormShell({
     <form id={formId} className="space-y-5" noValidate onSubmit={onSubmit}>
       {hasErrors ? (
         <div className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-base md:text-sm" role="alert">
-          <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-danger" />
+           <HandwrittenIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" icon="warning" />
           <span>{dictionary.forms.common.requiredFieldsMessage}</span>
         </div>
       ) : null}

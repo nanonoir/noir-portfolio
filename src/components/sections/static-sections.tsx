@@ -422,7 +422,7 @@ function ServicesSection() {
   }
 
   return (
-    <SectionShell className="hairline-t hairline-b bg-surface/40" id="services">
+    <SectionShell className="hairline-t hairline-b" id="services">
       <SectionHeading description={t.description} label={t.label} title={t.title} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {services.map((service) => (
@@ -527,7 +527,7 @@ function StackSection() {
   const stack = dictionary.stack;
 
   return (
-    <SectionShell className="hairline-b bg-surface/40" id="stack">
+    <SectionShell className="hairline-b" id="stack">
       <SectionHeading description={stack.description} label={stack.label} title={stack.title} />
       <div className="grid gap-3 sm:grid-cols-2">
         {stackCategories.map((category, index) => (

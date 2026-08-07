@@ -81,7 +81,7 @@ export function PdfModal({ closeLabel, config, isOpen, onClose }: PdfModalProps)
             target="_blank"
           >
             {openLabel}
-            <HandwrittenIcon className="size-4 shrink-0" icon="rightArrow" />
+            <HandwrittenIcon className="size-4 shrink-0" icon="request" />
           </a>
         ) : null}
       </div>

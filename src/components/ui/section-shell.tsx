@@ -15,7 +15,7 @@ export function SectionShell({
 }: SectionShellProps) {
   return (
     <section
-      className={["px-6 py-24 lg:py-32", className].filter(Boolean).join(" ")}
+      className={["scroll-mt-[var(--scroll-header-offset)] px-6 py-24 lg:py-32", className].filter(Boolean).join(" ")}
       ref={ref}
       {...props}
     >

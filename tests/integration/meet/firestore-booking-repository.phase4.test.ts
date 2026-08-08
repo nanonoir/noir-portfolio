@@ -12,8 +12,24 @@ import { clearFirestore } from "../../helpers/firebase-emulator";
 import { createBookingRecordFixture } from "../../helpers/booking-factory";
 
 const repository = new FirestoreBookingRepository();
-const oldSlot = "2026-08-04T10:00:00.000Z" as never;
-const newSlot = "2026-08-05T11:00:00.000Z" as never;
+const TEST_NOW = new Date();
+
+function getFutureSlot(daysFromNow: number, time: string) {
+  const date = new Date(TEST_NOW);
+  date.setUTCDate(date.getUTCDate() + daysFromNow);
+  if (date.getUTCDay() === 0) date.setUTCDate(date.getUTCDate() + 1);
+  const calendarDate = date.toISOString().slice(0, 10);
+
+  return {
+    date: calendarDate,
+    slotIdentity: `${calendarDate}T${time}:00.000Z` as never,
+    time,
+  };
+}
+
+const proposedSlot = getFutureSlot(2, "11:00");
+const oldSlot = getFutureSlot(2, "10:00").slotIdentity;
+const newSlot = proposedSlot.slotIdentity;
 
 function idempotencyDocumentId(key: string) {
   return createHash("sha256").update(key, "utf8").digest("hex");
@@ -62,8 +78,8 @@ describe("Firestore emulator booking repository transactions", () => {
     await repository.create(record);
 
     const proposal = await repository.proposeAlternative(record.id, {
-      now: new Date().toISOString(),
-      proposedSlot: { date: "2026-08-05", time: "11:00", visitorTimezone: "UTC" as never },
+      now: TEST_NOW.toISOString(),
+      proposedSlot: { date: proposedSlot.date, time: proposedSlot.time, visitorTimezone: "UTC" as never },
     });
     expect(proposal).toMatchObject({ success: true, record: { proposalVersion: "2", status: "reschedule_proposed" } });
 
@@ -79,7 +95,7 @@ describe("Firestore emulator booking repository transactions", () => {
       calendarDelivery: { attempts: 3, status: "completed" },
       calendarEventId: "calendar-event-103",
       googleMeetUrl: "https://meet.google.com/integration-103",
-      proposedSlot: { date: "2026-08-05", time: "11:00" },
+      proposedSlot: { date: proposedSlot.date, time: proposedSlot.time },
     });
     expect(stored?.auditLog.map((event) => event.action)).toEqual([
       "alternative_proposed",
@@ -110,9 +126,15 @@ describe("Firestore emulator booking repository transactions", () => {
     const ownerId = firstReservation.success ? first.id : second.id;
     const waitingId = ownerId === first.id ? second.id : first.id;
     await repository.proposeAlternative(ownerId, {
-      proposedSlot: { date: "2026-08-05", time: "11:00", visitorTimezone: "UTC" as never },
+      now: TEST_NOW.toISOString(),
+      proposedSlot: { date: proposedSlot.date, time: proposedSlot.time, visitorTimezone: "UTC" as never },
     });
-    expect(await repository.reserveSlotForMeeting({ meetingId: ownerId, slotIdentity: newSlot, toStatus: "owner_confirmed" })).toMatchObject({ success: true });
+    expect(await repository.reserveSlotForMeeting({
+      meetingId: ownerId,
+      slotIdentity: newSlot,
+      toStatus: "owner_confirmed",
+      transitionOptions: { now: TEST_NOW.toISOString() },
+    })).toMatchObject({ success: true });
     expect(await getFirestore().collection("reservedSlots").doc(oldSlot).get()).toMatchObject({ exists: false });
     expect((await getFirestore().collection("reservedSlots").doc(newSlot).get()).data()).toMatchObject({ meetingId: ownerId });
 

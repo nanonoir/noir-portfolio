@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Dictionary } from "@/lib/i18n";
-import { Button } from "@/components/ui";
+import { ACTION_VARIANTS, Button } from "@/components/ui";
 import { contactLinks } from "@/data/content";
 import { ACTION_FORM_ACTIONS, type ActionFormAction } from "@/lib/meet/action-contract";
 import { ActionResultCard, ACTION_RESULT_VARIANTS } from "./action-result-card";
@@ -138,9 +138,9 @@ export function ActionForm({ action, allowReason = false, description, dictionar
         </div>
       ) : null}
       <Button
-        className={allowReason ? "bg-red-600 text-white hover:bg-red-700" : undefined}
         disabled={!hasToken || isSubmitting}
         onClick={() => void handleSubmit()}
+        variant={action === ACTION_FORM_ACTIONS.DECLINE ? ACTION_VARIANTS.DANGER : undefined}
       >
         {isSubmitting ? dictionary.meet.action.submitting : submitLabel}
       </Button>

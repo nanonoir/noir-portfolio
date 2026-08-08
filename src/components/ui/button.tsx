@@ -2,6 +2,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
 
 export const ACTION_VARIANTS = {
   PRIMARY: "primary",
+  DANGER: "danger",
   OUTLINED: "outlined",
   GHOST: "ghost",
   INVERSE: "inverse",
@@ -46,6 +47,8 @@ const baseClasses =
 const variantClasses: Record<ActionVariant, string> = {
   primary:
     "button-primary bg-primary text-sm font-medium text-primary-foreground",
+  danger:
+    "button-danger bg-danger text-sm font-medium text-primary-foreground",
   outlined:
     "button-outlined border border-foreground/20 text-sm font-medium text-foreground",
   ghost:

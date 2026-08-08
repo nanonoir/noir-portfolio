@@ -12,7 +12,17 @@ export function nextWeekdayDate() {
     date.setDate(date.getDate() + 1);
   } while (date.getDay() === 0);
 
-  return date.toISOString().slice(0, 10);
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10);
+}
+
+export function getDateButtonLabel(date: string) {
+  return new Date(`${date}T00:00:00.000Z`).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+    weekday: "long",
+    year: "numeric",
+  });
 }
 
 export async function mockAvailability(page: Page) {
@@ -35,7 +45,7 @@ export async function mockAvailability(page: Page) {
 
 export async function selectAvailableSlot(page: Page | Locator) {
   const date = nextWeekdayDate();
-  await page.getByRole("button", { name: date }).click();
+  await page.getByRole("button", { name: getDateButtonLabel(date) }).click();
   await page.getByRole("button", { name: "10:00" }).click();
   return date;
 }

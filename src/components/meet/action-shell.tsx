@@ -35,7 +35,6 @@ type ActionShellProps = {
 export function ActionShell({ children, dictionary, primaryAction, state }: ActionShellProps) {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8 text-foreground sm:px-6">
-      <meta content="noindex,nofollow" name="robots" />
       <section aria-labelledby="meet-action-title" className="w-full max-w-xl rounded-[20px] border border-border bg-card p-6 shadow-pill sm:p-8">
         <span className="inline-flex text-sm font-medium tracking-tight text-foreground">
           {dictionary.meta.siteName}

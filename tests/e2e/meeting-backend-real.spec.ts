@@ -5,7 +5,7 @@ import {
   resetBackendTestFirestore,
   seedBackendActionBooking,
 } from "../helpers/backend-test-composition";
-import { nextWeekdayDate } from "./fixtures";
+import { getDateButtonLabel, nextWeekdayDate } from "./fixtures";
 
 const actionRequest = (suffix: string) => ({
   type: "meeting_request" as const,
@@ -38,7 +38,7 @@ test.describe("@backend real route and Firestore emulator", () => {
     await modal.getByRole("button", { name: "Choose date and time" }).click();
     const dateTimeModal = page.getByRole("dialog", { name: "Choose a date and time" });
     const availabilityResponsePromise = page.waitForResponse((response) => response.url().includes("/api/availability?") && response.request().method() === "GET");
-    await dateTimeModal.getByRole("button", { name: nextWeekdayDate() }).click();
+    await dateTimeModal.getByRole("button", { name: getDateButtonLabel(nextWeekdayDate()) }).click();
     const availabilityResponse = await availabilityResponsePromise;
     const availability = await availabilityResponse.json() as {
       slots: Array<{ available: boolean; time: string }>;
@@ -112,7 +112,7 @@ test.describe("@backend real route and Firestore emulator", () => {
     const proposalAvailabilityResponsePromise = page.waitForResponse((response) =>
       response.url().includes("/api/availability?") && response.request().method() === "GET",
     );
-    await page.getByRole("button", { name: nextWeekdayDate() }).click();
+    await page.getByRole("button", { name: getDateButtonLabel(nextWeekdayDate()) }).click();
     const proposalAvailability = await proposalAvailabilityResponsePromise.then(async (response) => response.json() as Promise<{
       slots: Array<{ available: boolean; time: string }>;
       success: boolean;

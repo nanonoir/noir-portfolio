@@ -9,8 +9,8 @@ import {
   getTodayInTimeZone,
   isDateWithinAvailabilityRules,
   MAX_HORIZON_DAYS,
-} from "./date-time-constants";
-import type { AvailabilityState } from "./date-time-constants";
+} from "../lib/date-time-constants";
+import type { AvailabilityState } from "../lib/date-time-constants";
 import { MeetingSlots } from "./meeting-slots";
 
 export type AvailabilityCalendarSelection = {

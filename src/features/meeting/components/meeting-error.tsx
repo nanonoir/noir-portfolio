@@ -2,7 +2,7 @@
 
 import type { Dictionary } from "@/lib/i18n";
 import { ActionLink, Button } from "@/components/ui";
-import { createWhatsAppUrl } from "./whatsapp-link";
+import { createWhatsAppUrl } from "@/features/service-request/lib/whatsapp-link";
 
 type MeetingErrorProps = {
   code?: string;

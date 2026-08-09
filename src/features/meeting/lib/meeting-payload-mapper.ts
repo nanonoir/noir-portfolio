@@ -1,16 +1,18 @@
 import type { Language } from "@/lib/i18n";
 import { getVisitorTimeZone } from "./date-time-constants";
 import type {
+  MeetingFromContactValues,
+  MeetingFromServiceValues,
+} from "./schemas";
+import type {
   AutomationFormValues,
   AuditFormValues,
   CustomServiceFormValues,
   EcommerceFormValues,
   LandingFormValues,
-  MeetingFromContactValues,
-  MeetingFromServiceValues,
-} from "./schemas";
-import type { ServiceRequestTarget } from "./service-request-modal";
-import type { ServiceRequestValues } from "./whatsapp-link";
+} from "@/features/service-request/lib/schemas";
+import type { ServiceRequestTarget } from "@/features/service-request/components/service-request-modal";
+import type { ServiceRequestValues } from "@/features/service-request/lib/whatsapp-link";
 
 export type MeetingFormValues = MeetingFromServiceValues & Partial<Omit<MeetingFromContactValues, keyof MeetingFromServiceValues>>;
 

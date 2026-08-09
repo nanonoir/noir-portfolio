@@ -7,7 +7,7 @@ import { AvailabilityCalendar, type AvailabilityCalendarSelection } from "./avai
 import {
   getVisitorTimeZone,
   isDateWithinAvailabilityRules,
-} from "./date-time-constants";
+} from "../lib/date-time-constants";
 
 type DateTimeModalProps = {
   closeLabel: string;

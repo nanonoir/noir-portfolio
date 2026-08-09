@@ -1,6 +1,6 @@
-import { ActionPage } from "@/components/meet/action-page";
+import { ActionPage } from "@/features/meeting/components/booking-actions/action-page";
 import { ACTION_FORM_ACTIONS } from "@/lib/meet/action-contract";
-import { meetActionPageMetadata } from "@/components/meet/action-shell";
+import { meetActionPageMetadata } from "@/features/meeting/components/booking-actions/action-shell";
 
 export const metadata = meetActionPageMetadata;
 

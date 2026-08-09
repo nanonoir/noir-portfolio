@@ -10,7 +10,7 @@ import { ServiceFormAutomation } from "./service-form-automation";
 import { ServiceFormCustom } from "./service-form-custom";
 import { ServiceFormEcommerce } from "./service-form-ecommerce";
 import { ServiceFormLanding } from "./service-form-landing";
-import { MeetingModal } from "./meeting-modal";
+import { MeetingModal } from "@/features/meeting/components/meeting-modal";
 import { createWhatsAppMessage, createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
 
 export type ServiceRequestTarget = Pick<Service, "description" | "features" | "title"> & {

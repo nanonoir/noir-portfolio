@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMeetingPayload } from "@/components/forms/meeting-payload-mapper";
+import { buildMeetingPayload } from "@/features/meeting/lib/meeting-payload-mapper";
 
 describe("meeting payload context", () => {
   it("maps service context with normalized identity and service details", () => {

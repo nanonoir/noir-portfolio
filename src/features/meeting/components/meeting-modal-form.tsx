@@ -5,8 +5,8 @@ import type { UseFormReturn } from "react-hook-form";
 
 import type { Dictionary } from "@/lib/i18n";
 import { Button, FormError, HandwrittenIcon, Label, Select } from "@/components/ui";
-import type { MeetingFormValues } from "./meeting-payload-mapper";
-import { TextAreaField, TextField } from "./service-form-fields";
+import type { MeetingFormValues } from "../lib/meeting-payload-mapper";
+import { TextAreaField, TextField } from "@/features/service-request/components/service-form-fields";
 
 type MeetingModalFormProps = {
   dictionary: Dictionary;

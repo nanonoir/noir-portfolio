@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllowedNameInsertion } from "@/components/forms/service-form-fields";
+import { isAllowedNameInsertion } from "@/features/service-request/components/service-form-fields";
 
 describe("service form name input", () => {
   it("accepts Spanish accented and decomposed Unicode names", () => {

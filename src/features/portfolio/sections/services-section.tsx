@@ -2,18 +2,18 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { createCustomServiceRequestTarget, type ServiceRequestTarget } from "@/components/forms/service-request-modal";
+import { createCustomServiceRequestTarget, type ServiceRequestTarget } from "@/features/service-request/components/service-request-modal";
 import { useLanguage } from "@/components/providers/language-provider";
 import { Button, CardSurface, HandwrittenIcon, SectionHeading, SectionShell, ServiceInfoModal } from "@/components/ui";
 import { services, type Service } from "@/data/content";
 
 const ServiceRequestModal = dynamic(
-  () => import("@/components/forms/service-request-modal").then((m) => ({ default: m.ServiceRequestModal })),
+  () => import("@/features/service-request/components/service-request-modal").then((m) => ({ default: m.ServiceRequestModal })),
   { ssr: false },
 );
 
 function preloadServiceRequestModal() {
-  void import("@/components/forms/service-request-modal");
+  void import("@/features/service-request/components/service-request-modal");
 }
 
 const SERVICE_ICON_BY_ID = {

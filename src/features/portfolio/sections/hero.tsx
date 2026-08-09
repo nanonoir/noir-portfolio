@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
 import { ActionLink, HandwrittenIcon } from "@/components/ui";
-import { InteractiveWarpGrid } from "../ui/interactive-warp-grid/interactive-warp-grid";
+import { InteractiveWarpGrid } from "@/components/ui/interactive-warp-grid/interactive-warp-grid";
 
 const TYPE_SPEED_MS = 26;
 const LABEL_DELAY_MS = 180;

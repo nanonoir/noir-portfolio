@@ -1,15 +1,34 @@
 import {
+  AVAILABILITY_END_MINUTES,
+  AVAILABILITY_START_MINUTES,
+  ENABLED_WEEKDAYS,
+  MAX_HORIZON_DAYS,
+  MIN_LEAD_TIME_MS,
+  addCalendarDays,
+  getTodayInTimezone,
+  getValidStartTimes,
+  getWeekday,
+  isDateWithinBusinessRules,
+  isValidTimeZone as isValidPolicyTimeZone,
+} from "@/lib/meet/availability-policy";
+import {
   MEETING_BUFFER_MINUTES,
   MEETING_DURATION_MINUTES,
   SLOT_INTERVAL_MINUTES,
 } from "@/lib/meet/duration";
+import { getZonedDateTime as getSharedZonedDateTime } from "@/lib/meet/zoned-date-time";
+import type { Timezone } from "@/lib/meet/domain";
 
-export const AVAILABILITY_START_MINUTES = 8 * 60;
-export const AVAILABILITY_END_MINUTES = 20 * 60;
-export { MEETING_BUFFER_MINUTES, MEETING_DURATION_MINUTES, SLOT_INTERVAL_MINUTES };
-export const MIN_LEAD_TIME_MS = 12 * 60 * 60 * 1000;
-export const MAX_HORIZON_DAYS = 30;
-export const ENABLED_WEEKDAYS = [1, 2, 3, 4, 5, 6] as const;
+export {
+  AVAILABILITY_END_MINUTES,
+  AVAILABILITY_START_MINUTES,
+  MAX_HORIZON_DAYS,
+  MIN_LEAD_TIME_MS,
+  MEETING_BUFFER_MINUTES,
+  MEETING_DURATION_MINUTES,
+  SLOT_INTERVAL_MINUTES,
+};
+export { ENABLED_WEEKDAYS };
 
 export type AvailabilitySlot = {
   available: boolean;
@@ -26,120 +45,36 @@ export type AvailabilityState =
   | { status: "empty"; slots: AvailabilitySlot[] }
   | { status: "error"; slots: AvailabilitySlot[]; code?: string; message?: string };
 
-export function getVisitorTimeZone() {
+export function getVisitorTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
-export function isValidTimeZone(timeZone: string) {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone }).format();
-    return true;
-  } catch {
-    return false;
-  }
+export function isValidTimeZone(timeZone: string): boolean {
+  return isValidPolicyTimeZone(timeZone);
 }
 
-function getTimeZoneParts(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    hour: "2-digit",
-    hourCycle: "h23",
-    minute: "2-digit",
-    month: "2-digit",
-    second: "2-digit",
-    timeZone,
-    year: "numeric",
-  }).formatToParts(date);
-
-  return {
-    day: Number(parts.find((part) => part.type === "day")?.value),
-    hour: Number(parts.find((part) => part.type === "hour")?.value),
-    minute: Number(parts.find((part) => part.type === "minute")?.value),
-    month: Number(parts.find((part) => part.type === "month")?.value),
-    second: Number(parts.find((part) => part.type === "second")?.value),
-    year: Number(parts.find((part) => part.type === "year")?.value),
-  };
+export function getZonedDateTime(date: string, time: string, timeZone: string): Date {
+  return getSharedZonedDateTime({ date, time, timezone: timeZone as Timezone });
 }
 
-function getTimeZoneOffsetMs(date: Date, timeZone: string) {
-  const parts = getTimeZoneParts(date, timeZone);
-  const displayedAsUtc = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  );
-
-  return displayedAsUtc - date.getTime();
+export function getTodayInTimeZone(timeZone: string, now: Date = new Date()): string {
+  return getTodayInTimezone(timeZone, now);
 }
 
-export function getZonedDateTime(date: string, time: string, timeZone: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute);
-  const firstOffset = getTimeZoneOffsetMs(new Date(localAsUtc), timeZone);
-  const firstGuess = new Date(localAsUtc - firstOffset);
-  const correctedOffset = getTimeZoneOffsetMs(firstGuess, timeZone);
-
-  return new Date(localAsUtc - correctedOffset);
-}
-
-export function getTodayInTimeZone(timeZone: string, now = new Date()) {
-  const parts = getTimeZoneParts(now, timeZone);
-
-  return formatIsoDate(new Date(Date.UTC(parts.year, parts.month - 1, parts.day)));
-}
-
-export function formatIsoDate(date: Date) {
+export function formatIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function addCalendarDays(date: string, days: number) {
-  const [year, month, day] = date.split("-").map(Number);
-  const result = new Date(Date.UTC(year, month - 1, day));
-  result.setUTCDate(result.getUTCDate() + days);
+export { addCalendarDays };
 
-  return formatIsoDate(result);
+export function getDateWeekday(date: string): number {
+  return getWeekday(date);
 }
 
-export function getDateWeekday(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+export function getAvailableStartTimes(date: string, timeZone: string, now: Date = new Date()): string[] {
+  return getValidStartTimes(date, timeZone, now).map(({ time }) => time);
 }
 
-export function getAvailableStartTimes(date: string, timeZone: string, now = new Date()) {
-  const times: string[] = [];
-
-  for (
-    let minutes = AVAILABILITY_START_MINUTES;
-    minutes <= AVAILABILITY_END_MINUTES - MEETING_DURATION_MINUTES;
-    minutes += SLOT_INTERVAL_MINUTES
-  ) {
-    const hour = Math.floor(minutes / 60).toString().padStart(2, "0");
-    const minute = (minutes % 60).toString().padStart(2, "0");
-    const time = `${hour}:${minute}`;
-    const instant = getZonedDateTime(date, time, timeZone);
-
-    if (instant.getTime() >= now.getTime() + MIN_LEAD_TIME_MS) {
-      times.push(time);
-    }
-  }
-
-  return times;
-}
-
-export function isDateWithinAvailabilityRules(date: string, timeZone: string, now = new Date()) {
-  const today = getTodayInTimeZone(timeZone, now);
-  const maximum = addCalendarDays(today, MAX_HORIZON_DAYS);
-  const weekday = getDateWeekday(date);
-
-  return (
-    ENABLED_WEEKDAYS.includes(weekday as (typeof ENABLED_WEEKDAYS)[number]) &&
-    date >= today &&
-    date <= maximum &&
-    getAvailableStartTimes(date, timeZone, now).length > 0
-  );
+export function isDateWithinAvailabilityRules(date: string, timeZone: string, now: Date = new Date()): boolean {
+  return isDateWithinBusinessRules(date, timeZone, now);
 }

@@ -3,8 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { Dictionary } from "@/lib/i18n";
-import { automationFormSchema, type AutomationFormValues } from "./schemas";
-import { RadioGroup, RequestFormShell, scrollToFirstError, TextAreaField, TextField } from "./service-form-fields";
+import { customServiceFormSchema, type CustomServiceFormValues } from "../lib/schemas";
+import { RequestFormShell, scrollToFirstError, TextAreaField, TextField } from "./service-form-fields";
 
 type ServiceFormProps<TValues> = {
   dictionary: Dictionary;
@@ -12,8 +12,8 @@ type ServiceFormProps<TValues> = {
   onSubmit: (values: TValues) => void;
 };
 
-export function ServiceFormAutomation({ dictionary, formId, onSubmit }: ServiceFormProps<AutomationFormValues>) {
-  const form = useForm<AutomationFormValues>({ mode: "onBlur", resolver: zodResolver(automationFormSchema) });
+export function ServiceFormCustom({ dictionary, formId, onSubmit }: ServiceFormProps<CustomServiceFormValues>) {
+  const form = useForm<CustomServiceFormValues>({ mode: "onBlur", resolver: zodResolver(customServiceFormSchema) });
   const errors = form.formState.errors;
 
   return (
@@ -22,21 +22,9 @@ export function ServiceFormAutomation({ dictionary, formId, onSubmit }: ServiceF
         <TextField dictionary={dictionary} error={errors.name?.message} label={dictionary.forms.common.name} name="name" placeholder={dictionary.forms.common.namePlaceholder} registration={form.register("name")} required variant="name" />
         <TextField dictionary={dictionary} error={errors.email?.message} label={dictionary.forms.common.email} name="email" placeholder={dictionary.forms.common.emailPlaceholder} registration={form.register("email")} required type="email" />
         <TextField dictionary={dictionary} error={errors.phone?.message} label={dictionary.forms.common.phone} name="phone" placeholder={dictionary.forms.common.phonePlaceholder} registration={form.register("phone")} required type="tel" variant="phone" />
-        <TextField dictionary={dictionary} error={errors.brandName?.message} label={dictionary.forms.fields.brandName} name="brandName" placeholder={dictionary.forms.fields.brandNamePlaceholder} registration={form.register("brandName")} required variant="name" />
-        <RadioGroup
-          dictionary={dictionary}
-          error={errors.automationType?.message}
-          legend={dictionary.forms.fields.automationType}
-          name="automationType"
-          options={[
-            { label: dictionary.forms.fields.automationCustomerService, value: "customer-service" },
-            { label: dictionary.forms.fields.automationBusinessProcesses, value: "business-processes" },
-            { label: dictionary.forms.fields.automationOther, value: "other" },
-          ]}
-          registration={form.register("automationType")}
-          required
-          wrapperClassName="col-span-full"
-        />
+        <TextField dictionary={dictionary} error={errors.business?.message} label={dictionary.forms.fields.business} name="business" placeholder={dictionary.forms.fields.businessPlaceholder} registration={form.register("business")} variant="name" />
+        <TextField dictionary={dictionary} error={errors.social?.message} label={dictionary.forms.fields.social} name="social" placeholder={dictionary.forms.fields.socialPlaceholder} registration={form.register("social")} />
+        <TextField dictionary={dictionary} error={errors.budget?.message} label={dictionary.forms.fields.budget} name="budget" placeholder={dictionary.forms.fields.budgetPlaceholder} registration={form.register("budget")} />
         <TextAreaField dictionary={dictionary} error={errors.message?.message} label={dictionary.forms.common.message} name="message" placeholder={dictionary.forms.common.messagePlaceholder} registration={form.register("message")} wrapperClassName="col-span-full" />
       </div>
     </RequestFormShell>

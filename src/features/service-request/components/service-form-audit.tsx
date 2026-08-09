@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { Dictionary } from "@/lib/i18n";
-import { auditFormSchema, type AuditFormValues } from "./schemas";
+import { auditFormSchema, type AuditFormValues } from "../lib/schemas";
 import { RequestFormShell, scrollToFirstError, TextAreaField, TextField } from "./service-form-fields";
 
 type ServiceFormProps<TValues> = {

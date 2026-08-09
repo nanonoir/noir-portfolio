@@ -6,7 +6,7 @@ import { ACTION_VARIANTS, Button } from "@/components/ui";
 import { contactLinks } from "@/data/content";
 import { ACTION_FORM_ACTIONS, type ActionFormAction } from "@/lib/meet/action-contract";
 import { ActionResultCard, ACTION_RESULT_VARIANTS } from "./action-result-card";
-import { useActionToken } from "./use-action-token";
+import { useActionToken } from "@/features/meeting/hooks/use-action-token";
 
 const ACTION_FORM_STATES = {
   IDLE: "idle",

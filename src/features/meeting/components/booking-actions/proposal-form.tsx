@@ -3,12 +3,12 @@
 import { useState } from "react";
 import type { Dictionary, Language } from "@/lib/i18n";
 import { Button } from "@/components/ui";
-import { AvailabilityCalendar, type AvailabilityCalendarSelection } from "@/components/forms/availability-calendar";
-import { getVisitorTimeZone, isValidTimeZone } from "@/components/forms/date-time-constants";
+import { AvailabilityCalendar, type AvailabilityCalendarSelection } from "@/features/meeting/components/availability-calendar";
+import { getVisitorTimeZone, isValidTimeZone } from "@/features/meeting/lib/date-time-constants";
 import { contactLinks } from "@/data/content";
 import { ACTION_FORM_ACTIONS } from "@/lib/meet/action-contract";
 import { ActionResultCard, ACTION_RESULT_VARIANTS } from "./action-result-card";
-import { useActionToken } from "./use-action-token";
+import { useActionToken } from "@/features/meeting/hooks/use-action-token";
 
 const PROPOSAL_FORM_STATES = {
   IDLE: "idle",

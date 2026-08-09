@@ -4,14 +4,14 @@ import { useState } from "react";
 import type { Dictionary, Language, LocalizedString } from "@/lib/i18n";
 import type { Service } from "@/data/content";
 import { ActionLink, Button, HandwrittenIcon, Modal } from "@/components/ui";
-import type { ServiceFormId } from "./schemas";
+import type { ServiceFormId } from "../lib/schemas";
 import { ServiceFormAudit } from "./service-form-audit";
 import { ServiceFormAutomation } from "./service-form-automation";
 import { ServiceFormCustom } from "./service-form-custom";
 import { ServiceFormEcommerce } from "./service-form-ecommerce";
 import { ServiceFormLanding } from "./service-form-landing";
-import { MeetingModal } from "./meeting-modal";
-import { createWhatsAppMessage, createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
+import { MeetingModal } from "@/features/meeting/components/meeting-modal";
+import { createWhatsAppMessage, createWhatsAppUrl, type ServiceRequestValues } from "../lib/whatsapp-link";
 
 export type ServiceRequestTarget = Pick<Service, "description" | "features" | "title"> & {
   id: ServiceFormId;

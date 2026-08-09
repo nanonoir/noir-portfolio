@@ -2,21 +2,19 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { generalContactFormSchema, type GeneralContactFormValues } from "@/components/forms/schemas";
 import { useLanguage } from "@/components/providers/language-provider";
 import { Button, FormError, HandwrittenIcon, Input, Label, SectionHeading, SectionShell, Textarea, Toast } from "@/components/ui";
 import { contactLinks } from "@/data/content";
+import { useContactForm } from "./use-contact-form";
 
 const MeetingModal = dynamic(
-  () => import("@/components/forms/meeting-modal").then((m) => ({ default: m.MeetingModal })),
+  () => import("@/features/meeting/components/meeting-modal").then((m) => ({ default: m.MeetingModal })),
   { ssr: false },
 );
 
 function preloadMeetingModal() {
-  void import("@/components/forms/meeting-modal");
+  void import("@/features/meeting/components/meeting-modal");
 }
 
 function translateFormError(dictionary: ReturnType<typeof useLanguage>["dictionary"], message?: string) {
@@ -32,34 +30,19 @@ export function ContactSection() {
   const contact = dictionary.contact;
   const meeting = dictionary.meeting.contact;
   const [meetingOpen, setMeetingOpen] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionBinding, setSubmissionBinding] = useState<{
-    fingerprint: string;
-    key: string;
-  } | null>(null);
   const scheduleBannerRef = useRef<HTMLDivElement | null>(null);
   const [isContactIllustrationVisible, setIsContactIllustrationVisible] = useState(false);
   const {
     formState: { errors },
     handleSubmit,
     register,
-    reset,
-  } = useForm<GeneralContactFormValues>({
-    mode: "onBlur",
-    resolver: zodResolver(generalContactFormSchema),
-  });
+    isSubmitting,
+    onSubmit,
+    toastMessage,
+    toastVisible,
+  } = useContactForm({ errorMessage: contact.errorMessage, language, successMessage: contact.successMessage });
   const emailError = translateFormError(dictionary, errors.email?.message);
   const messageError = translateFormError(dictionary, errors.message?.message);
-
-  useEffect(() => {
-    if (!toastVisible) {
-      return;
-    }
-    const timeout = window.setTimeout(() => setToastVisible(false), 4500);
-    return () => window.clearTimeout(timeout);
-  }, [toastVisible]);
 
   useEffect(() => {
     const banner = scheduleBannerRef.current;
@@ -78,35 +61,6 @@ export function ContactSection() {
     observer.observe(banner);
     return () => observer.disconnect();
   }, []);
-
-  async function onSubmit(values: GeneralContactFormValues) {
-    if (isSubmitting) {
-      return;
-    }
-    const fingerprint = JSON.stringify(values);
-    const idempotencyKey = submissionBinding?.fingerprint === fingerprint ? submissionBinding.key : crypto.randomUUID();
-    setSubmissionBinding({ fingerprint, key: idempotencyKey });
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/leads", {
-        body: JSON.stringify({ ...values, idempotencyKey, locale: language, type: "contact_message" }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
-      const result: unknown = await response.json().catch(() => null);
-      const success = response.ok && typeof result === "object" && result !== null && (result as { success?: unknown }).success === true;
-      setToastMessage(success ? contact.successMessage : contact.errorMessage);
-      if (success) {
-        setSubmissionBinding(null);
-        reset();
-      }
-    } catch {
-      setToastMessage(contact.errorMessage);
-    } finally {
-      setToastVisible(true);
-      setIsSubmitting(false);
-    }
-  }
 
   return (
     <SectionShell className="lg:py-36" id="contact">

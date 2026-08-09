@@ -5,14 +5,14 @@ import { useState } from "react";
 import { type Resolver, useForm, useWatch } from "react-hook-form";
 
 import type { Dictionary, Language } from "@/lib/i18n";
-import { buildMeetingPayload, type MeetingFormValues } from "./meeting-payload-mapper";
+import { buildMeetingPayload, type MeetingFormValues } from "../lib/meeting-payload-mapper";
 import {
   meetingFromContactSchema,
   meetingFromServiceSchema,
-} from "./schemas";
-import { scrollToFirstError } from "./service-form-fields";
-import type { ServiceRequestTarget } from "./service-request-modal";
-import { createWhatsAppUrl, type ServiceRequestValues } from "./whatsapp-link";
+} from "../lib/schemas";
+import { scrollToFirstError } from "@/features/service-request/components/service-form-fields";
+import type { ServiceRequestTarget } from "@/features/service-request/components/service-request-modal";
+import { createWhatsAppUrl, type ServiceRequestValues } from "@/features/service-request/lib/whatsapp-link";
 
 export type MeetingModalOrigin = "contact" | "service" | "custom";
 

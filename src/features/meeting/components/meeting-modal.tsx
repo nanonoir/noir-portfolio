@@ -5,11 +5,11 @@ import { Button, Modal } from "@/components/ui";
 import { DateTimeModal } from "./date-time-modal";
 import { MeetingError } from "./meeting-error";
 import { MeetingModalForm } from "./meeting-modal-form";
-import { useMeetingModalLifecycle, type MeetingModalOrigin } from "./meeting-modal-hooks";
+import { useMeetingModalLifecycle, type MeetingModalOrigin } from "@/features/meeting/hooks/meeting-modal-hooks";
 import { MeetingSuccess } from "./meeting-success";
-import { scrollToFirstError } from "./service-form-fields";
-import type { ServiceRequestTarget } from "./service-request-modal";
-import type { ServiceRequestValues } from "./whatsapp-link";
+import { scrollToFirstError } from "@/features/service-request/components/service-form-fields";
+import type { ServiceRequestTarget } from "@/features/service-request/components/service-request-modal";
+import type { ServiceRequestValues } from "@/features/service-request/lib/whatsapp-link";
 
 type MeetingModalProps = {
   closeLabel?: string;

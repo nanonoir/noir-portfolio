@@ -2,7 +2,7 @@
 
 import type { Dictionary } from "@/lib/i18n";
 import { Button, FormError } from "@/components/ui";
-import type { AvailabilitySlot, AvailabilityState } from "./date-time-constants";
+import type { AvailabilitySlot, AvailabilityState } from "../lib/date-time-constants";
 
 type MeetingSlotsProps = {
   dictionary: Dictionary;

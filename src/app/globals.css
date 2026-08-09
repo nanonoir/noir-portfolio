@@ -430,6 +430,11 @@ html {
     transform: translateY(-1px);
   }
 
+  .button-danger:hover {
+    background: color-mix(in oklab, var(--danger) 88%, var(--primary-foreground));
+    transform: translateY(-1px);
+  }
+
   .button-inverse:hover {
     background: color-mix(in oklab, var(--background) 88%, var(--foreground));
     transform: translateY(-1px);
@@ -485,7 +490,8 @@ html {
 }
 
 .button-primary:active,
-.button-inverse:active {
+.button-inverse:active,
+.button-danger:active {
   transform: scale(0.97);
 }
 

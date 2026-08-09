@@ -81,6 +81,18 @@ function getWeekdayLabel(index: number, language: Language) {
   });
 }
 
+function getDateLabel(date: string, language: Language) {
+  const locale = language === "es" ? "es-AR" : "en-US";
+
+  return new Date(`${date}T00:00:00.000Z`).toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+    weekday: "long",
+    year: "numeric",
+  });
+}
+
 export function AvailabilityCalendar({
   dictionary,
   language,
@@ -112,6 +124,16 @@ export function AvailabilityCalendar({
     () => WEEKDAY_KEYS.map((_, index) => getWeekdayLabel(index, language)),
     [language],
   );
+  const calendarRows = useMemo(() => {
+    const cells: Array<string | null> = [
+      ...Array.from({ length: leadingEmptyCells }, () => null),
+      ...monthDays,
+    ];
+    const trailingEmptyCells = (7 - (cells.length % 7)) % 7;
+    cells.push(...Array.from({ length: trailingEmptyCells }, () => null));
+
+    return Array.from({ length: cells.length / 7 }, (_, index) => cells.slice(index * 7, (index + 1) * 7));
+  }, [leadingEmptyCells, monthDays]);
   const firstFocusableDate = monthDays.find((date) => isDateWithinAvailabilityRules(date, timeZone, now));
   const tabTargetDate = monthDays.includes(selectedDate) ? selectedDate : firstFocusableDate;
 
@@ -250,46 +272,53 @@ export function AvailabilityCalendar({
           </div>
         </div>
 
-        <div aria-label={dictionary.meeting.dateTime.calendarLabel} className="grid grid-cols-7 gap-1.5" role="grid">
-          {weekdayLabels.map((label) => (
-            <span className="py-1 text-center text-[10px] font-medium text-muted-foreground capitalize" key={label} role="columnheader">
-              {label}
-            </span>
-          ))}
-          {Array.from({ length: leadingEmptyCells }, (_, index) => (
-            <span aria-hidden="true" className="min-h-11" key={`empty-${index}`} />
-          ))}
-          {monthDays.map((date) => {
-            const selectable = isSelectableDate(date);
-            const selected = selectedDate === date;
+        <div aria-label={dictionary.meeting.dateTime.calendarLabel} className="space-y-1.5" role="grid">
+          <div className="grid grid-cols-7 gap-1.5" role="row">
+            {weekdayLabels.map((label) => (
+              <span className="py-1 text-center text-[10px] font-medium text-muted-foreground capitalize" key={label} role="columnheader">
+                {label}
+              </span>
+            ))}
+          </div>
+          {calendarRows.map((week, weekIndex) => (
+            <div className="grid grid-cols-7 gap-1.5" key={`week-${weekIndex}`} role="row">
+              {week.map((date, dayIndex) => {
+                if (!date) {
+                  return <div aria-disabled="true" className="min-h-11" key={`empty-${weekIndex}-${dayIndex}`} role="gridcell" />;
+                }
 
-            return (
-              <div aria-disabled={!selectable} aria-selected={selected} className="min-w-0" key={date} role="gridcell">
-                <button
-                  aria-label={date}
-                  aria-pressed={selected}
-                  className={[
-                    "flex min-h-11 w-full min-w-0 items-center justify-center rounded-xl border px-1 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none",
-                    selected
-                      ? "border-foreground bg-foreground text-background"
-                      : selectable
-                        ? "border-border bg-card text-foreground hover:bg-surface"
-                        : "cursor-not-allowed border-border/50 bg-surface/20 text-muted-foreground/50",
-                  ].join(" ")}
-                  disabled={!selectable}
-                  ref={(element) => {
-                    buttonRefs.current[date] = element;
-                  }}
-                  tabIndex={date === tabTargetDate ? 0 : -1}
-                  type="button"
-                  onClick={() => handleDateSelect(date)}
-                  onKeyDown={(event) => handleCalendarKeyDown(event, date)}
-                >
-                  {getDayNumber(date)}
-                </button>
-              </div>
-            );
-          })}
+                const selectable = isSelectableDate(date);
+                const selected = selectedDate === date;
+
+                return (
+                  <div aria-disabled={!selectable} aria-selected={selected} className="min-w-0" key={date} role="gridcell">
+                    <button
+                      aria-label={getDateLabel(date, language)}
+                      aria-pressed={selected}
+                      className={[
+                        "flex min-h-11 w-full min-w-0 items-center justify-center rounded-xl border px-1 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none",
+                        selected
+                          ? "border-foreground bg-foreground text-background"
+                          : selectable
+                            ? "border-border bg-card text-foreground hover:bg-surface"
+                            : "cursor-not-allowed border-border/50 bg-surface/20 text-muted-foreground/50",
+                      ].join(" ")}
+                      disabled={!selectable}
+                      ref={(element) => {
+                        buttonRefs.current[date] = element;
+                      }}
+                      tabIndex={date === tabTargetDate ? 0 : -1}
+                      type="button"
+                      onClick={() => handleDateSelect(date)}
+                      onKeyDown={(event) => handleCalendarKeyDown(event, date)}
+                    >
+                      {getDayNumber(date)}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </section>
 

@@ -1,7 +1,11 @@
-import { PortfolioNavigation } from "@/components/layout/portfolio-navigation";
-import { Hero } from "@/components/sections/hero";
-import { ProjectsSection } from "@/components/sections/projects-section";
-import { StaticSections } from "@/components/sections/static-sections";
+import { AboutSection } from "@/features/portfolio/sections/about-section";
+import { ContactSection } from "@/features/portfolio/sections/contact-section";
+import { PortfolioFooter } from "@/features/portfolio/sections/footer-section";
+import { Hero } from "@/features/portfolio/sections/hero";
+import { ProjectsSection } from "@/features/portfolio/sections/projects-section";
+import { ServicesSection } from "@/features/portfolio/sections/services-section";
+import { StackSection } from "@/features/portfolio/sections/stack-section";
+import { PortfolioNavigation } from "@/features/portfolio/navigation/portfolio-navigation";
 
 export default function Home() {
   return (
@@ -9,7 +13,11 @@ export default function Home() {
       <PortfolioNavigation />
       <Hero />
       <ProjectsSection />
-      <StaticSections />
+      <AboutSection />
+      <ServicesSection />
+      <StackSection />
+      <ContactSection />
+      <PortfolioFooter />
     </>
   );
 }

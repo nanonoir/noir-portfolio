@@ -91,10 +91,7 @@ type HandwrittenIconProps = ComponentPropsWithoutRef<"svg"> & {
   size?: number;
 };
 
-/**
- * Renders package icons with explicit currentColor inheritance, or a legacy SVG
- * fallback when a brand/media mark has no Freehand equivalent.
- */
+/** Renders a package icon or its legacy SVG fallback. */
 export function HandwrittenIcon({
   className,
   fallbackSrc,

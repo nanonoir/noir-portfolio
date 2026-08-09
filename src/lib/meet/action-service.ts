@@ -55,25 +55,7 @@ import {
   sendRescheduleProposal,
 } from "./email-notifications";
 
-/**
- * Phase 4 action security service (PRD §7, §13.4).
- *
- * Responsibilities:
- *  - issue token sets for the next actor at each state transition;
- *  - validate raw tokens (hash → record → actor/action/expiry/proposalVersion
- *    checks) without ever persisting the raw token;
- *  - consume a token idempotently: validate → execute action → record result
- *    → mark used → return the same result on every subsequent compatible
- *    presentation;
- *  - reject stale/expired/wrong-actor/wrong-action tokens with the stable
- *    `LINK_NOT_ACTIVE` code;
- *  - enforce the approved state machine through the existing
- *    `BookingRepository`/lifecycle ports.
- *
- * Server-only: every method is server-side; route handlers are the only
- * callers. The service never logs raw tokens, audit payloads include only the
- * token hash.
- */
+/** Server-only token lifecycle; raw tokens never enter logs or persistence. */
 
 export type ActionResultStatus =
   | "ok"
@@ -91,20 +73,12 @@ export interface ActionResult {
     | typeof MEETING_ERROR_CODES[keyof typeof MEETING_ERROR_CODES]
     | typeof BOOKING_LIFECYCLE_ERROR_CODES[keyof typeof BOOKING_LIFECYCLE_ERROR_CODES]
     | typeof BOOKING_REPOSITORY_ERROR_CODES[keyof typeof BOOKING_REPOSITORY_ERROR_CODES];
-  /** Tokens issued for the next actor (or empty). Passed to Phase 6 email. */
+  /** Tokens issued for the next actor; raw values are reserved for email links. */
   issuedTokens?: IssuedActionToken[];
   /** Hash-only audit context for observability; never contains the raw token. */
   consumedTokenId?: string;
 }
 
-/**
- * Per PRD §7, a token must validate against the meeting's CURRENT status.
- * Each action is only valid from a specific set of statuses. A token issued
- * for an earlier status (e.g. a visitor `decline` token minted while the
- * meeting was `owner_confirmed`) is no longer "compatible" once the meeting
- * has moved to a status that no longer admits that action, and the action link
- * MUST return `LINK_NOT_ACTIVE` rather than silently perform a stale action.
- */
 const ACTION_ALLOWED_CURRENT_STATUSES: Record<ActionTokenAction, ReadonlySet<MeetingStatus>> = {
   confirm: new Set<MeetingStatus>(["requested", "reschedule_proposed"]),
   propose: new Set<MeetingStatus>(["requested", "reschedule_proposed", "owner_confirmed"]),
@@ -212,11 +186,7 @@ export class ActionService {
     }
   }
 
-  /**
-   * Mint a token set for one actor. Idempotent at the caller's responsibility
-   * (caller tracks whether tokens for the current state were already issued).
-   * Returns raw tokens once; only the hash is persisted.
-   */
+  /** Mints one actor's token set; raw tokens are returned only once. */
   async issueTokens(input: IssueTokensInput): Promise<IssuedActionToken[]> {
     const issuedAt = this.now();
     const issued: IssuedActionToken[] = [];
@@ -224,10 +194,7 @@ export class ActionService {
     for (const action of input.actions) {
       const rawToken = generateRawToken();
       const tokenHash = hashToken(rawToken);
-      // For accept_proposal, anchor expiry on the proposed slot start. For
-      // decline/confirm/propose, use the action's default
-      // TTL. We don't synthesize a fake BookingProposedSlot; pass null when
-      // the caller hasn't supplied a proposed slot start.
+      // Proposal acceptance expires at the proposed slot; other actions use TTL.
       const expiresAt = computeTokenExpiry(
         action,
         issuedAt,
@@ -255,11 +222,7 @@ export class ActionService {
     return issued;
   }
 
-  /**
-   * Validate a raw token against `meetingId` and `expectedAction` without
-   * consuming it. Used by GET confirmation pages (PRD §7: no side effects on
-   * GET). Returns the decoded token record or `null` with a stable error code.
-   */
+  /** Validates a token without consuming it for GET confirmation pages. */
   async previewAction(params: {
     meetingId: string;
     rawToken: string;
@@ -268,20 +231,12 @@ export class ActionService {
     return this.validate(params);
   }
 
-  /**
-   * Consume a token and execute the corresponding action. Idempotent: a
-   * repeated compatible presentation returns the cached result without
-   * re-executing the action.
-   */
+  /** Consumes a token idempotently and executes its action. */
   async consumeAction(params: {
     meetingId: string;
     rawToken: string;
     expectedAction: ActionTokenAction;
-    /**
-     * Optional payload for `propose` (new proposed slot) and `decline`
-     * (optional reason). `confirm` and `accept_proposal` do not require a
-     * payload.
-     */
+      /** Optional proposed slot or decline reason. */
     payload?: {
       proposedSlot?: BookingProposedSlotInput;
       reason?: string;
@@ -293,15 +248,10 @@ export class ActionService {
     }
     const { record: token, meeting } = validation;
 
-    // A completed action replays safely. A processing marker alone is not proof
-    // of a business transition; it is reconciled through a lease claim below.
+      // A processing marker is reconciled through the lease claim below.
     if (token.usedAt !== null && token.result !== null && !isActionProcessingResult(token.result)) {
       const replayedMeeting = (await this.bookingRepository.findById(meeting.id)) ?? meeting;
-      // Phase 5 recoverable provider delivery: the state transition and slot
-      // reservation are already durable, but Calendar may have failed after
-      // `owner_confirmed`. A compatible replay MUST NOT re-run the action;
-      // it may retry ONLY the unfinished Calendar provider (PRD §13.5
-      // "Calendar failures do not lose the booking").
+      // Replays never repeat transitions; they may retry unfinished delivery.
       const recoveredMeeting =
         replayedMeeting.status === "owner_confirmed" &&
         replayedMeeting.calendarDelivery.status !== "completed"
@@ -350,11 +300,7 @@ export class ActionService {
       return { status: "rejected", error: MEETING_ERROR_CODES.BOOKING_TEMPORARILY_UNAVAILABLE };
     }
 
-    // Only the successful compare-and-set claimant may execute the action.
-    // If an unexpected post-claim exception occurs, reconcile only this
-    // execution's claim. A durable business transition must remain consumed so
-    // a replay cannot duplicate provider effects; an uncommitted action can be
-    // safely retried.
+      // Only the compare-and-set claimant executes; durable transitions stay consumed.
     let executed: ActionResult;
     try {
       executed = await this.executeAction({
@@ -391,23 +337,13 @@ export class ActionService {
         meetingId: executed.meeting?.id ?? meeting.id,
       });
     } else {
-      // Rejected domain transitions leave the token usable, matching the
-      // prior behavior where only definitive actions consumed a token.
+      // Rejected transitions release the token for retry.
       await this.tokenRepository.releaseUse(meeting.id, token.id, processingClaim);
     }
 
     return executed;
   }
 
-  /**
-   * Phase 5 server-side cancellation path (PRD §8.3, §13.5).
-   *
-   * No public cancellation route is introduced in this phase (that would be
-   * new UI/action-token scope). This server-only method is the shared path for
-   * a future owner cancellation surface or Phase 7 RSVP/admin workflow:
-   * transition the meeting to `cancelled`, release its reservation through the
-   * repository, then cancel (not delete) the persisted Calendar event.
-   */
   async cancelMeeting(params: {
     meetingId: string;
     actor?: BookingAuditActor;
@@ -466,16 +402,12 @@ export class ActionService {
       return { ok: false, error: MEETING_ERROR_CODES.LINK_NOT_ACTIVE };
     }
 
-    // Proposal version check: a token issued for proposal version N is no
-    // longer usable once the meeting advances to version N+1. The booking's
-    // `proposalVersion` is the current authoritative version.
+    // Tokens become invalid when the authoritative proposal version advances.
     if (record.usedAt === null && record.proposalVersion !== meeting.proposalVersion) {
       return { ok: false, error: MEETING_ERROR_CODES.LINK_NOT_ACTIVE };
     }
 
-    // Status check: a token issued for an earlier status is no longer
-    // compatible once the meeting has moved on. PRD §7 requires status
-    // validation alongside token, actor, action, proposalVersion, expiry.
+    // A token must still match the meeting's current status.
     if (record.usedAt === null && !isActionAllowedForStatus(params.expectedAction, meeting.status)) {
       return { ok: false, error: MEETING_ERROR_CODES.LINK_NOT_ACTIVE };
     }
@@ -508,14 +440,7 @@ export class ActionService {
     }
   }
 
-  /**
-   * Phase 6 compatible replay recovery. Token consumption remains idempotent:
-   * never repeat a state transition/reservation; only re-issue links and retry
-   * the unfinished email provider. Each Resend message carries a stable
-   * template/booking/proposal/recipient idempotency key, so if the original
-   * provider accepted an email before local persistence failed Resend returns
-   * the original delivery rather than sending a duplicate.
-   */
+  /** Replay only unfinished email delivery; state transitions remain idempotent. */
   private async retryEmailDeliveryForAction(
     booking: BookingRecord,
     token: ActionTokenRecord,
@@ -558,25 +483,7 @@ export class ActionService {
     }
   }
 
-  /**
-   * `confirm` (owner): Phase 5 atomic flow (PRD §8.3).
-   *
-   *  1. re-check availability (FreeBusy authoritative recheck);
-   *  2. transactionally reserve the UTC slot + transition
-   *     `requested → owner_confirmed`;
-   *  3. create one Calendar event with Nahuel as organizer and the visitor as
-   *     attendee;
-   *  4. generate Google Meet;
-   *  5. persist `calendarEventId` and `googleMeetUrl`;
-   *  6. set `owner_confirmed` (done in step 2);
-   *  7. send the Calendar invitation (Google sends automatically because
-   *     `sendUpdates: "all"`);
-   *
-   * Calendar failure does NOT roll back the reservation (PRD §13.5
-   * "Calendar failures do not lose the booking"). The booking stays
-   * `owner_confirmed`, `calendarDelivery` flips to `failed`, and the audit
-   * trail records the failure; the next replay will retry only the provider.
-   */
+  /** Confirms the slot atomically, then records recoverable Calendar failures. */
   private async executeConfirm(params: {
     meeting: BookingRecord;
     auditActor: BookingAuditActor;
@@ -594,7 +501,6 @@ export class ActionService {
       return { status: "rejected", error: MEETING_ERROR_CODES.MEETING_ERROR, consumedTokenId: tokenId };
     }
 
-    // PRD §8.3 step 1: authoritative FreeBusy recheck before reservation.
     const businessRuleOk = await this.isSlotAvailable({
       date: meeting.meeting.date,
       time: meeting.meeting.time,
@@ -610,7 +516,6 @@ export class ActionService {
         : { status: "slot_unavailable", error: MEETING_ERROR_CODES.SLOT_UNAVAILABLE, consumedTokenId: tokenId };
     }
 
-    // PRD §8.3 steps 2 + 6: atomic reservation + transition in one transaction.
     const reservation = await this.bookingRepository.reserveSlotForMeeting({
       meetingId: meeting.id,
       slotIdentity,
@@ -628,9 +533,6 @@ export class ActionService {
     }
     const reservedRecord = (reservation as { record: BookingRecord }).record;
 
-    // PRD §8.3 steps 3–5 + Calendar invitation: create the Calendar event AND
-    // persist IDs / delivery state. Failures are audited separately; the booking
-    // stays `owner_confirmed`.
     const withCalendarEvent = await this.createCalendarEventForBooking(
       reservedRecord,
       "create",
@@ -668,8 +570,6 @@ export class ActionService {
     };
   }
 
-  /** `propose` (owner or visitor): transition to `reschedule_proposed` with a
-   * new slot, then issue the counterparty's actor-specific token set. */
   private async executePropose(params: {
     meeting: BookingRecord;
     actor: ActionTokenActor;
@@ -718,13 +618,6 @@ export class ActionService {
     };
   }
 
-  /** `decline` (owner or visitor): Phase 5 declines (PRD §8.3, §13.5).
-   *
-   * Slot release is handled by `BookingRepository.updateStatus` (Firestore)
-   * or the mock repo's terminal-status cleanup. If a Calendar event already
-   * existed (previous `owner_confirmed`), the event is CANCELLED (not deleted)
-   * so Nahuel's Calendar keeps the cancelled trace.
-   */
   private async executeDecline(params: {
     meeting: BookingRecord;
     auditActor: BookingAuditActor;
@@ -746,8 +639,7 @@ export class ActionService {
     }
     const updated = (transition as { record: BookingRecord }).record;
 
-    // If a Calendar event was already created (previous `owner_confirmed`)
-    // cancel it so the visitor's Calendar invitation reflects the decline.
+    // Cancel an existing event so the visitor's invitation reflects the decline.
     const withCancelledCalendarEvent = meeting.calendarEventId
       ? await this.cancelCalendarEventForBooking(updated)
       : updated;
@@ -768,17 +660,6 @@ export class ActionService {
     };
   }
 
-  /** `accept_proposal` (visitor): Phase 5 atomic flow (PRD §8.3).
-   *
-   *  1. re-check availability for the PROPOSED slot (FreeBusy authoritative);
-   *  2. transactionally reserve the proposed UTC slot + release the prior
-   *     slot + transition `reschedule_proposed → owner_confirmed`;
-   *  3. update the existing Calendar event (preserve deterministic event id
-   *     and Meet link) OR create a new event if none exists yet;
-   *  4. persist `calendarEventId` / `googleMeetUrl`;
-   *  5. set `owner_confirmed` (done in step 2);
-   *  6. send the Calendar invitation (`sendUpdates: "all"`).
-   */
   private async executeAcceptProposal(params: {
     meeting: BookingRecord;
     auditActor: BookingAuditActor;
@@ -796,7 +677,6 @@ export class ActionService {
       return { status: "rejected", error: MEETING_ERROR_CODES.MEETING_ERROR, consumedTokenId: tokenId };
     }
 
-    // PRD §8.3 step 1: authoritative FreeBusy recheck on the PROPOSED slot.
     const businessRuleOk = await this.isSlotAvailable({
       date: proposedSlot.date,
       time: proposedSlot.time,
@@ -812,9 +692,6 @@ export class ActionService {
         : { status: "slot_unavailable", error: MEETING_ERROR_CODES.SLOT_UNAVAILABLE, consumedTokenId: tokenId };
     }
 
-    // PRD §8.3 steps 2 + 6: atomic reservation of the proposed slot, release
-    // of any prior reservation owned by this meeting, and transition
-    // `reschedule_proposed → owner_confirmed` in one transaction.
     const reservation = await this.bookingRepository.reserveSlotForMeeting({
       meetingId: meeting.id,
       slotIdentity,
@@ -832,9 +709,6 @@ export class ActionService {
     }
     const reservedRecord = (reservation as { record: BookingRecord }).record;
 
-    // PRD §8.3 steps 3–5 + Calendar invitation: PATCH the existing event if
-    // `calendarEventId` is non-null (preserve Meet link), otherwise create
-    // the event. Idempotency on deterministic event id.
     const action: CalendarEventAuditAction = reservedRecord.calendarEventId ? "update" : "create";
     const withCalendarEvent = await this.createCalendarEventForBooking(
       reservedRecord,
@@ -873,13 +747,6 @@ export class ActionService {
     };
   }
 
-  /**
-   * PRD §8.3 step 1: authoritative FreeBusy recheck. Delegates to
-   * `authoritativeFreeBusyRecheck` (server-only helper) for the FreeBusy
-   * primary-calendar check; when Google env is absent, the helper falls back
-   * to a Firestore `reservedSlots` conflict check only (PRD §4.3 unverified
-   * safe-degraded). Returns true when the slot is available.
-   */
   private async isSlotAvailable(
     slot: { date: string; time: string; timezone: BookingRecord["visitorTimezone"] },
     bookingId: string,
@@ -917,16 +784,6 @@ export class ActionService {
     }
   }
 
-  /**
-   * PRD §8.3 steps 3–5 + Calendar invitation: create OR update the Calendar
-   * event for `meeting` (depending on `action`), persist the canonical
-   * `calendarEventId` / `googleMeetUrl` and delivery state, and append the
-   * event audit row. Calendar failure is non-fatal — the booking stays
-   * `owner_confirmed` (or whatever status the reservation transaction left
-   * it at); the returned `BookingRecord` carries the failed delivery state so
-   * the next replay can retry only the provider. The audit record captures the
-   * action and outcome for operational recovery.
-   */
   private async createCalendarEventForBooking(
     meeting: BookingRecord,
     action: CalendarEventAuditAction,
@@ -970,8 +827,6 @@ export class ActionService {
       });
     }
 
-    // PRD §13.5 "persist under meetings/events": one audit row per attempt,
-    // with the canonical calendarEventId/googleMeetUrl and delivery outcome.
     await recordCalendarEventAudit({
       id: crypto.randomUUID(),
       meetingId: meeting.id,
@@ -990,13 +845,6 @@ export class ActionService {
     return updatedRecord;
   }
 
-  /**
-   * PRD §8.3 + §13.5 "Cancel events rather than deleting them". Cancels the
-   * Calendar event (PATCH `status: "cancelled"`) for `meeting`, persists the
-   * delivery state, and writes the event audit row. Failure does NOT change
-   * the meeting status (already `declined`); it leaves the event in Calendar
-   * and records the failure for retry.
-   */
   private async cancelCalendarEventForBooking(meeting: BookingRecord): Promise<BookingRecord> {
     if (!meeting.calendarEventId) return meeting;
     let result: CalendarProviderSuccess | CalendarProviderFailure;
@@ -1016,10 +864,7 @@ export class ActionService {
 
     let updatedRecord: BookingRecord;
     if (result.success) {
-      // Treat cancel completion as `calendarDelivery: completed` so we don't
-      // accumulate a redundant failure audit. The canonical
-      // `calendarEventId`/`googleMeetUrl` fields stay populated to preserve
-      // the audit trail of the original event id.
+      // Preserve canonical event fields while treating cancellation as complete.
       updatedRecord =
         (await this.bookingRepository.updateProviderDelivery(meeting.id, "calendar", {
           status: "completed",
@@ -1081,12 +926,7 @@ export class ActionService {
   }
 }
 
-/**
- * Tokens issued for Nahuel immediately after a new `requested` booking is
- * created (PRD §7: administrative token for Nahuel). The booking service calls
- * this once per successful create so Phase 6 email can embed confirm/propose/
- * decline links.
- */
+/** Issues the initial owner action set for a newly requested booking. */
 export async function issueOwnerTokensForNewBooking(
   service: ActionService,
   booking: BookingRecord,

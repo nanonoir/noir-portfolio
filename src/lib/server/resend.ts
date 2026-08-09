@@ -3,15 +3,7 @@ import { Resend } from "resend";
 
 import { getEnv, requireEnv } from "./env";
 
-/**
- * Resend client foundation.
- *
- * Phase 1 only wires the client. No email is sent here. Future Resend
- * adapters for the Meet email provider port will call `getResendClient()` and
- * keep all template rendering and SDK response handling inside the adapter.
- *
- * Server-only: the API key must never be exposed to the client bundle.
- */
+/** Server-only Resend client; the API key never enters client bundles. */
 
 let cachedClient: Resend | null = null;
 

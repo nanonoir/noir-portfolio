@@ -19,25 +19,7 @@ import {
   GOOGLE_CALENDAR_WEBHOOK_TIMEOUT_MS,
 } from "@/lib/meet/deadlines";
 
-/**
- * Phase 5 real Google Calendar + Google Meet provider (PRD §8, §13.5).
- *
- * Server-only: the OAuth refresh token, Calendar API, and Meet conference
- * request happen only on the server. The provider implements the existing
- * `CalendarProvider` port so the composition switch in `booking-service.ts`
- * can replace `GoogleCalendarMockProvider` when `GOOGLE_REFRESH_TOKEN` etc.
- * are configured.
- *
- * Deterministic event id (PRD §13.5 "Use deterministic provider identity to
- * prevent duplicate events"): the event id is derived exclusively from the
- * booking id. Replays with the same booking id return the existing event
- * (idempotent); `accept_proposal` re-uses the same event id and patches the
- * time slot instead of creating a duplicate.
- *
- * Cancel vs delete (PRD §8.3 "Cancel events rather than deleting them"):
- * `deleteEvent` patches `status: "cancelled"` so the event remains visible
- * as cancelled in Nahuel's Calendar instead of vanishing.
- */
+/** Server-only Google Calendar and Meet provider with deterministic event ids. */
 
 export const GOOGLE_CALENDAR_RSVP_STATUSES = {
   ACCEPTED: "accepted",
@@ -79,18 +61,7 @@ function getCalendarId(): string {
   return cachedCalendarId;
 }
 
-/**
- * Deterministic Google Calendar event id derived from the booking id.
- *
- * Google Calendar event ids MUST be:
- *  - 5–1024 characters;
- *  - base32hex charset: lowercase letters a–v and digits 0–9.
- *
- * Booking IDs look like `meet_<8 hex chars>`. We strip the underscore (not
- * allowed), keep only a-v/0-9 chars, lowercase, and prefix `evt` if the
- * sanitized result is shorter than 5 chars. Booking UUID slices only contain
- * `0-9a-f`, which is a subset of base32hex.
- */
+/** Builds a deterministic Google event id using the provider's base32hex rules. */
 export function buildDeterministicEventId(bookingId: string): string {
   const sanitized = bookingId
     .toLowerCase()
@@ -109,12 +80,7 @@ export function isGoogleCalendarConfigured(): boolean {
   );
 }
 
-/**
- * Re-fetches one persisted event identity for webhook reconciliation. The
- * normalized snapshot deliberately excludes attendee comments and all other
- * Calendar payload fields: RSVP state is the only webhook input this phase
- * needs, and visitor content must not cross the provider boundary.
- */
+/** Re-fetches only RSVP-relevant event fields; visitor content stays server-side. */
 export async function fetchGoogleCalendarEvent(
   calendarEventId: string,
 ): Promise<GoogleCalendarEventFetchResult> {
@@ -164,9 +130,7 @@ function buildEventTimeWindows(booking: BookingRecord): {
   startISO: string;
   endISO: string;
 } {
-  // `accept_proposal` carries the proposed slot's `startsAt` UTC instant;
-  // otherwise we recompute from the visitor date/time/timezone so the API
-  // call receives canonical UTC.
+  // Use the proposed UTC instant when available; otherwise recompute it.
   let startInstant: Date;
   if (booking.proposedSlot) {
     startInstant = new Date(booking.proposedSlot.startsAt);
@@ -210,17 +174,7 @@ function logError(event: string, bookingId: string, error: unknown) {
   meetLogger.error(event, { bookingId, cause: normalizeErrorCause(error), provider: "calendar" });
 }
 
-/**
- * Real `CalendarProvider` using Google Calendar + Google Meet.
- *
- * Configuration-aware: the composition switch in `booking-service.ts`
- * instantiates this only when `isGoogleCalendarConfigured()` is true. When
- * GOOGLE_REFRESH_TOKEN is absent, local no-env mode keeps the mock provider
- * for compatibility while Firebase-backed mode selects
- * `UnavailableCalendarProvider` (no fabricated event/Meet IDs, recoverable
- * delivery failure). Live validation requires Nahuel to seed the refresh
- * token in Vercel/local server env.
- */
+/** Configuration-aware Google Calendar and Meet provider. */
 export class GoogleCalendarProvider implements CalendarProvider {
   async createEvent(booking: BookingRecord): Promise<CalendarProviderResult> {
     return this.runBounded((signal) => this.createEventWithinDeadline(booking, signal), booking.id, "create");
@@ -240,15 +194,12 @@ export class GoogleCalendarProvider implements CalendarProvider {
       const requestBody: calendar_v3.Schema$Event = {
         id: eventId,
         summary: describeBookingSummary(booking),
-        // Do not copy visitor message/lead content into the Calendar event.
-        // The event only needs a stable support reference; the booking record
-        // remains the server-only source of the visitor's original message.
+        // Keep visitor message content server-side; Calendar gets a stable reference.
         description: `Portfolio meeting reference: ${booking.id}`,
         start: { dateTime: startISO },
         end: { dateTime: endISO },
         attendees: [
-          // Visitor: PRD §8.3 step 3 "Nahuel as organizer and the visitor as
-          // attendee". Organizer is implicit (Calendar owner = organizer).
+          // Calendar owner is the organizer; the visitor is the attendee.
           { email: booking.identity.email, displayName: booking.identity.name },
         ],
         conferenceData: {
@@ -261,8 +212,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
         transparency: "opaque",
       };
 
-      // Phase 5 idempotency: googleapis returns 409 if the id already exists.
-      // We catch that case and re-fetch the event to recover the Meet URL.
+      // A 409 means the deterministic event already exists; re-fetch it.
       let inserted: calendar_v3.Schema$Event;
       try {
         const insertRes = await calendar.events.insert(
@@ -287,10 +237,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
         }
       }
 
-      // Conference creation can be asynchronous. Re-read once when the insert
-      // response has no Meet video entry point; if Google still has not
-      // produced one, report a recoverable provider failure rather than persist
-      // an empty `googleMeetUrl` as a successful event.
+      // Re-read asynchronous conference data before accepting the event.
       if (!extractMeetUrl(inserted)) {
         const refetch = await calendar.events.get(
           { calendarId, eventId },
@@ -337,8 +284,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
         status: "confirmed",
       };
 
-      // If the event does not exist (e.g. mock ids that never round-tripped),
-      // fall back to create for resilience.
+      // A missing event falls back to creation.
       let updated: calendar_v3.Schema$Event;
       try {
         const patchRes = await calendar.events.patch(
@@ -359,8 +305,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
         throw error;
       }
 
-      // The patch response does not always include conferenceData; re-read when
-      // it is missing so we can return the Meet URL.
+      // Re-read when the patch response omits conference data.
       if (!updated.conferenceData && !extractMeetUrl(updated)) {
         const refetch = await calendar.events.get(
           { calendarId, eventId },
@@ -383,12 +328,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
     }
   }
 
-  /**
-   * `deleteEvent` cancels (PRD §8.3 "Cancel events rather than deleting them").
-   * The event remains visible as cancelled in the Calendar and Meet link
-   * becomes unavailable to the visitor. Returns the supplied calendarEventId
-   * back so the caller can persist the cancellation trace.
-   */
+  /** Cancels the event while preserving its Calendar audit trail. */
   async deleteEvent(calendarEventId: string): Promise<CalendarProviderResult> {
     return this.runBounded((signal) => this.deleteEventWithinDeadline(calendarEventId, signal), "", "delete");
   }

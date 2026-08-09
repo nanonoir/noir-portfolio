@@ -1,13 +1,6 @@
 import "server-only";
 
-/**
- * Server-only environment variable accessors.
- *
- * These helpers keep all credential access explicit and ensure the codebase
- * never reaches for `process.env.NEXT_PUBLIC_*` for server secrets. No value
- * ever leaves through these helpers; they only return strings or booleans that
- * indicate whether a value is configured.
- */
+/** Server-only environment accessors; credential values never reach responses. */
 
 const REQUIRED_ENV_KEYS = [
   "APP_BASE_URL",
@@ -42,11 +35,7 @@ export function requireEnv(key: ServerEnvKey): string {
   return value;
 }
 
-/**
- * Returns a `{ key: boolean }` map indicating which required envs are present
- * without exposing any value. Intended for health checks and operational audits
- * only; never serialize the underlying values to a response.
- */
+/** Reports configured keys without exposing their values. */
 export function getEnvAudit(): Record<ServerEnvKey, boolean> {
   return REQUIRED_ENV_KEYS.reduce(
     (acc, key) => {
@@ -66,10 +55,7 @@ export function isFirebaseConfigured(): boolean {
   );
 }
 
-/**
- * Limits the local real-backend browser lane to its demo Firestore emulator
- * composition. This explicit opt-in wins over any `.env` values Next dev loads.
- */
+/** Restricts the real-backend browser lane to the demo emulator. */
 export function isBackendE2ETestComposition(): boolean {
   return process.env.MEET_BACKEND_E2E === "1"
     && process.env.FIREBASE_PROJECT_ID === "demo-noir-portfolio"

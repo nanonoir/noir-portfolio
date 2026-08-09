@@ -512,7 +512,7 @@ export function PortfolioNavigation() {
 
   useEffect(() => {
     const STICKY_THRESHOLD = 350;
-    // Below this scroll offset the visitor is in the hero / top zone and no section is active.
+    // The hero zone has no active section.
     const HERO_THRESHOLD = 120;
 
     let animationFrame: number | null = null;
@@ -520,8 +520,7 @@ export function PortfolioNavigation() {
     const updateScrollState = () => {
       animationFrame = null;
       setStickyVisible(window.scrollY > STICKY_THRESHOLD);
-      // When the visitor scrolls back to the hero area, clear the active section so no
-      // nav item appears underlined / aria-current while the hero is in view.
+      // Clear active navigation while the hero is visible.
       if (window.scrollY < HERO_THRESHOLD) {
         setActiveSection(null);
       }

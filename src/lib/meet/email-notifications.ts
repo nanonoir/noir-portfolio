@@ -14,14 +14,7 @@ import {
 import type { BookingRepository } from "./booking-repository";
 import type { EmailActionLink } from "./email-templates";
 
-/**
- * Phase 6 event-specific notification composition.
- *
- * The only place raw action tokens are transformed into URLs. The generated
- * links travel immediately to the email provider's rendered body; callers get
- * only the updated BookingRecord, never the links/tokens. No logger or
- * persistence path receives the URLs.
- */
+/** Raw action tokens become links here and never enter logs or persistence. */
 
 const ACTION_LABELS: Record<"en" | "es", Record<string, string>> = {
   en: {
@@ -77,22 +70,13 @@ export async function sendOwnerRequestNotification(
     template: EMAIL_TEMPLATE_CODES.MEETING_REQUESTED,
     booking,
     recipient: ownerRecipient,
-    // PRD §9: Nahuel emails use persisted validated visitor email as Reply-To.
     replyTo: booking.identity.email,
     payload: { actionLinks, audience: "owner" },
     idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, booking, ownerRecipient),
   });
 }
 
-/**
- * Initial request fan-out: owner action email + visitor pending receipt.
- *
- * Both Resend sends have independent idempotency keys, but the existing
- * BookingRecord carries one aggregate `emailDelivery` state. Persist it once
- * after both attempts so a successful visitor receipt cannot accidentally
- * overwrite a failed owner-action delivery. A replay repeats only the missing
- * provider work; Resend idempotency prevents duplicate accepted sends.
- */
+/** Sends owner and visitor notifications with independent idempotency keys. */
 export async function sendInitialRequestNotifications(
   provider: EmailProvider,
   repository: BookingRepository,
@@ -244,7 +228,6 @@ export async function sendCancelledNotice(
   return deliverSimple(provider, repository, EMAIL_TEMPLATE_CODES.MEETING_CANCELLED, booking, booking.identity.email);
 }
 
-/** Provided for a future expiration command; Phase 6 does not add scheduler/cron. */
 export async function sendExpiredNotice(
   provider: EmailProvider,
   repository: BookingRepository,
@@ -286,9 +269,7 @@ function tryBuildActionLinks(
   try {
     return buildEmailActionLinks(booking, tokens);
   } catch {
-    // APP_BASE_URL is mandatory for action links. Do not fall back to a fake
-    // production URL and do not throw after a booking transition; persist a
-    // recoverable email failure instead.
+    // Missing APP_BASE_URL becomes a recoverable delivery failure.
     return null;
   }
 }

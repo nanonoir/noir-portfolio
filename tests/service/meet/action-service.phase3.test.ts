@@ -84,8 +84,7 @@ class SequencedEmailProvider implements EmailProvider {
     if (outcome === "throw") {
       throw new Error("Resend transport unavailable");
     }
-    // Production providers convert their timeout boundary into the same stable
-    // provider error contract; the service must recover that state on replay.
+    // Timeout recovery uses the same stable provider error contract.
     return outcome === "success"
       ? { success: true }
       : { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };

@@ -2,15 +2,7 @@ import "server-only";
 
 import { ACTION_TOKEN_ACTIONS, type ActionTokenAction } from "./action-contract";
 
-/**
- * Server deadline and recovery policy.
- *
- * A Vercel function has a 10-second ceiling. Calendar work is limited to 3.5
- * seconds, reserving 1.5 seconds for Firestore and response handling. Webhook
- * claims therefore last 5 seconds. Action claims cover one Calendar operation,
- * two bounded Firestore transactions (claim/finalize), and a 500ms recovery
- * margin: 3,500 + (2 × 1,500) + 500 = 7,000ms.
- */
+/** Server deadlines reserve time for Calendar, Firestore, and recovery work. */
 export const VERCEL_FUNCTION_TIMEOUT_MS = 10_000;
 export const FIRESTORE_RATE_LIMIT_TIMEOUT_MS = 1_500;
 export const GOOGLE_CALENDAR_OPERATION_TIMEOUT_MS = 3_500;
@@ -28,11 +20,7 @@ export const ACTION_TOKEN_DEFAULT_TTL_MS: Partial<Record<ActionTokenAction, numb
   [ACTION_TOKEN_ACTIONS.ACCEPT_PROPOSAL]: 0,
 };
 
-/**
- * Delivery state is persisted as pending/completed/failed. Processing is the
- * in-flight attempt; failed is retryable only through a compatible action
- * replay, while completed is terminal and never re-executes provider effects.
- */
+/** Failed delivery is replayable; completed delivery is terminal. */
 export const DELIVERY_RETRY_STATES = {
   COMPLETED: "completed",
   FAILED: "failed",

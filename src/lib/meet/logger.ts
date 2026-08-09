@@ -39,15 +39,9 @@ export interface MeetLogger {
   warn(event: string, fields?: MeetLogFields): void;
 }
 
-/**
- * No-op logger for test environments. Never emits output.
- * Used by callers that explicitly need a silent logger (e.g. diagnostic scripts,
- * test harnesses). Not used for the module-level singleton in production.
- */
+/** Silent logger for tests and diagnostic callers. */
 export class NoopMeetLogger implements MeetLogger {
-  // Methods accept the same optional parameters as the `MeetLogger` interface
-  // so callers can pass event/fields without TypeScript complaining about
-  // "Expected 0 arguments, but got 2". The no-op implementation ignores them.
+  // Keep the interface parameters so callers can pass event fields in tests.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   error(_event?: string, _fields?: MeetLogFields) {}
 
@@ -58,15 +52,7 @@ export class NoopMeetLogger implements MeetLogger {
   warn(_event?: string, _fields?: MeetLogFields) {}
 }
 
-/**
- * Production-safe structured logger that routes to `console.error` / `console.warn`
- * / `console.info`. Fields are serialized as a flat JSON object so they appear as
- * structured key-value pairs in Vercel / Node runtime logs.
- *
- * PII / secret safety: the logger drops fields with sensitive names as a
- * defense-in-depth boundary. `normalizeErrorCause` also strips provider messages
- * and raw error details before fields reach this logger.
- */
+/** Structured logger that filters sensitive fields before writing platform logs. */
 class ConsoleMeetLogger implements MeetLogger {
   private serialize(event: string, fields?: MeetLogFields): string {
     const base: Record<string, unknown> = { event, operation: event };
@@ -95,18 +81,7 @@ class ConsoleMeetLogger implements MeetLogger {
   }
 }
 
-/**
- * Module-level singleton logger.
- *
- * - In test environments (`NODE_ENV === "test"`): no-op, so test output stays
- *   clean and no real I/O occurs.
- * - In all other environments (development, production, preview): console-based
- *   structured logger that routes to platform log sinks (Vercel, Node stdout).
- *
- * Callers import and use `meetLogger` directly — never construct a logger
- * themselves unless they have an explicit reason (e.g. `BookingService` accepts
- * a `MeetLogger` parameter for testability).
- */
+/** Shared logger singleton; tests use the silent implementation. */
 export const meetLogger: MeetLogger =
   process.env.NODE_ENV === "test"
     ? new NoopMeetLogger()

@@ -79,14 +79,7 @@ export class GoogleCalendarMockProvider implements CalendarProvider {
   }
 }
 
-/**
- * Configuration-aware safe provider used when Firebase is configured (the
- * deployment is production-like) but Google OAuth credentials/refresh token
- * are not. Unlike the local mock, it NEVER fabricates a Calendar event id or
- * Meet URL: callers retain the durable reservation + `owner_confirmed` state,
- * persist `calendarDelivery: failed`, and can retry once Nahuel configures
- * GOOGLE_REFRESH_TOKEN (PRD §13.5 "Calendar failures do not lose booking").
- */
+/** Fails closed without fabricating event identities when Google is unavailable. */
 export class UnavailableCalendarProvider implements CalendarProvider {
   async createEvent(): Promise<CalendarProviderResult> {
     return { success: false, error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR };

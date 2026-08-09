@@ -13,12 +13,7 @@ export class BoundedTimeoutError extends Error {
   }
 }
 
-/**
- * Bounds an async operation and aborts work that accepts an AbortSignal.
- *
- * The operation is always observed after a timeout, so a late rejection cannot
- * become unhandled. Callers must pass the signal to supported transports.
- */
+/** Aborts supported transports on timeout and observes late rejections safely. */
 export function withBoundedTimeout<T>(
   operation: (signal: AbortSignal) => Promise<T>,
   timeoutMs: number,

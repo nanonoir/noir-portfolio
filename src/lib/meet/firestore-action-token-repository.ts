@@ -13,23 +13,7 @@ function rethrowForEmulatorTests(error: unknown): never | void {
   }
 }
 
-/**
- * Firestore-backed `ActionTokenRepository` (PRD §6.1, §7).
- *
- * Token records live under `meetings/{meetingId}/actionTokens/{tokenId}`. The
- * collection-group lookup by `tokenHash` is the only path that does NOT know
- * `meetingId` ahead of time (route handlers always know it; collection-group is
- * a defensive fallback for any internal caller). Server-only: no client path
- * reaches this module.
- *
- * Firestore composite index required (firestore.indexes.json):
- *   collectionGroup: "actionTokens", queryScope: COLLECTION_GROUP
- *   fields: [{ tokenHash, ASCENDING }, { id, ASCENDING }]
- * Without this index, collectionGroup queries will throw. Errors are caught
- * here and returned as `null` so the ActionService maps them to
- * LINK_NOT_ACTIVE or BOOKING_TEMPORARILY_UNAVAILABLE instead of propagating
- * an unhandled exception to the route handler.
- */
+/** Firestore token persistence; lookup failures map to stable route errors. */
 
 type StoredTokenDoc = Omit<ActionTokenRecord, "createdAt" | "expiresAt" | "usedAt" | "processingStartedAt"> & {
   createdAt: Timestamp | string;

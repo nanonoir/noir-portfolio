@@ -47,24 +47,7 @@ export type SlotReservationResult =
   | { record: BookingRecord; replayed: boolean; success: true }
   | { error: typeof MEETING_ERROR_CODES.SLOT_UNAVAILABLE; success: false };
 
-/**
- * Phase 5 atomic reservation+transition request (PRD §8.3, §13.5).
- *
- * Adapter contract for `reserveSlotForMeeting`:
- *  - Read the meeting doc — reject with `BOOKING_NOT_FOUND` when the doc is
- *    missing (defensive: route handlers should already have re-fetched the
- *    record).
- *  - Read the prospective `reservedSlots/{slotIdentity}` — reject with
- *    `SLOT_UNAVAILABLE` when it is already owned by a DIFFERENT meeting.
- *  - Read any existing `reservedSlots` whose `meetingId === meetingId` (old
- *    reservation on reschedule).
- *  - Inside the same transaction: transition the meeting to `toStatus`,
- *    create `reservedSlots/{slotIdentity}` for this meeting, and delete any
- *    prior `reservedSlots` for this meeting so a reschedule atomically
- *    releases the old slot.
- *  - Idempotent on the same `(meetingId, slotIdentity)` pair: a repeat call
- *    returns the existing record.
- */
+/** Atomically reserves a slot, releases prior ownership, and transitions status. */
 export interface ReserveSlotForMeetingInput {
   meetingId: string;
   slotIdentity: SlotIdentity;
@@ -102,12 +85,7 @@ export interface BookingRepository {
   recordIdempotencyReplay(id: string): Promise<BookingRecord | null>;
   /** Future durable adapters MUST atomically reserve slotIdentity and persist record, keyed by idempotencyKey. */
   reserveSlotIfAvailable(input: SlotReservationInput): Promise<SlotReservationResult>;
-  /**
-   * Phase 5 atomic reservation+transition for an existing meeting (PRD §8.3).
-   * Releases any prior reservation owned by the same meeting and atomically
-   * reserves the new slot, advancing the meeting to `toStatus`. Slots owned
-   * by other meetings return `SLOT_UNAVAILABLE`.
-   */
+  /** Reserves a new slot, releases prior ownership, and advances to `toStatus`. */
   reserveSlotForMeeting(input: ReserveSlotForMeetingInput): Promise<BookingRepositoryResult>;
   heartbeatCalendarWebhookNotification(notificationId: string, claim: CalendarWebhookNotificationClaim): Promise<boolean>;
   releaseCalendarWebhookNotification(notificationId: string, claim: CalendarWebhookNotificationClaim): Promise<void>;
@@ -224,9 +202,7 @@ export class MockBookingRepository implements BookingRepository {
 
     if (result.success) {
       this.bookingsById.set(id, result.record);
-      // Phase 5 parity with the Firestore adapter: terminal transitions
-      // release the concrete slot reservation so a declined/cancelled/expired
-      // meeting no longer blocks future confirmation for that UTC instant.
+      // Terminal transitions release the concrete slot reservation.
       if (status === "cancelled" || status === "declined" || status === "expired") {
         const reservedSlot = Array.from(this.bookingIdsBySlotIdentity.entries())
           .find(([, ownerId]) => ownerId === id);
@@ -331,15 +307,13 @@ export class MockBookingRepository implements BookingRepository {
       return { error: BOOKING_REPOSITORY_ERROR_CODES.BOOKING_NOT_FOUND, success: false };
     }
 
-    // Idempotent: if the meeting already reserves this slot, replays return
-    // the current record without re-transitioning.
+    // Replays for the same meeting and slot do not re-transition.
     const existingOwner = this.bookingIdsBySlotIdentity.get(input.slotIdentity);
     if (existingOwner && existingOwner !== input.meetingId) {
       return { error: MEETING_ERROR_CODES.SLOT_UNAVAILABLE, success: false };
     }
 
-    // Transition the meeting to the requested status FIRST so a refusal is
-    // surfaced before we mutate reservation maps.
+    // Transition first so refusals occur before reservation mutation.
     const transitionOptions = input.transitionOptions ?? {};
     const transition = transitionBookingWithAcceptedProposal(record, input.toStatus, transitionOptions);
     if (!transition.success) return transition;

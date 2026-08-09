@@ -38,11 +38,7 @@ function withHealthReadTimeout<T>(read: Promise<T>): Promise<T> {
   });
 }
 
-/**
- * Reads bounded, count-only operational metadata. Query limits intentionally
- * cap work per health request; a count of 100 means "100 or more", never an
- * unbounded scan. No document IDs or booking fields leave this module.
- */
+/** Reads bounded count-only metadata without exposing document or booking fields. */
 export async function getMeetHealthAggregates(now = new Date()): Promise<MeetHealthAggregates> {
   if (!isFirebaseConfigured()) return unavailableAggregates();
 

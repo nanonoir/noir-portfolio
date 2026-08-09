@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ getAvailability: vi.fn() }));
 
-// The availability service is the composition boundary. URL parsing and HTTP
-// error mapping stay real in these route contract tests.
+// Keep route parsing and HTTP error mapping real; mock only the service boundary.
 vi.mock("@/lib/meet/availability-service", () => ({
   availabilityService: { getAvailability: mocks.getAvailability },
 }));

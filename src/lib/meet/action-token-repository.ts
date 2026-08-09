@@ -2,12 +2,7 @@ import "server-only";
 
 import { ACTION_TOKEN_PROCESSING_LEASE_MS, type ActionTokenRecord } from "./action-tokens";
 
-/**
- * Persistence port for `meetings/{meetingId}/actionTokens/{tokenId}` (PRD §6.1,
- * §7). Only token hashes cross this boundary; raw tokens never reach the
- * repository. Both Mock and Firestore adapters implement this port so the
- * action service can be composed without changing behavior.
- */
+/** Persistence port; only token hashes cross this boundary. */
 
 export interface ActionTokenRepository {
   create(record: ActionTokenRecord): Promise<ActionTokenRecord>;

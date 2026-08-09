@@ -87,13 +87,7 @@ function getNotificationIdentity(notification: GoogleCalendarNotification): stri
     .digest("hex");
 }
 
-/**
- * Calendar collection watch notifications do not normally include an event ID.
- * The handler supports an event-scoped resource URI when Google supplies one;
- * collection-level `exists` messages are acknowledged without guessing which
- * booking changed. Incremental collection sync/watch renewal needs a durable
- * sync-token cursor and remains operational work outside this phase.
- */
+/** Accept event-scoped resources; acknowledge collection notifications without guessing. */
 function getEventId(resourceUri: string | null): string | null {
   if (!resourceUri) return null;
   try {

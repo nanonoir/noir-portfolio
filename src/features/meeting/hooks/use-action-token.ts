@@ -6,10 +6,7 @@ function readFragmentToken() {
   return new URLSearchParams(window.location.hash.slice(1)).get("t") ?? "";
 }
 
-/**
- * Reads the opaque action token from the URL fragment only. Consumers must send
- * it directly in the definitive POST body and must never render or log it.
- */
+/** Reads the token from the URL fragment; consumers must never render or log it. */
 export function useActionToken() {
   const [isReady, setIsReady] = useState(false);
   const [token, setToken] = useState("");

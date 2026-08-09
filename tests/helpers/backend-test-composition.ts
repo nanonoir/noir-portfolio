@@ -10,11 +10,7 @@ import { ResendMockProvider } from "@/lib/meet/email-provider";
 import { NoopMeetLogger } from "@/lib/meet/logger";
 import { clearFirestore } from "./firebase-emulator";
 
-/**
- * Real-backend Playwright setup only. Firestore adapters are deliberately real
- * against the demo emulator; Google Calendar and Resend stop at mock provider
- * boundaries. The browser still invokes the production Next route handlers.
- */
+/** Uses real emulator persistence while stopping external providers at mocks. */
 export function createBackendTestComposition() {
   const availabilityRepository = new MockAvailabilityRepository();
   const bookingRepository = new FirestoreBookingRepository();

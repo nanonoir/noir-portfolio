@@ -10,16 +10,7 @@ import { EMAIL_PROVIDER_ERROR_CODES } from "./email-provider";
 import type { BookingRepository } from "./booking-repository";
 import { meetLogger } from "./logger";
 
-/**
- * Phase 6 delivery/persistence boundary.
- *
- * Calls the selected email provider with a stable template+booking idempotency
- * key, then persists the aggregate `emailDelivery` status using the existing
- * BookingRepository provider-delivery port. A failure never rolls back the
- * booking/status/action token; `updateProviderDelivery(... failed)` appends the
- * existing immutable `provider_failed` audit event. A later success after a
- * failure appends `provider_recovered` through the same repository contract.
- */
+/** Delivery failures remain retryable without rolling back booking state. */
 
 export interface DeliverMeetingEmailInput {
   template: EmailTemplateCode;

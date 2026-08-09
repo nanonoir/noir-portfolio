@@ -5,25 +5,7 @@ import { isFirebaseConfigured } from "./env";
 import { withBoundedTimeout } from "./bounded-timeout";
 import { FIRESTORE_RATE_LIMIT_TIMEOUT_MS } from "@/lib/meet/deadlines";
 
-/**
- * Phase 5 authoritative FreeBusy recheck (PRD §8.3 step 1 "re-check
- * availability").
- *
- * Used by `ActionService.executeConfirm` / `executeAcceptProposal` immediately
- * before the atomic reservation transaction. Reads ONLY the requested UTC
- * window from the primary calendar so we do not depend on the existing day
- * `getSlots` composition (which is correct but heavier).
- *
- *  - Returns `available: true` when no busy interval on the primary calendar
- *    overlaps the slot window AND the slot is not already reserved to a
- *    *different* meeting in Firestore `reservedSlots`.
- *  - When `GOOGLE_REFRESH_TOKEN` is absent, FreeBusy is unavailable; the slot
- *    is accepted without the Google check (PRD §4.3 unverified degraded
- *    behavior). Firestore `reservedSlots` conflicts are still excluded when
- *    Firebase env is present.
- *
- * Server-only: this module is called only from server-side action handlers.
- */
+/** Checks primary-calendar and reservation conflicts before confirmation. */
 
 const MEETING_DURATION_MS = 30 * 60 * 1000;
 
@@ -52,17 +34,12 @@ export async function authoritativeFreeBusyRecheck(
   const startMs = startDate.getTime();
   const endMs = endDate.getTime();
 
-  // 1. FreeBusy against the primary calendar (only when configured).
   if (isFreeBusyConfigured()) {
     let busy: BusyInterval[] = [];
     try {
       busy = await queryPrimaryCalendarFreeBusy(startDate.toISOString(), endDate.toISOString());
     } catch {
-      // Configured FreeBusy failing is NOT the same as the documented
-      // "refresh token absent" unverified mode. Confirmation must fail closed
-      // so we never create an event on a slot whose primary-calendar state is
-      // unknown. The action service maps this reason to a stable recoverable
-      // `BOOKING_TEMPORARILY_UNAVAILABLE` response.
+      // Unknown primary-calendar state must fail closed.
       return { available: false, reason: "freebusy_unavailable" };
     }
     for (const interval of busy) {
@@ -74,7 +51,6 @@ export async function authoritativeFreeBusyRecheck(
     }
   }
 
-  // 2. Firestore `reservedSlots` conflict (only when Firebase configured).
   if (isFirebaseConfigured()) {
     const reservation = await isSlotReservedToAnotherMeeting(input.startISO, input.meetingId);
     if (reservation === "unavailable") {
@@ -92,8 +68,6 @@ async function isSlotReservedToAnotherMeeting(
   slotStartISO: string,
   meetingId: string,
 ): Promise<boolean | "unavailable"> {
-  // Local import keeps the module load order clean: `firestore.ts` lazily
-  // initializes on first call so the helper can be unit-imported in tests.
   const { getFirestore } = await import("./firestore");
   try {
     const db = getFirestore();
@@ -105,9 +79,7 @@ async function isSlotReservedToAnotherMeeting(
     const ownerMeetingId = (snap.data() as { meetingId?: string }).meetingId;
     return Boolean(ownerMeetingId && ownerMeetingId !== meetingId);
   } catch {
-    // A reservation read timeout/error leaves the slot ownership unknown.
-    // Confirmation must fail closed through its existing recoverable-unavailable
-    // contract instead of letting a Vercel request hang or accepting the slot.
+    // Unknown reservation ownership must fail closed.
     return "unavailable";
   }
 }

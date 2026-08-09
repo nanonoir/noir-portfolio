@@ -31,16 +31,7 @@ function isAuthorized(request: Request): boolean {
   }
 }
 
-/**
- * Temporary protected administrative route that starts the Google OAuth flow
- * for Nahuel's personal account against the primary Google Calendar.
- *
- * Requires `GOOGLE_OAUTH_ADMIN_SECRET` to be configured and the caller to
- * present it via the `?admin=` query parameter or the `x-admin-secret` header.
- * Returns 403 when the secret is missing/incorrect, and 500 when the OAuth
- * client env (`APP_BASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) is
- * not configured.
- */
+/** Protected route for starting the owner's Google OAuth flow. */
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ success: false, error: "FORBIDDEN" }, { status: 403 });

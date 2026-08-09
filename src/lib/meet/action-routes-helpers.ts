@@ -5,13 +5,7 @@ import type { ActionTokenAction } from "./action-contract";
 import type { BookingRecord } from "./booking-model";
 import type { ProviderDeliveryStatus } from "./dto";
 
-/**
- * Phase 4 route-handler helpers (PRD §13.4).
- *
- * Both helpers are pure response shaping; no side effects. The GET preview
- * helper is intentionally side-effect-free per PRD §7 ("no side effects on
- * GET"). POST routes consume the token via the `ActionService`.
- */
+/** Pure response shaping; GET previews do not consume tokens. */
 
 export interface ActionPreviewResponse {
   success: true;
@@ -34,8 +28,7 @@ export interface ActionConsumedResponse {
   /** Sanitized aggregate delivery states; provider error details stay server-only. */
   emailDeliveryStatus: ProviderDeliveryStatus;
   calendarDeliveryStatus: ProviderDeliveryStatus;
-  /** Tokens issued for the next actor (hashes only; raw tokens reserved for
-   * Phase 6 email rendering). Empty when no new tokens are needed. */
+  /** Hashes for the next actor; raw tokens remain reserved for email rendering. */
   issuedTokenIds: string[];
   /** Hash-only consumed token id. */
   consumedTokenId?: string;
@@ -84,19 +77,7 @@ export function buildConsumedResponse(params: {
   };
 }
 
-/**
- * Neutral GET shell (no token known yet). PRD §7 requires `noindex,nofollow`
- * and "no side effects on GET". The shell renders a minimal POST form and
- * inline JS that reads the raw token from the URL fragment (`#t=<token>`) and
- * populates the hidden input. The user sees a visible submit button and must
- * click it to trigger the POST — no auto-submit. The token is never present
- * in the initial GET response body; it is injected client-side only, so the
- * fragment-based confidentiality guarantee is preserved.
- *
- * Security note: the token in the fragment is NEVER sent to the server in the
- * GET request (browsers strip fragments). The only way a raw token reaches the
- * server is through the POST body after the user clicks the submit button.
- */
+/** The fragment stays client-side until the user submits the POST form. */
 export function renderNeutralShell(params: {
   action: ActionTokenAction;
   meetingId: string;
@@ -108,9 +89,7 @@ export function renderNeutralShell(params: {
   const style = `body{font:14px system-ui,sans-serif;max-width:28rem;margin:4rem auto;padding:0 1rem}button{font:inherit;padding:.5rem 1rem}`;
   const formAction = `/api/meetings/${encodeURIComponent(meetingId)}/${actionToPath(action)}`;
 
-  // The inline script reads `#t=<token>` from the fragment and writes it into
-  // the hidden input. No token is present in the HTML source returned by the
-  // server — the fragment is a client-side-only artifact.
+  // The fragment token is copied client-side and is absent from server HTML.
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">${meta}<title>${title}</title><style>${style}</style></head><body>
 <h1>${escapeHtml(actionLabel)}</h1>
 <p>Validating your action link&hellip;</p>
@@ -133,16 +112,6 @@ export function renderNeutralShell(params: {
 </body></html>`;
 }
 
-/**
- * Result page shown after server-side token validation (either a valid
- * preview or a terminal error). Called when a `?token=` query param was
- * supplied to the GET route and the token was validated (or rejected) by the
- * action service. This is the ONLY path that renders "Link not active".
- *
- * For fragment-based links, this function is never called from the GET
- * handler — the neutral shell is used instead, and token validation happens
- * on POST.
- */
 export function renderResultPage(params: {
   action: ActionTokenAction;
   meetingId: string;
@@ -178,11 +147,7 @@ export function renderResultPage(params: {
 </body></html>`;
 }
 
-/**
- * @deprecated Use `renderNeutralShell` (no token) or `renderResultPage`
- * (server-validated token or terminal error) instead. Preserved for call-site
- * compatibility during the transition; remove after Block 1 verify.
- */
+/** @deprecated Use `renderNeutralShell` or `renderResultPage`. */
 export function renderConfirmationPageHtml(params: {
   action: ActionTokenAction;
   meetingId: string;
@@ -214,11 +179,7 @@ function actionToPath(action: ActionTokenAction): string {
   }
 }
 
-/**
- * Compatibility response for legacy `/api/meetings/...#t=...` email links.
- * The browser owns the fragment, so this GET remains token-blind and only
- * relocates the fragment client-side to the matching page route.
- */
+/** Redirects legacy action links while keeping their fragment client-side. */
 export function renderActionPageRedirect(params: {
   action: ActionTokenAction;
   meetingId: string;

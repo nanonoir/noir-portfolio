@@ -160,7 +160,7 @@ export function Hero() {
       return;
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting the timeline is required when locale or motion preference changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset timeline when locale or motion changes.
     setLabelCharacters(0);
     setHeadlineStarted(false);
     setAnimationComplete(false);
@@ -302,7 +302,7 @@ export function Hero() {
             aria-label={hero.illustrationPhrase}
           >
             <div className="relative ml-auto w-full max-w-[430px]">
-              {/* eslint-disable-next-line @next/next/no-img-element -- PRD requires native AVIF rendering to avoid optimization issues. */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- Native AVIF rendering avoids optimization issues. */}
               <img
                 alt=""
                 aria-hidden="true"
@@ -311,7 +311,7 @@ export function Hero() {
                 loading="lazy"
                 src={assets.hero}
               />
-              {/* eslint-disable-next-line @next/next/no-img-element -- PRD requires native AVIF rendering to avoid optimization issues. */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- Native AVIF rendering avoids optimization issues. */}
               <img
                 alt=""
                 aria-hidden="true"

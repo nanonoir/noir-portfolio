@@ -6,20 +6,7 @@ import { getFirestore } from "./firestore";
 import { isFirebaseConfigured } from "./env";
 import { meetLogger, normalizeErrorCause } from "@/lib/meet/logger";
 
-/**
- * Phase 5 calendar-event audit trail (PRD §6.1 "events" subcollection,
- * §13.5 "persist under meetings/events").
- *
- * Each provider attempt (create / update / cancel) appends one immutable
- * record to `meetings/{meetingId}/events/{eventId}`. The record captures the
- * action, the canonical calendarEventId, the provider delivery state at the
- * time of the attempt, and the raw outbound response status — never the
- * visitor's lead content, message body, or any credential.
- *
- * Server-only: writes happen exclusively through Firebase Admin SDK. The
- * subcollection is for auditability; canonical Calendar link live on the
- * parent `BookingRecord.calendarEventId` / `googleMeetUrl` fields.
- */
+/** Immutable provider attempts omit visitor content and credentials. */
 
 export type CalendarEventAuditAction = "create" | "update" | "cancel";
 
@@ -49,12 +36,7 @@ function timestampToISO(value: Timestamp | string): string {
   }
 }
 
-/**
- * Persist one audit row for a Calendar provider attempt. Failures are logged
- * via `meetLogger` but never throw — the parent `BookingRecord` auditLog is
- * the source of truth and a missing event-audit row MUST NOT roll back the
- * booking transition.
- */
+/** Audit persistence never throws or rolls back the booking transition. */
 export async function recordCalendarEventAudit(
   record: Omit<CalendarEventAuditRecord, "createdAt">,
 ): Promise<void> {
@@ -87,11 +69,7 @@ export async function recordCalendarEventAudit(
   }
 }
 
-/**
- * Read-back helper for verify / debug. Returns audit records for the meeting
- * ordered by `attemptNumber` ascending. Pure read path; never throws — returns
- * an empty array if Firestore access or the meeting is unreachable.
- */
+/** Reads ordered audit records and returns an empty array on access failure. */
 export async function listCalendarEventAudit(
   meetingId: string,
 ): Promise<CalendarEventAuditRecord[]> {

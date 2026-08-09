@@ -312,17 +312,14 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openHomepage(page);
 
-    // Open the mobile drawer
     const menuButton = page.getByRole("button", { name: /menu|menú/i });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
 
-    // Wait for drawer to open
     await page.waitForTimeout(300);
     const drawerDialog = page.locator('[role="dialog"]');
     await expect(drawerDialog).toBeVisible();
 
-    // Check all drawer nav items have horizontal (side-by-side) icon and label layout
     const drawerItems = page.locator('[data-drawer-item="true"]');
     const count = await drawerItems.count();
     expect(count).toBeGreaterThan(0);
@@ -338,8 +335,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
       expect(iconBox).not.toBeNull();
       expect(labelBox).not.toBeNull();
 
-      // In a horizontal layout, the icon and label tops are within 20px of each other
-      // (same row), and the icon is to the LEFT of the label
       const verticalDiff = Math.abs((iconBox!.y + iconBox!.height / 2) - (labelBox!.y + labelBox!.height / 2));
       expect(verticalDiff).toBeLessThan(20);
       expect(iconBox!.x).toBeLessThan(labelBox!.x);
@@ -350,7 +345,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHomepage(page);
 
-    // Find the Services nav link (outlined variant with an icon)
     const servicesLink = page.locator('[data-action-variant="outlined"]').filter({ hasText: /service|servicio/i }).first();
     await expect(servicesLink).toBeVisible();
 
@@ -366,7 +360,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     expect(iconBox).not.toBeNull();
     expect(labelBox).not.toBeNull();
 
-    // Icon and label must be horizontally aligned (same row)
     const verticalDiff = Math.abs((iconBox!.y + iconBox!.height / 2) - (labelBox!.y + labelBox!.height / 2));
     expect(verticalDiff).toBeLessThan(10);
   });
@@ -375,7 +368,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHomepage(page);
 
-    // All hero CTA links should have the label to the LEFT of the icon (icon at END position)
     const heroCtas = page.locator("main section").first().locator("[data-action]");
     const count = await heroCtas.count();
     expect(count).toBeGreaterThan(0);
@@ -393,7 +385,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
 
       if (!iconBox || !labelBox) continue;
 
-      // Label must be to the LEFT of the icon (label first, icon at END)
       expect(labelBox.x).toBeLessThan(iconBox.x);
     }
   });
@@ -402,7 +393,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHomepage(page);
 
-    // Scroll to contact section
     await page.locator("#contact").scrollIntoViewIfNeeded();
     await page.waitForTimeout(200);
 
@@ -421,7 +411,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     expect(iconBox).not.toBeNull();
     expect(labelBox).not.toBeNull();
 
-    // Icon and label are horizontally aligned (same row, label before icon at END)
     const verticalDiff = Math.abs((iconBox!.y + iconBox!.height / 2) - (labelBox!.y + labelBox!.height / 2));
     expect(verticalDiff).toBeLessThan(10);
     expect(labelBox!.x).toBeLessThan(iconBox!.x);
@@ -431,8 +420,6 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHomepage(page);
 
-    // Inject an outlined action link with a real [data-action-icon] img into the live page,
-    // then hover it with the mouse so the @media (hover: hover) rule applies.
     await page.evaluate(() => {
       const link = document.createElement("a");
       link.id = "wu2-outlined-hover-icon-test";
@@ -463,20 +450,15 @@ test.describe("@wu2 @layout icon-label horizontal layout", () => {
     const testImg = page.locator("#wu2-outlined-hover-icon-img");
     await expect(testLink).toBeVisible();
 
-    // Baseline filter before hover
     const filterBefore = await testImg.evaluate((el) => getComputedStyle(el).filter);
 
-    // Hover the link — triggers the @media (hover: hover) rule
     await testLink.hover();
     await page.waitForTimeout(300);
 
     const filterAfter = await testImg.evaluate((el) => getComputedStyle(el).filter);
 
-    // Clean up
     await page.evaluate(() => document.getElementById("wu2-outlined-hover-icon-test")?.remove());
 
-    // After hover the filter must be invert(1) (the icon flips to stay visible on foreground fill)
-    // Before hover it should be none (no filter applied)
     expect(filterBefore).toBe("none");
     expect(filterAfter).toBe("invert(1)");
   });

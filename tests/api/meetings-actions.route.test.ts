@@ -7,8 +7,7 @@ const mocks = vi.hoisted(() => ({
   previewAction: vi.fn(),
 }));
 
-// The action service is the composition boundary. Parsing, schema validation,
-// rate limiting, response builders, and logging stay real in these contracts.
+// Keep parsing, validation, rate limiting, response shaping, and logging real.
 vi.mock("@/lib/meet/composition", () => ({
   actionService: { consumeAction: mocks.consumeAction, previewAction: mocks.previewAction },
 }));

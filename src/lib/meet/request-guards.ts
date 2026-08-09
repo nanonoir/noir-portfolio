@@ -100,10 +100,7 @@ export async function isRateLimitAllowed(request: Request, limit: FixedWindowLim
   return true;
 }
 
-/**
- * Bounds public action previews and consumes per caller, meeting, and action.
- * The raw IP and opaque token never reach rate-limit storage, logs, or responses.
- */
+/** Rate-limits action previews without persisting raw IPs or tokens. */
 export async function isActionRateLimitAllowed(
   request: Request,
   meetingId: string,

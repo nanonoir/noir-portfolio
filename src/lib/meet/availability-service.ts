@@ -19,26 +19,9 @@ import { meetLogger, normalizeErrorCause } from "./logger";
 
 export type AvailabilityServiceResponse = AvailabilitySuccessResponseDto | AvailabilityErrorResponseDto;
 
-/**
- * Composition root for the Phase 3 availability provider.
- *
- *  - GOOGLE_REFRESH_TOKEN (+ client id/secret) configured → Google Calendar
- *    FreeBusy provider (verified).
- *  - Production env present (Firebase) but no refresh token → Unverified
- *    provider: business-rule slots with `availabilityStatus: "unverified"`
- *    (PRD §4.3 safe degraded behavior).
- *  - No server env → legacy `MockAvailabilityRepository` preserves the dev
- *    flow and existing UI behavior.
- */
-/**
- * Builds the one availability policy used by both slot discovery and booking.
- * A returned slot is only meaningful if the booking path evaluates it through
- * the same provider, timezone, UTC conversion, and lead-time rules.
- */
+/** Selects the availability provider for the current server environment. */
 export function createAvailabilityRepository(): AvailabilityRepository {
-  // The browser backend lane uses real Firestore repositories while external
-  // providers remain mocks. Select its same deterministic availability source
-  // before Next dev's local `.env` can select the production-safe degraded path.
+  // Keep browser backend tests deterministic while using real persistence.
   if (isBackendE2ETestComposition()) {
     return new MockAvailabilityRepository();
   }

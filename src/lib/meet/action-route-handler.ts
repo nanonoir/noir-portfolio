@@ -19,28 +19,7 @@ import {
 } from "@/lib/meet/request-guards";
 import { parseProposedSlot } from "@/lib/meet/schemas";
 
-/**
- * Phase 4 action route factory (PRD §13.4).
- *
- * Each action route (`confirm`, `propose`, `decline`, `accept-proposal`) is a
- * thin handler that:
- *
- *  - GET: preview the raw token (no side effects), render a minimal
- *    confirmation page with `noindex,nofollow` (PRD §7).
- *  - POST: consume the token + payload via the shared `ActionService`,
- *    returning the appropriate JSON response or stable error code.
- *
- * Definitive actions always use POST (PRD §5.2). GET routes MUST NOT mutate
- * state — they only validate the token and render the confirmation form.
- *
- * Errors map to the stable codes from PRD §12:
- *  - 410 `LINK_NOT_ACTIVE`        for expired/used/wrong-actor/wrong-action
- *  - 409 `SLOT_UNAVAILABLE`        for confirm/accept-proposal slot conflicts
- *  - 409 `IDEMPOTENCY_CONFLICT`    reserved (issued by booking service, not here)
- *  - 400 `INVALID_PAYLOAD`         for malformed POST bodies (e.g. missing
- *                                  proposedSlot on `propose`)
- *  - 503 `BOOKING_TEMPORARILY_UNAVAILABLE` for unexpected failures
- */
+/** Creates action routes with side-effect-free GET and consuming POST handlers. */
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +27,6 @@ function readTokenFromQuery(request: Request): string | null {
   const url = new URL(request.url);
   const fromQuery = url.searchParams.get("token");
   if (fromQuery) return fromQuery;
-  // Fallback for callers that pass the token in the fragment via `#t=...`;
-  // browsers never send the fragment to the server, so the GET page reads it
-  // client-side and re-POSTs it. For direct preview (e.g. internal callers
-  // that include the token in the query), we still support `?token=`.
   return null;
 }
 
@@ -88,8 +63,6 @@ async function readPostBody(request: Request): Promise<ActionPostBody> {
       return { tooLarge: false, invalidPayload: true };
     }
   }
-  // Form-encoded fallback for the minimal HTML confirmation page.
-  // Supports `propose` actions that require a JSON-serialized `proposedSlot` field.
   try {
     const form = new URLSearchParams(text);
     const rawProposedSlot = form.get("proposedSlot");
@@ -101,7 +74,6 @@ async function readPostBody(request: Request): Promise<ActionPostBody> {
       try {
         proposedSlot = JSON.parse(rawProposedSlot) as unknown;
       } catch {
-        // Present but not parseable JSON — caller must reject with INVALID_PAYLOAD.
         invalidProposedSlot = true;
       }
     }
@@ -160,10 +132,6 @@ export function createActionRouteHandler(action: ActionTokenAction): ActionRoute
           );
         }
 
-        // No query token: render the neutral shell. The client-side script will
-        // extract the token from the URL fragment (#t=<token>) and submit it
-        // via POST. This preserves fragment-based token confidentiality — the
-        // raw token is never sent in the GET request body or query string.
         if (!rawToken) {
           return new Response(
             renderNeutralShell({ action, meetingId: id }),
@@ -171,8 +139,6 @@ export function createActionRouteHandler(action: ActionTokenAction): ActionRoute
           );
         }
 
-        // Query token present: attempt server-side preview (no side effects).
-        // Return the result page regardless of outcome — never HTTP 500.
         const preview = await actionService.previewAction({ meetingId: id, rawToken, expectedAction: action });
         if (!preview.ok) {
           return new Response(
@@ -187,10 +153,6 @@ export function createActionRouteHandler(action: ActionTokenAction): ActionRoute
           { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
         );
       } catch (error) {
-        // Top-level guard: any unexpected exception (e.g. Firestore index error,
-        // transient network failure) becomes a stable 503 JSON response — never
-        // an unhandled HTTP 500. The raw exception is never forwarded to the
-        // client; only a bounded, normalized cause is logged.
         meetLogger.error("action_route.get_failed", {
           action,
           cause: normalizeErrorCause(error),

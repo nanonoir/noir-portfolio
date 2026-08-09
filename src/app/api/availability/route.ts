@@ -17,8 +17,7 @@ export async function GET(request: Request) {
   const timezoneParam = searchParams.get("timezone");
   const timezoneHeader = request.headers.get("x-timezone");
 
-  // PRD §4.2 fallback order: (1) query value; (2) X-Timezone header;
-  // (3) legacy "America/Argentina/Buenos_Aires" (applied inside the service).
+  // Prefer the query value; the service applies header and legacy fallbacks.
   const timezone = timezoneParam ?? timezoneHeader;
 
   try {

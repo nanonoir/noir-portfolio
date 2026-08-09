@@ -5,18 +5,7 @@ import { createGoogleCalendarClient } from "./google-calendar-client";
 import { refreshAccessToken } from "./google-oauth";
 import { withBoundedTimeout } from "./bounded-timeout";
 
-/**
- * Google Calendar FreeBusy query against the primary calendar (PRD §4.1).
- *
- * Phase 3 availability provider boundary: this module is server-only, talks
- * to Google through the Phase 1 OAuth2 refresh-token flow, and exposes one
- * pure-ish function: given a UTC window, return the busy intervals on the
- * primary calendar.
- *
- * No event creation, update, or deletion happens here — those remain Phase 5
- * behind the existing `CalendarProvider` port. This module never exposes
- * visitor data to Google beyond the meeting window itself.
- */
+/** Queries primary-calendar busy intervals without sending visitor content. */
 
 export interface BusyInterval {
   startISO: string;

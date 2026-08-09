@@ -18,10 +18,7 @@ import { MockBookingRepository, type BookingRepository } from "./booking-reposit
 import { GoogleCalendarMockProvider, UnavailableCalendarProvider, type CalendarProvider } from "./calendar-provider";
 import { ResendMockProvider, type EmailProvider } from "./email-provider";
 
-/**
- * This opt-in exists only for the local Playwright backend lane. It keeps the
- * real Firestore repositories while preventing Google/Resend network calls.
- */
+/** Keeps backend E2E on Firestore while preventing external provider calls. */
 function createBookingRepository(): BookingRepository {
   if (isFirebaseConfigured() || isBackendE2ETestComposition()) {
     try {

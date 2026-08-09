@@ -3,17 +3,7 @@ import { cert, deleteApp, getApps, initializeApp, type App } from "firebase-admi
 
 import { getEnv } from "./env";
 
-/**
- * Lazy Firebase Admin SDK initialization.
- *
- * The Admin SDK is initialized only when first requested by a server module
- * (e.g. a future Firestore repository). Phase 1 exposes the entry point so
- * later phases can inject persistence without re-implementing bootstrap logic.
- *
- * Firestore is not touched here and no client bundle can reach this module:
- * `import "server-only"` guarantees a build-time failure if it ever moves to a
- * client graph, and the credentials come only from server env vars.
- */
+/** Lazy server-only Admin SDK initialization using server credentials. */
 
 let cachedApp: App | null = null;
 
@@ -53,9 +43,7 @@ export function getFirebaseAdminApp(): App {
       return cachedApp;
     }
 
-    // The emulator uses FIRESTORE_EMULATOR_HOST and does not require a service
-    // account. Keeping this branch test-only ensures production still requires
-    // explicit certificate credentials.
+    // Emulator tests use project IDs instead of service-account credentials.
     cachedApp = initializeApp({ projectId });
     return cachedApp;
   }

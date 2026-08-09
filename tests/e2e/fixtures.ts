@@ -1,10 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-/**
- * UI smoke helpers: these intentionally intercept browser API traffic.
- * Real route/Firestore helpers live in `tests/helpers/backend-test-composition.ts`
- * and must never use `page.route` for internal API endpoints.
- */
+/** UI smoke helpers intentionally intercept browser API traffic. */
 export function nextWeekdayDate() {
   const date = new Date();
 

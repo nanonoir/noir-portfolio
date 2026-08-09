@@ -27,11 +27,6 @@ export class BookingService {
     private readonly calendarProvider: CalendarProvider = new GoogleCalendarMockProvider(),
     private readonly emailProvider: EmailProvider = new ResendMockProvider(),
     private readonly logger: MeetLogger = new NoopMeetLogger(),
-    /**
-     * Phase 4 action security service. Default `undefined` is replaced at
-     * composition time; the singleton export below wires the shared instance.
-     * Tests that don't care about tokens may omit it and issuance is skipped.
-     */
     private readonly actionService?: ActionService,
   ) {}
 
@@ -74,12 +69,7 @@ export class BookingService {
       return this.error(MEETING_ERROR_CODES.SLOT_UNAVAILABLE);
     }
 
-    // Phase 5: `requested` does NOT reserve a slot and does NOT create a
-    // Calendar event (PRD §1, §8.3, §13.5 exit criteria "requested creates no
-    // Calendar event"). The repository persists the `requested` record only;
-    // slot reservation moves to `ActionService.confirm` /
-    // `accept_proposal`. This is the re-routing the Phase 4 Deviations section
-    // flagged as deferred-to-Phase-5.
+    // Requested bookings persist without reservations or Calendar events.
     const response = this.success(`meet_${crypto.randomUUID().slice(0, 8)}`);
     const createdRecord = createBookingRecord(request, { id: response.meetingId });
     const persistedRecord = await this.bookingRepository.create(createdRecord);
@@ -87,11 +77,8 @@ export class BookingService {
       return this.handleReplay(persistedRecord, request);
     }
 
-    // Phase 4/6: issue the initial owner action token set and immediately use
-    // raw tokens ONLY to compose the intended owner email links. Hashes are
-    // persisted; tokens never reach the visitor response, logs, or booking
-    // audit payloads. The retry envelope is persisted only as authenticated
-    // ciphertext so a failed initial owner email reuses this exact token set.
+    // Raw tokens are used only to compose owner links; hashes are persisted.
+    // The encrypted recovery envelope lets retries reuse the same token set.
     let ownerTokens: IssuedActionToken[] = [];
     if (this.actionService) {
       try {
@@ -104,8 +91,7 @@ export class BookingService {
       }
     }
 
-    // Phase 6: owner request notification (with actions) + visitor pending
-    // receipt. Calendar remains intentionally excluded from `requested`.
+    // Requested bookings send owner actions and a visitor receipt.
     const deliveredRecord = await this.processPendingProviders(createdRecord, ownerTokens);
 
     this.logger.info("booking.accepted", { bookingId: createdRecord.id });
@@ -137,10 +123,7 @@ export class BookingService {
   }
 
   private areProvidersComplete(record: BookingRecord) {
-    // PRD §1/§13.5: `requested` has no Calendar event. Its pending calendar
-    // delivery state is therefore expected and MUST NOT force replay into a
-    // provider attempt. Calendar becomes required only after `owner_confirmed`
-    // (created by the Phase 5 action flow).
+    // Requested bookings do not require Calendar delivery until confirmation.
     const calendarRequired = record.status === "owner_confirmed" || record.status === "confirmed";
     return (!calendarRequired || record.calendarDelivery.status === "completed") &&
       record.emailDelivery.status === "completed";
@@ -150,9 +133,7 @@ export class BookingService {
     record: BookingRecord,
     initialOwnerTokens?: readonly IssuedActionToken[],
   ): Promise<BookingRecord> {
-    // Phase 5 owns Calendar create/update after `owner_confirmed`; this
-    // booking-request path owns only Phase 6 initial emails. Never create a
-    // Calendar event for `requested`.
+    // The request path sends initial email only; Calendar starts after confirmation.
     if (record.status !== "requested" || record.emailDelivery.status === "completed") {
       return record;
     }

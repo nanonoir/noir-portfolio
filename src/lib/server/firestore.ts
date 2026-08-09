@@ -3,14 +3,7 @@ import { getFirestore as adminGetFirestore, type Firestore } from "firebase-admi
 
 import { getFirebaseAdminApp, resetFirebaseAdminForEmulatorTests } from "./firebase-admin";
 
-/**
- * Lazy Firestore accessor built on the Phase 1 Firebase Admin app.
- *
- * Server-only: Firestore is reached exclusively through Firebase Admin SDK on the
- * server. No client path can import this module. Phase 2 wires
- * `FirestoreBookingRepository` on top of this accessor while preserving the
- * `BookingRepository` port so the booking service flow stays unchanged.
- */
+/** Lazy server-only Firestore accessor backed by the Admin SDK. */
 
 let cachedFirestore: Firestore | null = null;
 

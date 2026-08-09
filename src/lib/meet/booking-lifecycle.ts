@@ -110,11 +110,7 @@ export function transitionBooking(
     return { error: BOOKING_LIFECYCLE_ERROR_CODES.INVALID_STATUS_TRANSITION, success: false };
   }
 
-  // Reservation/confirmation transitions (`reschedule_proposed →
-  // owner_confirmed`, `requested → owner_confirmed`) MUST reject when the
-  // proposal window has expired. `owner_confirmed → confirmed` is a visitor
-  // RSVP callback and stays allowed after the meeting start (it is driven by
-  // the Google Calendar webhook in Phase 7).
+  // Reservation transitions reject expired proposals; RSVP confirmation does not.
   const isReservationTransition = nextStatus === MEETING_STATUSES.OWNER_CONFIRMED;
   if (
     isReservationTransition &&
@@ -141,15 +137,6 @@ export function transitionBooking(
   return { record: updatedRecord, success: true };
 }
 
-/**
- * Phase 5 reservation transition wrapper.
- *
- * `reschedule_proposed → owner_confirmed` means the visitor accepted the
- * proposed time. Promote that proposal into the canonical meeting slot,
- * preserve the proposal-version/audit history, and clear the transient
- * `proposedSlot` / `expiresAt` fields. `requested → owner_confirmed` is a
- * normal owner confirmation and leaves the original meeting slot unchanged.
- */
 export function transitionBookingWithAcceptedProposal(
   record: BookingRecord,
   nextStatus: MeetingStatus,

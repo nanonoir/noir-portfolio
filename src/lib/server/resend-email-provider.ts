@@ -15,22 +15,12 @@ import {
 import { composeMeetingEmail, type EmailActionLink } from "@/lib/meet/email-templates";
 import { meetLogger, normalizeErrorCause } from "@/lib/meet/logger";
 
-/**
- * Phase 6 real Resend adapter.
- *
- * Server-only: reads RESEND_API_KEY only through the Phase 1 client
- * foundation. The provider accepts a template code and safe payload/action
- * links, renders HTML + text on the server, and sends with a stable Resend
- * idempotency key (`template/booking/proposal/recipient`). The raw token is
- * only present in the intended email action link fragment; it is never logged
- * or persisted by this adapter.
- */
+/** Server-only adapter; raw action tokens are never logged or persisted. */
 
 const DEFAULT_FROM = "Nahuel Noir Portfolio <onboarding@resend.dev>";
 
 export function isResendEmailConfigured(): boolean {
-  // CONTACT_FROM_EMAIL is optional because Phase 6 intentionally falls back
-  // to the documented Resend sandbox sender onboarding@resend.dev.
+  // Use the Resend sandbox sender when no custom sender is configured.
   return isResendClientConfigured();
 }
 
@@ -72,8 +62,7 @@ export class ResendEmailProvider implements EmailProvider {
       );
 
       if (error) {
-        // Do not include provider message, recipient, action link, or raw
-        // token in logs. The booking repository stores only the stable code.
+        // Provider details, recipients, links, and tokens stay out of logs.
         meetLogger.warn("email.resend.send_failed", {
           bookingId: input.booking.id,
           provider: "email",
@@ -107,11 +96,7 @@ export class ResendEmailProvider implements EmailProvider {
   }
 }
 
-/**
- * Production-safe fallback: never fabricates delivery when Firebase-backed
- * deployment lacks RESEND_API_KEY or sender config. Callers retain booking
- * state, persist `emailDelivery.failed`, and can replay after configuration.
- */
+/** Fails delivery without fabricating success when Resend is unavailable. */
 export class UnavailableEmailProvider implements EmailProvider {
   async send(template: EmailTemplateCode, input: MeetingEmailInput): Promise<EmailProviderResult> {
     void template;

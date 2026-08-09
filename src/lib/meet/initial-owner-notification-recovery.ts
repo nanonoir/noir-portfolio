@@ -31,11 +31,7 @@ function getRecoveryKey(): Buffer {
     .digest();
 }
 
-/**
- * Stores raw owner tokens only as an authenticated, server-only ciphertext so
- * a persisted initial-notification failure can be retried without minting a
- * second valid action-token set. The raw values never enter logs or responses.
- */
+/** Encrypts owner tokens for server-only retry without minting duplicates. */
 export function sealInitialOwnerTokens(tokens: readonly IssuedActionToken[]): string {
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv(CIPHER, getRecoveryKey(), iv);

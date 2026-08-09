@@ -53,14 +53,12 @@ function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMe
       return;
     }
 
-    // The source stays unset for collapsed panels and user-paused media so
-    // browsers cannot buffer the project videos before a visitor requests it.
+    // Delay source assignment until active to avoid buffering collapsed media.
     if (!video.src || video.src !== new URL(media.src, location.href).href) {
       video.src = media.src;
       video.load();
     }
 
-    // Respect reduced motion: keep video paused when preference is active.
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) {
       return;
@@ -74,8 +72,7 @@ function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMe
       }
 
       void videoRef.current.play().catch(() => {
-        // Autoplay can be timing-sensitive while metadata is loading.
-        // Keep the video ready and retry on `canplay`/`loadeddata` instead of forcing pause.
+        // Retry after metadata events because autoplay timing is browser-dependent.
       });
     };
 
@@ -105,19 +102,6 @@ function VideoFrame({ media, onMediaError, paused }: { media: ProjectMedia; onMe
   );
 }
 
-/**
- * Picks the responsive container aspect-ratio class from the media's aspect
- * metadata so that mobile/portrait images don't get letterboxed into a fixed
- * 16:11 box.
- *
- * aspect === "mobile"        → 9:16 portrait (phone screenshots)
- * aspect === "desktop"       → 16:11 (standard desktop capture)
- * aspect === "desktop-wide"  → 21:9  (ultra-wide / panoramic)
- *
- * Falls back to the previous 4:5 (mobile) / 16:11 (desktop) breakpoint split
- * when the media type is video, because video intrinsic size is determined at
- * load time and no pre-render box is needed.
- */
 function mediaContainerClass(media: ProjectMedia | undefined): string {
   if (!media) return "aspect-video";
 
@@ -153,7 +137,6 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
-  // Tracks the active pointer so concurrent touches don't cause jumps.
   const pointerStartRef = useRef<{ id: number; x: number } | null>(null);
   const currentMedia = project.media[activeIndex];
   const hasMultipleMedia = project.media.length > 1;
@@ -167,7 +150,6 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    // Only track touch/pen; ignore mouse and multi-touch after first pointer.
     if (event.pointerType === "mouse" || !hasMultipleMedia || pointerStartRef.current !== null) return;
     pointerStartRef.current = { id: event.pointerId, x: event.clientX };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -185,7 +167,6 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
   }
 
   function handlePointerCancel(event: PointerEvent<HTMLDivElement>) {
-    // Release capture and reset state on cancel so subsequent gestures start clean.
     if (pointerStartRef.current?.id === event.pointerId) {
       pointerStartRef.current = null;
     }
@@ -198,12 +179,6 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
 
   return (
     <div className="space-y-4">
-      {/*
-        touch-action: pan-y — lets the browser handle vertical page scroll
-        while this element handles horizontal pointer tracking for swipe.
-        This prevents Android Chrome from cancelling the pointer after a
-        diagonal swipe is detected (which would previously drop the gesture).
-      */}
       <div
         className={`relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-[20px] border border-border bg-surface ${containerClass}`}
         onPointerCancel={handlePointerCancel}
@@ -230,7 +205,6 @@ function ProjectMediaCarousel({ active, project }: { active: boolean; project: P
 
         {hasMultipleMedia ? (
           <>
-            {/* Chevrons visible on all viewports (not just lg) for touch parity */}
             <button
               aria-label={dictionary.projects.previousMediaLabel}
               className="absolute top-1/2 left-4 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/80 backdrop-blur transition-colors hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
@@ -299,9 +273,6 @@ export function ProjectsSection() {
   const idPrefix = useId();
   const [openedProject, setOpenedProject] = useState<Project["id"] | null>(null);
   const [mediaResetKey, setMediaResetKey] = useState(0);
-  // Tracks whether the auto-open has already fired. Starts as true to block
-  // auto-open at page load; flips to false only once the section is scrolled
-  // into view for the first time, then back to true after one auto-open fires.
   const hasEnteredView = useRef(false);
   const hasAutoOpened = useRef(false);
   const navigationIntentRef = useRef<string | null>(null);
@@ -324,7 +295,6 @@ export function ProjectsSection() {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !hasEnteredView.current) {
-          // Section has scrolled into view for the first time.
           hasEnteredView.current = true;
         }
 
@@ -352,21 +322,7 @@ export function ProjectsSection() {
     };
   }, []);
 
-  /**
-   * Scrolls the article row for `projectId` into view so its top edge clears
-   * the sticky header.  Uses `scroll-margin-top` (set via the CSS custom
-   * property `--scroll-header-offset` in globals.css) together with
-   * `scrollIntoView({ block: "start" })` so the browser applies the correct
-   * responsive offset automatically.
-   *
-   * Timing: the project panel opens/closes via a 500 ms CSS grid-rows
-   * transition.  A single rAF fires only ~16 ms after state change — far too
-   * early: `getBoundingClientRect` still reflects the old layout, so the
-   * manual `scrollTo` approach overshoots once an adjacent panel collapses.
-   * Instead we call `scrollIntoView` after a delay that covers the transition,
-   * so the target's final position is already stable.  Reduced-motion visitors
-   * get an instant scroll with no delay.
-   */
+  // Wait for the grid transition before measuring; reduced motion needs no delay.
   function scrollProjectIntoView(projectId: Project["id"]) {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -377,13 +333,9 @@ export function ProjectsSection() {
     };
 
     if (prefersReducedMotion) {
-      // No transition plays, so the layout is already final after the React
-      // state update flushes.  A single rAF is enough.
       window.requestAnimationFrame(doScroll);
     } else {
-      // Wait for the 500 ms panel transition to stabilise before measuring.
-      // Using setTimeout rather than transitionend because the collapsing
-      // *other* panel fires transitionend on its own element, not the target.
+      // The collapsing sibling owns transitionend, so use a fixed delay.
       setTimeout(doScroll, 520);
     }
   }

@@ -32,29 +32,7 @@ import { getFirestore } from "@/lib/server/firestore";
 import { normalizeEmail } from "./firestore-collections";
 import { addMeetingDuration } from "./duration";
 
-/**
- * Firestore-backed BookingRepository.
- *
- * Implements the same port as `MockBookingRepository` so the booking service
- * flow is unchanged. Phase 2 PRD §13.2 exit criteria:
- *  - requests survive process restarts → Firestore persistence;
- *  - same idempotency key replays safely → `reserveSlotIfAvailable` reads
- *    `meetings` by idempotencyKey inside the transaction and replays;
- *  - same key with a different canonical payload returns 409
- *    `IDEMPOTENCY_CONFLICT` → the service compares hash in `handleReplay` and
- *    the transaction persists `payloadHash` for auditability;
- *  - two confirmations for the same UTC slot result in exactly one reservation
- *    → `reservedSlots/{slotIdentity}` is created atomically inside the same
- *    transaction that creates the meeting document;
- *  - no client has direct Firestore access → server-only module via Admin SDK.
- *
- * `requested` never reserves a slot in the production semantic model (PRD
- * §3.2). The booking service is the only caller of `reserveSlotIfAvailable` in
- * the current flow and the existing service contract treats that call as the
- * durable create+reserve boundary; this adapter honors that contract. Phase 4
- * will re-route reservation to the confirm action; the same atomic transaction
- * will still apply.
- */
+/** Firestore-backed BookingRepository with durable persistence and atomic reservations. */
 
 const SLOT_RELEASE_STATUSES: ReadonlySet<MeetingStatus> = new Set<MeetingStatus>([
   "cancelled",
@@ -369,7 +347,7 @@ export class FirestoreBookingRepository implements BookingRepository {
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      // Phase 5 atomic reservation of the new slot OR upsert (if it was
+      // Atomic reservation of the new slot OR upsert (if it was
       // already owned by this meeting, keep it but refresh timestamp + payload
       // hash). Use `set` with merge semantics by writing through `tx.set(slotRef, ..., { merge: true })`.
       tx.set(
@@ -662,11 +640,7 @@ function idempotencyDocumentId(idempotencyKey: string): string {
   return createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
 }
 
-/**
- * Convert ISO strings to Firestore `Timestamp` for indexed fields (PRD §6.4).
- * Null and already-Timestamp values are preserved. Invalid strings fall back
- * to the current instant so the doc is always queryable.
- */
+/** Converts indexed ISO values to Firestore timestamps while preserving nulls. */
 function toFirestoreTimestamp(value: string | Timestamp | null): Timestamp | null {
   if (value === null) return null;
   if (typeof value !== "string") return value;

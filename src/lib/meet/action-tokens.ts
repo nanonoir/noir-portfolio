@@ -6,22 +6,7 @@ import { ACTION_TOKEN_DEFAULT_TTL_MS } from "./deadlines";
 
 export { ACTION_TOKEN_DEFAULT_TTL_MS, ACTION_TOKEN_PROCESSING_LEASE_MS } from "./deadlines";
 
-/**
- * Phase 4 action token domain (PRD §7).
- *
- * Opaque, hashed, expiring tokens mediate every definitive meeting action.
- * Two actors own distinct token scopes:
- *  - `owner`  (Nahuel): `confirm`, `propose`, `decline`
- *  - `visitor`:          `accept_proposal`, `propose`, `decline`
- *
- * The raw token is returned to the caller only at issuance time so it can be
- * embedded in a server-rendered action link (Phase 6 email). Firestore stores
- * only `tokenHash` (SHA-256 hex); the raw token is never persisted.
- *
- * Server-only: tokens are minted, validated, and consumed exclusively on the
- * server. Route handlers receive the raw token via the POST body and pass it
- * to the action service; the service hashes it before any storage lookup.
- */
+/** Opaque expiring tokens are hashed before persistence and remain server-only. */
 
 export const ACTION_TOKEN_ACTORS = {
   OWNER: "owner",
@@ -52,18 +37,7 @@ export function isActionAllowedForActor(actor: ActionTokenActor, action: ActionT
     : VISITOR_ACTIONS.has(action);
 }
 
-/**
- * Default TTL per action. Owner action tokens for a `requested` meeting live
- * long enough for Nahuel to act on a new lead. Visitor tokens that bind to a
- * proposal expire at the proposed slot start per PRD §7
- * ("proposal links expire at the proposed slot start"), computed at issuance.
- */
-/**
- * Compute an explicit `expiresAt` for an issued token.
- *
- *  - `accept_proposal` anchors on the proposed slot start (PRD §7).
- *  - Other actions use the fixed default TTL from `ACTION_TOKEN_DEFAULT_TTL_MS`.
- */
+/** Computes expiry at the proposed slot start or from the default action TTL. */
 export function computeTokenExpiry(
   action: ActionTokenAction,
   issuedAt: Date,

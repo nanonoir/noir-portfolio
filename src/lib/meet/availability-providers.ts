@@ -12,38 +12,12 @@ import { isFirebaseConfigured } from "@/lib/server/env";
 import { withBoundedTimeout } from "@/lib/server/bounded-timeout";
 import { FIRESTORE_RATE_LIMIT_TIMEOUT_MS } from "./deadlines";
 
-/**
- * Phase 3 availability providers implementing the existing
- * `AvailabilityRepository` port.
- *
- * Composition (kept inside the module so callers can opt in):
- *  - Google refresh token present → `GoogleCalendarAvailabilityProvider`
- *    (verified): runs FreeBusy and excludes slot windows that overlap a busy
- *    interval on the primary calendar. Also excludes slots reserved in
- *    Firestore `reservedSlots` (PRD §4.1 internal booking conflicts).
- *  - Production-ish env (Firebase configured) but no refresh token →
- *    `UnverifiedAvailabilityProvider`: returns all business-rule-valid slots
- *    with `availabilityStatus: "unverified"`, no Calendar check, no
- *    reservation, no event creation (PRD §4.3 safe degraded behavior).
- *  - No env → existing `MockAvailabilityRepository` stays the dev fallback.
- */
 
 function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
 }
 
-/**
- * Google Calendar FreeBusy-backed provider. Emits only the slots that:
- *  - satisfy PRD §4.1 business rules (weekdays, horizon, lead time);
- *  - exist exactly once in the visitor timezone (no DST gap/duplicate);
- *  - do not overlap any busy interval from the primary calendar;
- *  - are not already reserved by an existing booking in Firestore
- *    `reservedSlots` (internal booking conflicts per PRD §4.1).
- *
- * `GOOGLE_REFRESH_TOKEN` and `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` MUST be
- * configured; otherwise the provider throws `FreeBusyError` and the caller
- * surfaces `503 AVAILABILITY_UNAVAILABLE` per PRD §4.3.
- */
+/** Returns business-rule-valid slots excluding external and internal conflicts. */
 export class GoogleCalendarAvailabilityProvider implements AvailabilityRepository {
   isAvailableDate({ date, timezone }: AvailabilityQuery): boolean {
     return isDateWithinBusinessRules(date, timezone);
@@ -82,13 +56,7 @@ export class GoogleCalendarAvailabilityProvider implements AvailabilityRepositor
   }
 }
 
-/**
- * Safe degraded provider used when real availability cannot be checked because
- * `GOOGLE_REFRESH_TOKEN` is absent. Returns every business-rule-valid slot
- * with `availabilityStatus: "unverified"`. Per PRD §4.3, this creates a
- * request only; it does NOT reserve a slot or create an event. Nahuel's
- * confirmation performs the authoritative check.
- */
+/** Returns business-rule-valid slots without external verification. */
 export class UnverifiedAvailabilityProvider implements AvailabilityRepository {
   isAvailableDate({ date, timezone }: AvailabilityQuery): boolean {
     return isDateWithinBusinessRules(date, timezone);
@@ -107,12 +75,7 @@ export class UnverifiedAvailabilityProvider implements AvailabilityRepository {
   }
 }
 
-/**
- * Reads existing Firestore `reservedSlots` whose startISO falls inside the
- * query window. Used by the Google provider to exclude internal booking
- * conflicts (PRD §4.1). When Firestore is not configured, returns an empty
- * array so the FreeBusy check still runs cleanly.
- */
+/** Reads internal reservations; unavailable Firestore is treated as empty here. */
 async function readReservedSlotsInWindow(windowStartISO: string, windowEndISO: string): Promise<BusyInterval[]> {
   if (!isFirebaseConfigured()) return [];
 
@@ -135,8 +98,7 @@ async function readReservedSlotsInWindow(windowStartISO: string, windowEndISO: s
     }
     return intervals;
   } catch {
-    // Reservation read failures MUST NOT mask availability; FreeBusy remains
-    // the authoritative external check. Phase 4 may retry persistently.
+    // FreeBusy remains the authoritative external check when this read fails.
     return [];
   }
 }

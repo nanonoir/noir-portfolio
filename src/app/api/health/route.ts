@@ -10,13 +10,7 @@ import { getMeetHealthAggregates } from "@/lib/meet/health-aggregates";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Basic deployment health check.
- *
- * Does not probe external providers and does not expose secrets. The
- * `config` block only reports whether required server env vars are present,
- * not their values. This keeps the endpoint safe to expose on Vercel Free.
- */
+/** Reports server configuration presence without probing providers or exposing secrets. */
 export async function GET() {
   const [webhook, operational] = await Promise.all([
     getGoogleWebhookHealth(),

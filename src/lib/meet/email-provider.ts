@@ -52,7 +52,7 @@ export interface EmailProviderFailure {
 export type EmailProviderResult = EmailProviderSuccess | EmailProviderFailure;
 
 export interface EmailProvider {
-  /** Phase 6 generic delivery entry point for all locale/template combinations. */
+  /** Generic delivery entry point for all template combinations. */
   send(template: EmailTemplateCode, input: MeetingEmailInput): Promise<EmailProviderResult>;
   sendMeetingRequested(input: MeetingEmailInput): Promise<EmailProviderResult>;
   sendMeetingConfirmed(input: MeetingEmailInput): Promise<EmailProviderResult>;

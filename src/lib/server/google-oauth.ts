@@ -4,19 +4,7 @@ import { google } from "googleapis";
 import { getEnv, requireEnv } from "./env";
 import { createGoogleOAuth2Client } from "./google-calendar-client";
 
-/**
- * Temporary protected administrative Google OAuth helpers.
- *
- * Scope is Phase 1 foundation: authenticate Nahuel's personal Google account
- * with access to the primary Google Calendar, capture a refresh token once,
- * and validate it against the primary calendar. The refresh token is then
- * stored as a Vercel secret (`GOOGLE_REFRESH_TOKEN`) and these administrative
- * routes are removed or disabled.
- *
- * No Calendar event creation, FreeBusy queries, or webhook registration happen
- * here. Those belong to later phases and to the production CalendarProvider
- * adapter behind the existing `CalendarProvider` port.
- */
+/** Protected administrative OAuth helpers for the primary Calendar. */
 
 const CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar"];
 

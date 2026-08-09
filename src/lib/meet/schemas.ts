@@ -132,14 +132,10 @@ export const availabilitySuccessResponseSchema = z.object({
     z.object({
       time: z.string().trim().regex(timePattern),
       available: z.literal(true),
-      // Phase 3 canonical UTC window (PRD §4.3, §5.1). Optional for backward
-      // compatibility with the legacy mock payload.
+      // Optional for compatibility with legacy mock payloads.
       startISO: z.iso.datetime().optional(),
       endISO: z.iso.datetime().optional(),
-      // Phase 3 availability status (PRD §4.3). `verified` = FreeBusy checked
-      // against the primary calendar; `unverified` = real availability could
-      // not be checked but the slot satisfies business rules. Optional for
-      // backward compatibility with the legacy mock payload.
+      // Optional status distinguishes FreeBusy verification from safe fallback.
       availabilityStatus: z.enum(["verified", "unverified"]).optional(),
     }),
   ),

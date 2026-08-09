@@ -20,20 +20,7 @@ type ModalProps = {
   title: string;
 };
 
-/**
- * Module-level active-modal stack.
- *
- * Every open Modal registers a token; every closing Modal removes its token.
- * Rules:
- *   - Only the FIRST open modal locks body scroll.
- *   - Only the LAST closing modal unlocks body scroll.
- *   - Only the topmost token handles Escape and Tab. This explicit identity
- *     check is required because stopPropagation does not stop listeners on
- *     the same document node.
- *
- * Using a plain mutable object (not React state) because it is shared
- * across all Modal instances synchronously within the same JS event loop.
- */
+// Shared synchronous stack coordinates nested modal scroll, Escape, and Tab handling.
 const modalStack = { entries: [] as symbol[], originalOverflow: "" };
 
 export function Modal({
@@ -54,9 +41,7 @@ export function Modal({
   const restoreFocusRef = useRef(restoreFocus);
   const [isPresent, setIsPresent] = useState(isOpen);
   const [phase, setPhase] = useState<"open" | "closing">("open");
-  // Stable ref so the keydown handler always has the latest onClose without
-  // being in the useEffect dependency array (which would re-register and
-  // steal focus from active inputs on every render).
+  // Keep the latest callback without re-registering the document listener.
   const onCloseRef = useRef(onClose);
   const titleId = `modal-title-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
@@ -93,22 +78,18 @@ export function Modal({
 
     const modalToken = Symbol("modal");
 
-    // Capture opener before modifying focus
     openerRef.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
 
-    // Only the first modal in the stack locks body scroll; subsequent modals
-    // (e.g. nested MeetingModal inside ServiceRequestModal) skip locking since
-    // it is already locked, which prevents double-restore on close.
+    // Only the first modal locks scroll; the last one restores the original value.
     modalStack.entries.push(modalToken);
     if (modalStack.entries.length === 1) {
       modalStack.originalOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
     }
 
-    // Focus once on open. Subsequent renders must NOT steal focus from inputs.
     const focusTarget = initialFocus === "heading"
       ? dialogRef.current?.querySelector<HTMLElement>("h2")
       : initialFocus === "first-interactive"
@@ -119,9 +100,7 @@ export function Modal({
     function handleKeyDown(event: KeyboardEvent) {
       const topmostToken = modalStack.entries[modalStack.entries.length - 1];
 
-      // All Modal listeners are attached to document in capture phase. Since
-      // they share the same node, propagation controls cannot distinguish
-      // them; only the active stack identity can isolate the topmost modal.
+      // Capture listeners share one node, so stack identity selects the topmost modal.
       if (topmostToken !== modalToken) {
         return;
       }
@@ -157,8 +136,7 @@ export function Modal({
       }
     }
 
-    // Use capture phase so the innermost modal's listener runs before any
-    // parent modal listeners, enabling stopPropagation to silence the parent.
+    // Capture phase lets the innermost modal silence parent listeners.
     document.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
@@ -179,7 +157,6 @@ export function Modal({
         openerRef.current?.focus();
       }
     };
-    // Intentionally omit onClose — it is captured via onCloseRef.
   }, [initialFocus, isOpen]);
 
   if (!isPresent || typeof document === "undefined") {
@@ -204,7 +181,6 @@ export function Modal({
         role="dialog"
         tabIndex={-1}
       >
-        {/* Sticky header */}
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-4 py-4">
           <h2
             className={hideTitle ? "sr-only" : "text-2xl font-semibold tracking-tight"}
@@ -225,11 +201,9 @@ export function Modal({
             </button>
           </div>
         </div>
-        {/* Scrollable body */}
         <div className="modal-scroll-area flex-1 overflow-y-auto px-4 py-4">
           {children}
         </div>
-        {/* Sticky footer */}
         {footer ? (
           <div className="shrink-0 border-t border-border px-4 py-4">
             {footer}

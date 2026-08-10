@@ -12,11 +12,12 @@ import {
 } from "@/lib/meet/request-guards";
 
 function getBookingHttpStatus(result: Awaited<ReturnType<typeof bookingService.createBooking>>) {
-  if (result.success) return 201;
+  if (result.success) return result.emailDeliveryStatus === "completed" ? 201 : 202;
   if (result.error === MEETING_ERROR_CODES.PROVIDER_UNAVAILABLE) return 503;
+  if (result.error === MEETING_ERROR_CODES.UPSTREAM_TIMEOUT) return 504;
   return result.error === MEETING_ERROR_CODES.SLOT_UNAVAILABLE || result.error === MEETING_ERROR_CODES.IDEMPOTENCY_CONFLICT
     ? 409
-    : 400;
+    : result.error === MEETING_ERROR_CODES.MEETING_ERROR ? 400 : 500;
 }
 
 export async function POST(request: Request) {

@@ -565,7 +565,7 @@ describe("Phase 3 mocked Meet service flows", () => {
       const conflictingReplay = await service.createBooking({ ...request, identity: { ...request.identity, name: "Different visitor" } });
       const persisted = await repository.findByIdempotencyKey(request.idempotencyKey);
 
-      expect(created).toEqual({ error: MEETING_ERROR_CODES.PROVIDER_UNAVAILABLE, success: false });
+      expect(created).toMatchObject({ emailDeliveryStatus: "failed", success: true });
       expect(replay).toMatchObject({ meetingId: persisted?.id, success: true });
       expect(conflictingReplay).toEqual({ error: MEETING_ERROR_CODES.IDEMPOTENCY_CONFLICT, success: false });
       expect(persisted).toMatchObject({ calendarDelivery: { attempts: 0, status: "pending" }, emailDelivery: { status: "completed" }, status: "requested" });

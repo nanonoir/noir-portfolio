@@ -4,6 +4,7 @@ import type { calendar_v3 } from "googleapis";
 import { getEnv } from "./env";
 import { createGoogleCalendarClient } from "./google-calendar-client";
 import { withBoundedTimeout } from "./bounded-timeout";
+import { BoundedTimeoutError } from "./bounded-timeout";
 import { refreshAccessToken } from "./google-oauth";
 import {
   CALENDAR_PROVIDER_ERROR_CODES,
@@ -254,7 +255,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
       logError("calendar.google.create_error", booking.id, error);
       return {
         success: false,
-        error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR,
+        error: classifyCalendarFailure(error),
       };
     }
   }
@@ -323,7 +324,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
       logError("calendar.google.update_error", booking.id, error);
       return {
         success: false,
-        error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR,
+        error: classifyCalendarFailure(error),
       };
     }
   }
@@ -371,7 +372,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
       logError("calendar.google.delete_error", "", error);
       return {
         success: false,
-        error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR,
+        error: classifyCalendarFailure(error),
       };
     }
   }
@@ -385,13 +386,35 @@ export class GoogleCalendarProvider implements CalendarProvider {
       return await withBoundedTimeout(operation, GOOGLE_CALENDAR_OPERATION_TIMEOUT_MS);
     } catch (error) {
       logError(`calendar.google.${action}_timeout`, bookingId, error);
-      return { success: false, error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_ERROR };
+      return { success: false, error: CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_TIMEOUT };
     }
   }
 }
 
 function isAlreadyExistsError(error: unknown): boolean {
   return isGoogleApiErrorWithStatus(error, 409) || messageMatches(error, /already exists/i);
+}
+
+function classifyCalendarFailure(error: unknown) {
+  if (error instanceof BoundedTimeoutError) return CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_TIMEOUT;
+  if (isAuthenticationFailure(error)) return CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_AUTHENTICATION;
+  if (isConfigurationFailure(error)) return CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_CONFIGURATION;
+  return CALENDAR_PROVIDER_ERROR_CODES.CALENDAR_PROVIDER_TRANSIENT;
+}
+
+function isAuthenticationFailure(error: unknown): boolean {
+  return hasStatus(error, 401) || hasStatus(error, 403) || messageMatches(error, /invalid[_ -]?grant|unauthori[sz]ed|forbidden|credential/i);
+}
+
+function isConfigurationFailure(error: unknown): boolean {
+  return messageMatches(error, /missing|required.*(?:google|calendar)|not configured/i);
+}
+
+function hasStatus(error: unknown, status: number): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const value = (error as { response?: { status?: unknown }; status?: unknown }).response?.status
+    ?? (error as { status?: unknown }).status;
+  return value === status;
 }
 
 function isGoogleCalendarRsvpStatus(value: unknown): value is GoogleCalendarRsvpStatus {

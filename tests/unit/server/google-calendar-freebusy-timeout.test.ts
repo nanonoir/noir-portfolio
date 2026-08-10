@@ -20,7 +20,7 @@ vi.mock("@/lib/server/google-calendar-client", () => ({
 }));
 vi.mock("@/lib/server/google-oauth", () => ({ refreshAccessToken: mocks.refreshAccessToken }));
 
-describe("Google Calendar FreeBusy timeout", () => {
+describe("Google Calendar FreeBusy failure classification", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
@@ -38,7 +38,7 @@ describe("Google Calendar FreeBusy timeout", () => {
     const result = queryPrimaryCalendarFreeBusy("2026-08-05T12:00:00.000Z", "2026-08-05T12:30:00.000Z");
     const assertion = expect(result).rejects.toMatchObject({
       name: "FreeBusyError",
-      code: "FREEBUSY_PROVIDER_ERROR",
+       code: "FREEBUSY_TIMEOUT",
     } satisfies Partial<InstanceType<typeof FreeBusyError>>);
     await vi.advanceTimersByTimeAsync(3_500);
 
@@ -49,5 +49,16 @@ describe("Google Calendar FreeBusy timeout", () => {
       expect.any(Object),
       expect.objectContaining({ signal: expect.any(AbortSignal), timeout: 3_500 }),
     );
+  });
+
+  it.each([
+    ["invalid_grant", "FREEBUSY_AUTHENTICATION"],
+    ["temporary upstream outage", "FREEBUSY_TRANSIENT"],
+  ])("classifies %s distinctly", async (message, code) => {
+    mocks.refreshAccessToken.mockRejectedValue(new Error(message));
+    const { queryPrimaryCalendarFreeBusy } = await import("@/lib/server/google-calendar-freebusy");
+
+    await expect(queryPrimaryCalendarFreeBusy("2026-08-05T12:00:00.000Z", "2026-08-05T12:30:00.000Z"))
+      .rejects.toMatchObject({ code });
   });
 });

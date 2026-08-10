@@ -23,7 +23,9 @@ export default defineConfig({
       MEET_BACKEND_E2E: process.env.MEET_BACKEND_E2E ?? "",
       NODE_ENV: "test",
     },
-    reuseExistingServer: !process.env.CI,
+    // Backend E2E must use the same environment as the emulator; reusing a
+    // server from another run can silently execute against stale composition.
+    reuseExistingServer: !process.env.CI && process.env.MEET_BACKEND_E2E !== "1",
     stderr: "pipe",
     timeout: 120 * 1000,
     url: baseURL,

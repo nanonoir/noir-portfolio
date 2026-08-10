@@ -41,4 +41,34 @@ describe("Google availability Firestore reservation read", () => {
     ]));
     expect(mocks.get).toHaveBeenCalledTimes(1);
   });
+
+  it("starts FreeBusy and reserved-slot reads before either settles", async () => {
+    let releaseCalendar!: (value: []) => void;
+    let releaseReserved!: (value: { docs: [] }) => void;
+    const calendar = new Promise<[]>(resolve => { releaseCalendar = resolve; });
+    const reserved = new Promise<{ docs: [] }>(resolve => { releaseReserved = resolve; });
+    mocks.queryPrimaryCalendarFreeBusy.mockReturnValue(calendar);
+    mocks.get.mockReturnValue(reserved);
+
+    const { GoogleCalendarAvailabilityProvider } = await import("@/lib/meet/availability-providers");
+    const result = new GoogleCalendarAvailabilityProvider().getSlots({ date: "2026-08-05", timezone: UTC_TIMEZONE });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mocks.queryPrimaryCalendarFreeBusy).toHaveBeenCalledTimes(1);
+    expect(mocks.get).toHaveBeenCalledTimes(1);
+    releaseCalendar([]);
+    releaseReserved({ docs: [] });
+    await expect(result).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ availabilityStatus: "verified" }),
+    ]));
+  });
+
+  it("does not produce availability when authoritative FreeBusy rejects", async () => {
+    mocks.queryPrimaryCalendarFreeBusy.mockRejectedValue(new Error("provider unavailable"));
+    const { GoogleCalendarAvailabilityProvider } = await import("@/lib/meet/availability-providers");
+
+    await expect(new GoogleCalendarAvailabilityProvider().getSlots({ date: "2026-08-05", timezone: UTC_TIMEZONE }))
+      .rejects.toThrow("provider unavailable");
+  });
 });

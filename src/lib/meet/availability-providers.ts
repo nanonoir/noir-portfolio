@@ -32,8 +32,10 @@ export class GoogleCalendarAvailabilityProvider implements AvailabilityRepositor
     const windowStart = candidates[0]!.startISO;
     const windowEnd = candidates[candidates.length - 1]!.endISO;
 
-    const calendarBusy = await queryPrimaryCalendarFreeBusy(windowStart, windowEnd);
-    const reservedBusy = await readReservedSlotsInWindow(windowStart, windowEnd);
+    const [calendarBusy, reservedBusy] = await Promise.all([
+      queryPrimaryCalendarFreeBusy(windowStart, windowEnd),
+      readReservedSlotsInWindow(windowStart, windowEnd),
+    ]);
     const busy = [...calendarBusy, ...reservedBusy];
 
     return candidates

@@ -3,6 +3,7 @@ import "server-only";
 import { GOOGLE_CALENDAR_OPERATION_TIMEOUT_MS } from "@/lib/meet/deadlines";
 import { getEnv } from "./env";
 import { withBoundedTimeout } from "./bounded-timeout";
+import { BoundedTimeoutError } from "./bounded-timeout";
 import { getResendClient, isResendClientConfigured } from "./resend";
 import {
   EMAIL_PROVIDER_ERROR_CODES,
@@ -28,7 +29,7 @@ export class ResendEmailProvider implements EmailProvider {
   async send(template: EmailTemplateCode, input: MeetingEmailInput): Promise<EmailProviderResult> {
     try {
       if (!isResendClientConfigured()) {
-        return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+        return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_CONFIGURATION };
       }
 
       const actionLinks = readActionLinks(input.payload);
@@ -68,7 +69,7 @@ export class ResendEmailProvider implements EmailProvider {
           provider: "email",
           template,
         });
-        return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+        return { success: false, error: classifyResendFailure(error) };
       }
 
       return { success: true };
@@ -79,7 +80,7 @@ export class ResendEmailProvider implements EmailProvider {
         provider: "email",
         template,
       });
-      return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+      return { success: false, error: classifyResendFailure(error) };
     }
   }
 
@@ -101,7 +102,7 @@ export class UnavailableEmailProvider implements EmailProvider {
   async send(template: EmailTemplateCode, input: MeetingEmailInput): Promise<EmailProviderResult> {
     void template;
     void input;
-    return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+    return { success: false, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_CONFIGURATION };
   }
 
   async sendMeetingRequested(input: MeetingEmailInput): Promise<EmailProviderResult> {
@@ -135,6 +136,20 @@ function readActionLinks(payload: Readonly<Record<string, unknown>>): EmailActio
     }
   }
   return links;
+}
+
+function classifyResendFailure(error: unknown) {
+  if (error instanceof BoundedTimeoutError) return EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_TIMEOUT;
+  if (isAuthenticationFailure(error)) return EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_AUTHENTICATION;
+  return EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_TRANSIENT;
+}
+
+function isAuthenticationFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const status = (error as { statusCode?: unknown; status?: unknown }).statusCode
+    ?? (error as { status?: unknown }).status;
+  return status === 401 || status === 403 || (typeof (error as { message?: unknown }).message === "string"
+    && /invalid[_ -]?api|unauthori[sz]ed|forbidden|credential/i.test((error as { message: string }).message));
 }
 
 function readOptionalNote(payload: Readonly<Record<string, unknown>>): string | undefined {

@@ -13,6 +13,12 @@ import {
 } from "./email-provider";
 import type { BookingRepository } from "./booking-repository";
 import type { EmailActionLink } from "./email-templates";
+import type { ProviderFailureClass } from "./provider-failures";
+
+export interface InitialNotificationResult {
+  failureClass: ProviderFailureClass | null;
+  record: BookingRecord;
+}
 
 /** Raw action tokens become links here and never enter logs or persistence. */
 
@@ -82,36 +88,50 @@ export async function sendInitialRequestNotifications(
   repository: BookingRepository,
   booking: BookingRecord,
   ownerTokens: readonly IssuedActionToken[],
-): Promise<BookingRecord> {
+): Promise<InitialNotificationResult> {
   const ownerRecipient = getOwnerRecipient();
   const actionLinks = tryBuildActionLinks(booking, ownerTokens);
-  const ownerResult = ownerRecipient && actionLinks
-    ? await safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, {
+  const ownerResult = ownerRecipient && actionLinks?.length
+    ? safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, {
       booking,
       recipient: ownerRecipient,
       replyTo: booking.identity.email,
       payload: { actionLinks, audience: "owner" },
       idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_REQUESTED, booking, ownerRecipient),
     })
-    : { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR };
+    : Promise.resolve({ success: false as const, error: ownerRecipient
+      ? EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR
+      : EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_CONFIGURATION });
 
-  const visitorResult = await safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_RECEIVED, {
+  const visitorResult = safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_RECEIVED, {
     booking,
     recipient: booking.identity.email,
     payload: { audience: "visitor" },
     idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_RECEIVED, booking, booking.identity.email),
   });
+  const [ownerSettled, visitorSettled] = await Promise.allSettled([ownerResult, visitorResult]);
+  const ownerDelivery = ownerSettled.status === "fulfilled"
+    ? ownerSettled.value
+    : { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_TRANSIENT };
+  const visitorDelivery = visitorSettled.status === "fulfilled"
+    ? visitorSettled.value
+    : { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_TRANSIENT };
 
-  if (ownerResult.success && visitorResult.success) {
-    return (await repository.updateProviderDelivery(booking.id, "email", {
+  if (ownerDelivery.success && visitorDelivery.success) {
+    return { failureClass: null, record: (await repository.updateProviderDelivery(booking.id, "email", {
       status: "completed",
-    })) ?? booking;
+    })) ?? booking };
   }
 
-  return (await repository.updateProviderDelivery(booking.id, "email", {
-    errorCode: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR,
+  const errorCode = !ownerDelivery.success
+    ? ownerDelivery.error
+    : !visitorDelivery.success
+      ? visitorDelivery.error
+      : EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR;
+  return { failureClass: classifyEmailFailure(errorCode), record: (await repository.updateProviderDelivery(booking.id, "email", {
+    errorCode,
     status: "failed",
-  })) ?? booking;
+  })) ?? booking };
 }
 
 async function safeSend(
@@ -194,19 +214,77 @@ export async function sendMeetingConfirmation(
   });
 }
 
+/** Sends visitor and owner confirmations concurrently with recipient-scoped keys. */
+export async function sendConfirmationNotifications(
+  provider: EmailProvider,
+  repository: BookingRepository,
+  booking: BookingRecord,
+  visitorTokens: readonly IssuedActionToken[],
+): Promise<BookingRecord> {
+  const ownerRecipient = getOwnerRecipient();
+  const actionLinks = tryBuildActionLinks(booking, visitorTokens);
+  const visitorResult = actionLinks
+    ? safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, {
+      booking,
+      recipient: booking.identity.email,
+      payload: { actionLinks, audience: "visitor" },
+      idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, booking, booking.identity.email),
+    })
+    : Promise.resolve({ success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR });
+  const ownerResult = ownerRecipient
+    ? safeSend(provider, EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, {
+      booking,
+      recipient: ownerRecipient,
+      replyTo: booking.identity.email,
+      payload: { audience: "owner" },
+      idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_CONFIRMED, booking, ownerRecipient),
+    })
+    : Promise.resolve({ success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_CONFIGURATION });
+
+  const [visitorSettled, ownerSettled] = await Promise.allSettled([visitorResult, ownerResult]);
+  const visitorDelivery = visitorSettled.status === "fulfilled"
+    ? visitorSettled.value
+    : { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_TRANSIENT };
+  const ownerDelivery = ownerSettled.status === "fulfilled"
+    ? ownerSettled.value
+    : { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_TRANSIENT };
+
+  if (visitorDelivery.success && ownerDelivery.success) {
+    return (await repository.updateProviderDelivery(booking.id, "email", { status: "completed" })) ?? booking;
+  }
+
+  const errorCode = !visitorDelivery.success
+    ? visitorDelivery.error
+    : !ownerDelivery.success
+      ? ownerDelivery.error
+      : EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR;
+  return (await repository.updateProviderDelivery(booking.id, "email", {
+    errorCode,
+    status: "failed",
+  })) ?? booking;
+}
+
 export async function sendDeclinedNotice(
   provider: EmailProvider,
   repository: BookingRepository,
   booking: BookingRecord,
   recipient: string,
+  reason?: string,
 ): Promise<BookingRecord> {
-  return deliverSimple(provider, repository, EMAIL_TEMPLATE_CODES.MEETING_DECLINED, booking, recipient);
+  return deliverMeetingEmail(provider, repository, {
+    template: EMAIL_TEMPLATE_CODES.MEETING_DECLINED,
+    booking,
+    recipient,
+    payload: { audience: "visitor", ...(reason?.trim() ? { note: reason } : {}) },
+    idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_DECLINED, booking, recipient),
+  });
 }
 
 export async function sendOwnerDeclinedNotice(
   provider: EmailProvider,
   repository: BookingRepository,
   booking: BookingRecord,
+  reason?: string,
 ): Promise<BookingRecord> {
   const ownerRecipient = getOwnerRecipient();
   if (!ownerRecipient) return markEmailConfigurationFailure(repository, booking);
@@ -215,7 +293,7 @@ export async function sendOwnerDeclinedNotice(
     booking,
     recipient: ownerRecipient,
     replyTo: booking.identity.email,
-    payload: {},
+    payload: { audience: "owner", ...(reason?.trim() ? { note: reason } : {}) },
     idempotencyKey: emailDeliveryKey(EMAIL_TEMPLATE_CODES.MEETING_DECLINED, booking, ownerRecipient),
   });
 }
@@ -272,4 +350,11 @@ function tryBuildActionLinks(
     // Missing APP_BASE_URL becomes a recoverable delivery failure.
     return null;
   }
+}
+
+function classifyEmailFailure(errorCode: string): ProviderFailureClass {
+  if (errorCode === EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_CONFIGURATION) return "configuration";
+  if (errorCode === EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_AUTHENTICATION) return "authentication";
+  if (errorCode === EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_TIMEOUT) return "timeout";
+  return "transient";
 }

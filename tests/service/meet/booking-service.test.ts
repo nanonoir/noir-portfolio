@@ -157,7 +157,7 @@ describe("BookingService direct provider coverage", () => {
         emailDelivery: { attempts: 1, status: "failed" },
         status: "requested",
       });
-      expect(created).toEqual({ error: "PROVIDER_UNAVAILABLE", success: false });
+      expect(created).toMatchObject({ emailDeliveryStatus: "failed", success: true });
       expect(await harness.tokenRepository.findByMeetingId(meetingId)).toHaveLength(3);
 
       await expect(harness.bookingService.createBooking(request)).resolves.toMatchObject({ emailDeliveryStatus: "completed", meetingId, success: true });

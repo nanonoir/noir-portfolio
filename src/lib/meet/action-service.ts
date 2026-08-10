@@ -48,8 +48,8 @@ import {
 import type { EmailProvider } from "./email-provider";
 import {
   sendCancelledNotice,
+  sendConfirmationNotifications,
   sendDeclinedNotice,
-  sendMeetingConfirmation,
   sendOwnerDeclinedNotice,
   sendOwnerRescheduleProposal,
   sendRescheduleProposal,
@@ -472,12 +472,14 @@ export class ActionService {
           proposalVersion: booking.proposalVersion,
           proposedSlotStartISO: null,
         });
-        return sendMeetingConfirmation(this.emailProvider, this.bookingRepository, booking, visitorTokens);
+        return sendConfirmationNotifications(this.emailProvider, this.bookingRepository, booking, visitorTokens);
       }
-      case ACTION_TOKEN_ACTIONS.DECLINE:
+      case ACTION_TOKEN_ACTIONS.DECLINE: {
+        const reason = this.getPersistedDeclineReason(booking);
         return token.actor === ACTION_TOKEN_ACTORS.VISITOR
-          ? await sendOwnerDeclinedNotice(this.emailProvider, this.bookingRepository, booking)
-          : await sendDeclinedNotice(this.emailProvider, this.bookingRepository, booking, booking.identity.email);
+          ? await sendOwnerDeclinedNotice(this.emailProvider, this.bookingRepository, booking, reason)
+          : await sendDeclinedNotice(this.emailProvider, this.bookingRepository, booking, booking.identity.email, reason);
+      }
       default:
         return booking;
     }
@@ -555,7 +557,7 @@ export class ActionService {
       proposedSlotStartISO: null,
     });
 
-    const withConfirmationEmail = await sendMeetingConfirmation(
+    const withConfirmationEmail = await sendConfirmationNotifications(
       this.emailProvider,
       this.bookingRepository,
       withCalendarEvent,
@@ -644,12 +646,13 @@ export class ActionService {
       ? await this.cancelCalendarEventForBooking(updated)
       : updated;
     const withDeclinedEmail = auditActor === BOOKING_AUDIT_ACTORS.VISITOR
-      ? await sendOwnerDeclinedNotice(this.emailProvider, this.bookingRepository, withCancelledCalendarEvent)
+      ? await sendOwnerDeclinedNotice(this.emailProvider, this.bookingRepository, withCancelledCalendarEvent, payload?.reason)
       : await sendDeclinedNotice(
         this.emailProvider,
         this.bookingRepository,
         withCancelledCalendarEvent,
         withCancelledCalendarEvent.identity.email,
+        payload?.reason,
       );
 
     return {
@@ -732,7 +735,7 @@ export class ActionService {
       proposedSlotStartISO: null,
     });
 
-    const withConfirmationEmail = await sendMeetingConfirmation(
+    const withConfirmationEmail = await sendConfirmationNotifications(
       this.emailProvider,
       this.bookingRepository,
       withCalendarEvent,
@@ -764,6 +767,14 @@ export class ActionService {
       });
       return false;
     }
+  }
+
+  private getPersistedDeclineReason(booking: BookingRecord): string | undefined {
+    const declineEvent = [...booking.auditLog]
+      .reverse()
+      .find((event) => event.action === "status_changed" && event.toStatus === "declined");
+    const reason = declineEvent?.payload.reason;
+    return typeof reason === "string" && reason.trim() ? reason : undefined;
   }
 
   private async authoritativeRecheck(

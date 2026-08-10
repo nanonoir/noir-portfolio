@@ -94,12 +94,37 @@ describe("availability and meeting HTTP contracts", () => {
     expect(await response.json()).toEqual({ error: "PROVIDER_UNAVAILABLE", success: false });
   });
 
-  it("maps a bounded FreeBusy provider exception through BookingService to a retryable 503", async () => {
+  it("maps a durable recoverable success to 202", async () => {
+    mocks.createBooking.mockResolvedValue({
+      code: "REQUEST_ACCEPTED",
+      emailDeliveryStatus: "failed",
+      meetingId: "meet-recoverable",
+      status: "requested",
+      success: true,
+    });
+    const { POST } = await import("@/app/api/meeting/route");
+
+    const response = await POST(meetingRequest(JSON.stringify(createBookingRequest())));
+
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({ emailDeliveryStatus: "failed", success: true });
+  });
+
+  it("maps unknown service errors to 500 instead of validation status", async () => {
+    mocks.createBooking.mockResolvedValue({ error: "UNMAPPED_PROVIDER_STATE", success: false });
+    const { POST } = await import("@/app/api/meeting/route");
+
+    const response = await POST(meetingRequest(JSON.stringify(createBookingRequest())));
+
+    expect(response.status).toBe(500);
+  });
+
+  it("maps a bounded FreeBusy provider exception through BookingService to 504", async () => {
     const { FreeBusyError } = await import("@/lib/server/google-calendar-freebusy");
     const bookingService = new BookingService({
       isAvailableDate: () => true,
       async getSlots() {
-        throw new FreeBusyError("Google request timed out", "FREEBUSY_PROVIDER_ERROR");
+         throw new FreeBusyError("Google request timed out", "FREEBUSY_TIMEOUT");
       },
     }, new MockBookingRepository());
     mocks.createBooking.mockImplementation((request) => bookingService.createBooking(request));
@@ -107,8 +132,29 @@ describe("availability and meeting HTTP contracts", () => {
 
     const response = await POST(meetingRequest(JSON.stringify(createBookingRequest())));
 
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: "PROVIDER_UNAVAILABLE", success: false });
+    expect(response.status).toBe(504);
+    expect(await response.json()).toEqual({ error: "UPSTREAM_TIMEOUT", success: false });
+  });
+
+  it.each([
+    ["FREEBUSY_CONFIG_MISSING", 503],
+    ["FREEBUSY_AUTHENTICATION", 503],
+    ["FREEBUSY_TRANSIENT", 500],
+    ["FREEBUSY_PROVIDER_ERROR", 500],
+  ])("maps FreeBusy %s to HTTP %s", async (code, expectedStatus) => {
+    const { FreeBusyError } = await import("@/lib/server/google-calendar-freebusy");
+    const bookingService = new BookingService({
+      isAvailableDate: () => true,
+      async getSlots() {
+        throw new FreeBusyError("FreeBusy failure", code as "FREEBUSY_CONFIG_MISSING");
+      },
+    }, new MockBookingRepository());
+    mocks.createBooking.mockImplementation((request) => bookingService.createBooking(request));
+    const { POST } = await import("@/app/api/meeting/route");
+
+    const response = await POST(meetingRequest(JSON.stringify(createBookingRequest())));
+
+    expect(response.status).toBe(expectedStatus);
   });
 
   it("rejects real invalid JSON, oversized bodies, invalid mappings, and honeypots before booking", async () => {

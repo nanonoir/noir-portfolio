@@ -88,7 +88,7 @@ export function getActionClassName({
 
 function ActionContent({ children, icon, iconPosition = ACTION_ICON_POSITIONS.END, label }: SharedActionProps) {
   const actionLabel = label ?? children;
-  const iconSlot = icon ? <span aria-hidden="true" data-action-icon="true">{icon}</span> : null;
+  const iconSlot = icon ? <span aria-hidden="true" className="action-icon-slot" data-action-icon="true">{icon}</span> : null;
 
   return (
     <span className="relative inline-flex items-center justify-center gap-2 transition-colors">

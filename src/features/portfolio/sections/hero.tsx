@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
 import { ActionLink, HandwrittenIcon } from "@/components/ui";
 import { InteractiveWarpGrid } from "@/components/ui/interactive-warp-grid/interactive-warp-grid";
+import { scrollToHash } from "@/features/portfolio/navigation/portfolio-navigation";
 
 const TYPE_SPEED_MS = 26;
 const LABEL_DELAY_MS = 180;
@@ -138,6 +139,11 @@ export function Hero() {
   const hero = dictionary.hero;
   const finalMetricText = useMemo(() => metricText(hero.metric, hero.metricPrefix), [hero.metric, hero.metricPrefix]);
 
+  function handleNavigation(event: MouseEvent<HTMLAnchorElement>, hash: string) {
+    event.preventDefault();
+    scrollToHash(hash);
+  }
+
   useEffect(() => {
     const timeouts: number[] = [];
     const intervals: number[] = [];
@@ -257,6 +263,7 @@ export function Hero() {
                   <HandwrittenIcon className="size-4 shrink-0" icon="card" />
                 }
                 label={hero.ctaContact}
+                onClick={(event) => handleNavigation(event, "#contact")}
                 size="lg"
                 variant="primary"
               />
@@ -266,6 +273,7 @@ export function Hero() {
                   <HandwrittenIcon className="size-4 shrink-0" icon="view" />
                 }
                 label={hero.ctaProjects}
+                onClick={(event) => handleNavigation(event, "#projects")}
                 size="lg"
                 variant="outlined"
               />
@@ -275,6 +283,7 @@ export function Hero() {
                   <HandwrittenIcon className="size-4 shrink-0" icon="service" />
                 }
                 label={hero.ctaServices}
+                onClick={(event) => handleNavigation(event, "#services")}
                 size="lg"
                 variant="outlined"
               />

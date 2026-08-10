@@ -474,15 +474,15 @@ html {
     transform-origin: left center;
   }
 
-  .button-primary > [data-action-icon],
-  .button-inverse > [data-action-icon],
+  .button-primary .action-icon-slot,
+  .button-inverse .action-icon-slot,
   .button-primary > :is(img, svg)[aria-hidden="true"],
   .button-inverse > :is(img, svg)[aria-hidden="true"] {
     transition: transform var(--duration-interactive) var(--ease-emphasized);
   }
 
-  .button-primary:hover > [data-action-icon],
-  .button-inverse:hover > [data-action-icon],
+  .button-primary:hover .action-icon-slot,
+  .button-inverse:hover .action-icon-slot,
   .button-primary:hover > :is(img, svg)[aria-hidden="true"],
   .button-inverse:hover > :is(img, svg)[aria-hidden="true"] {
     transform: translate(4px, -2px);

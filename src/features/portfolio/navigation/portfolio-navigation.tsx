@@ -56,7 +56,7 @@ function controlClassName(extra = "") {
     .join(" ");
 }
 
-function scrollToHash(hash: string, delay = 0) {
+export function scrollToHash(hash: string, delay = 0) {
   window.dispatchEvent(new CustomEvent("portfolio:navigation-intent", {
     detail: { target: hash.replace("#", "") },
   }));
@@ -267,7 +267,7 @@ function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { ac
 
   return (
     <header className="sticky-header fixed inset-x-0 top-0 z-50 lg:inset-x-auto lg:left-1/2 lg:top-4 lg:-translate-x-1/2">
-      <div className="hidden items-center gap-1 rounded-full px-4 py-2 shadow-pill glass lg:flex">
+      <div className="hidden items-center gap-1 rounded-full border border-border bg-background px-4 py-2 shadow-pill lg:flex">
         <a
           aria-label={dictionary.navigation.homeLabel}
           className={controlClassName("size-8 text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}
@@ -307,7 +307,7 @@ function StickyHeader({ activeSection, onMenuOpen, onResumeOpen, visible }: { ac
         <ResumeButton onOpen={onResumeOpen} />
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-background px-4 py-3 lg:hidden">
         <a className="min-w-0 truncate text-lg font-semibold tracking-tight text-foreground" href="#top" onClick={(event) => navigateToHash(event, "#top")}>
           {dictionary.meta.siteName}
         </a>

@@ -197,7 +197,9 @@ describe("Phase 3 mocked Meet service flows", () => {
   });
 
   it("accepts a visitor proposal, moves the reservation, and releases the prior slot", async () => {
+    process.env.CONTACT_TO_EMAIL = "owner@example.test";
     const harness = createHarness();
+    const email = harness.email as SequencedEmailProvider;
     const booking = createBookingRecordFixture();
     await harness.bookingRepository.create(booking);
     expect(await reserveCurrentSlot(harness.bookingRepository, booking)).toMatchObject({ success: true });
@@ -228,6 +230,15 @@ describe("Phase 3 mocked Meet service flows", () => {
       timestamp: CLOCK,
     }));
     expect(await reserveCurrentSlot(harness.bookingRepository, replacement)).toMatchObject({ success: true });
+    const confirmations = email.calls.filter(({ template }) => template === "MEETING_CONFIRMED");
+    expect(confirmations).toHaveLength(2);
+    expect(confirmations.find(({ input }) => input.recipient === "owner@example.test")?.input.payload)
+      .toMatchObject({ audience: "owner" });
+    expect(confirmations.find(({ input }) => input.recipient === "owner@example.test")?.input.payload)
+      .not.toHaveProperty("actionLinks");
+    expect(confirmations.find(({ input }) => input.recipient === booking.identity.email)?.input.payload)
+      .toHaveProperty("actionLinks");
+    delete process.env.CONTACT_TO_EMAIL;
   });
 
   it("rejects a visitor proposal acceptance when its proposed slot is already reserved", async () => {
@@ -266,29 +277,40 @@ describe("Phase 3 mocked Meet service flows", () => {
   });
 
   it("records owner and visitor declines, releases reservations, and cancels a visitor-declined calendar event", async () => {
+    const originalOwnerRecipient = process.env.CONTACT_TO_EMAIL;
+    process.env.CONTACT_TO_EMAIL = "owner@example.test";
     const calendar = new SequencedCalendarProvider();
     const email = new SequencedEmailProvider();
     const harness = createHarness({ calendar, email });
-    const ownerDeclined = createBookingRecordFixture({ id: "owner-decline", idempotencyKey: "00000000-0000-4000-8000-000000000004" });
-    await harness.bookingRepository.create(ownerDeclined);
-    const ownerToken = await issue(harness.actionService, ownerDeclined.id, ACTION_TOKEN_ACTORS.OWNER, ACTION_TOKEN_ACTIONS.DECLINE);
-    const ownerResult = await harness.actionService.consumeAction({ expectedAction: ACTION_TOKEN_ACTIONS.DECLINE, meetingId: ownerDeclined.id, payload: { reason: "not a fit" }, rawToken: ownerToken.token });
+    try {
+      const ownerDeclined = createBookingRecordFixture({ id: "owner-decline", idempotencyKey: "00000000-0000-4000-8000-000000000004" });
+      await harness.bookingRepository.create(ownerDeclined);
+      const ownerToken = await issue(harness.actionService, ownerDeclined.id, ACTION_TOKEN_ACTORS.OWNER, ACTION_TOKEN_ACTIONS.DECLINE);
+      const ownerResult = await harness.actionService.consumeAction({ expectedAction: ACTION_TOKEN_ACTIONS.DECLINE, meetingId: ownerDeclined.id, payload: { reason: "not a fit" }, rawToken: ownerToken.token });
 
-    const visitorDeclined = createBookingRecordFixture({ id: "visitor-decline", idempotencyKey: "00000000-0000-4000-8000-000000000005" });
-    await harness.bookingRepository.create(visitorDeclined);
-    const confirmed = await harness.actionService.consumeAction({ expectedAction: ACTION_TOKEN_ACTIONS.CONFIRM, meetingId: visitorDeclined.id, rawToken: (await issue(harness.actionService, visitorDeclined.id, ACTION_TOKEN_ACTORS.OWNER, ACTION_TOKEN_ACTIONS.CONFIRM)).token });
-    const visitorToken = (confirmed.issuedTokens ?? []).find(({ record }) => record.action === ACTION_TOKEN_ACTIONS.DECLINE);
-    expect(visitorToken).toBeDefined();
-    if (!visitorToken) {
-      throw new Error("Expected a visitor decline token");
+      const visitorDeclined = createBookingRecordFixture({ id: "visitor-decline", idempotencyKey: "00000000-0000-4000-8000-000000000005" });
+      await harness.bookingRepository.create(visitorDeclined);
+      const confirmed = await harness.actionService.consumeAction({ expectedAction: ACTION_TOKEN_ACTIONS.CONFIRM, meetingId: visitorDeclined.id, rawToken: (await issue(harness.actionService, visitorDeclined.id, ACTION_TOKEN_ACTORS.OWNER, ACTION_TOKEN_ACTIONS.CONFIRM)).token });
+      const visitorToken = (confirmed.issuedTokens ?? []).find(({ record }) => record.action === ACTION_TOKEN_ACTIONS.DECLINE);
+      expect(visitorToken).toBeDefined();
+      if (!visitorToken) {
+        throw new Error("Expected a visitor decline token");
+      }
+      const visitorResult = await harness.actionService.consumeAction({ expectedAction: ACTION_TOKEN_ACTIONS.DECLINE, meetingId: visitorDeclined.id, payload: { reason: "schedule changed" }, rawToken: visitorToken.token });
+
+      expect(ownerResult.meeting?.auditLog.at(-1)?.payload).toMatchObject({ reason: "not a fit" });
+      expect(ownerResult.meeting?.status).toBe("declined");
+      expect(visitorResult.meeting?.status).toBe("declined");
+      expect(calendar.deleteCalls).toBe(1);
+      const declinedCalls = email.calls.filter(({ template }) => template === "MEETING_DECLINED");
+      expect(declinedCalls).toHaveLength(2);
+      expect(declinedCalls[0]?.input.payload).toMatchObject({ audience: "visitor", note: "not a fit" });
+      expect(declinedCalls[1]?.input.payload).toMatchObject({ audience: "owner", note: "schedule changed" });
+      expect(declinedCalls[1]?.input.recipient).toBe("owner@example.test");
+    } finally {
+      if (originalOwnerRecipient === undefined) delete process.env.CONTACT_TO_EMAIL;
+      else process.env.CONTACT_TO_EMAIL = originalOwnerRecipient;
     }
-    const visitorResult = await harness.actionService.consumeAction({ expectedAction: ACTION_TOKEN_ACTIONS.DECLINE, meetingId: visitorDeclined.id, rawToken: visitorToken.token });
-
-    expect(ownerResult.meeting?.auditLog.at(-1)?.payload).toMatchObject({ reason: "not a fit" });
-    expect(ownerResult.meeting?.status).toBe("declined");
-    expect(visitorResult.meeting?.status).toBe("declined");
-    expect(calendar.deleteCalls).toBe(1);
-    expect(email.calls.filter(({ template }) => template === "MEETING_DECLINED")).toHaveLength(2);
   });
 
   it("keeps a declined meeting authoritative when Resend throws, then retries only email on token replay", async () => {
@@ -348,6 +370,7 @@ describe("Phase 3 mocked Meet service flows", () => {
   });
 
   it("recovers failed email delivery on replay without recreating the calendar event", async () => {
+    process.env.CONTACT_TO_EMAIL = "owner@example.test";
     const calendar = new SequencedCalendarProvider();
     const email = new SequencedEmailProvider(["failure", "success"]);
     const harness = createHarness({ calendar, email });
@@ -361,10 +384,12 @@ describe("Phase 3 mocked Meet service flows", () => {
     expect(first).toMatchObject({ status: "ok", meeting: { calendarDelivery: { status: "completed" }, emailDelivery: { status: "failed" }, status: "owner_confirmed" } });
     expect(replay).toMatchObject({ meeting: { calendarDelivery: { attempts: 1, status: "completed" }, emailDelivery: { attempts: 2, status: "completed" } }, status: "replayed" });
     expect(calendar.createCalls).toBe(1);
-    expect(email.calls).toHaveLength(2);
+    expect(email.calls).toHaveLength(4);
+    delete process.env.CONTACT_TO_EMAIL;
   });
 
   it("persists a timed-out Resend delivery as failed and recovers it with the same replay boundary", async () => {
+    process.env.CONTACT_TO_EMAIL = "owner@example.test";
     const email = new SequencedEmailProvider(["timeout", "success"]);
     const harness = createHarness({ email });
     const booking = createBookingRecordFixture();
@@ -376,6 +401,7 @@ describe("Phase 3 mocked Meet service flows", () => {
 
     expect(first).toMatchObject({ meeting: { emailDelivery: { status: "failed" } } });
     expect(replay).toMatchObject({ meeting: { emailDelivery: { attempts: 2, status: "completed" } }, status: "replayed" });
+    delete process.env.CONTACT_TO_EMAIL;
   });
 
   it("allows exactly one concurrent token claimant and prevents duplicate provider effects", async () => {

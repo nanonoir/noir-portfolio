@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createBookingRecord } from "@/lib/meet/booking-model";
 import { MockBookingRepository } from "@/lib/meet/booking-repository";
-import { EMAIL_TEMPLATE_CODES, type EmailProvider, type EmailProviderResult } from "@/lib/meet/email-provider";
-import { sendInitialRequestNotifications } from "@/lib/meet/email-notifications";
+import { EMAIL_PROVIDER_ERROR_CODES, EMAIL_TEMPLATE_CODES, type EmailProvider, type EmailProviderResult } from "@/lib/meet/email-provider";
+import { sendConfirmationNotifications, sendInitialRequestNotifications } from "@/lib/meet/email-notifications";
 import type { IssuedActionToken } from "@/lib/meet/action-tokens";
 import { createBookingRequest } from "../../helpers/booking-factory";
 
@@ -85,5 +85,62 @@ describe("initial meeting notifications", () => {
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(EMAIL_TEMPLATE_CODES.MEETING_RECEIVED, expect.anything());
     expect(result).toMatchObject({ failureClass: "transient", record: { emailDelivery: { status: "failed" } } });
+  });
+});
+
+describe("confirmation notifications", () => {
+  afterEach(() => {
+    delete process.env.CONTACT_TO_EMAIL;
+  });
+
+  it("dispatches visitor and owner confirmations concurrently with independent keys", async () => {
+    process.env.CONTACT_TO_EMAIL = "owner@example.test";
+    const repository = new MockBookingRepository();
+    const booking = createBookingRecord(createBookingRequest(), { id: "meet-confirmed" });
+    await repository.create(booking);
+    const inputs: Array<{ recipient: string; idempotencyKey?: string }> = [];
+    const provider: EmailProvider = {
+      send: vi.fn(async (_template, input) => {
+        inputs.push({ recipient: input.recipient, idempotencyKey: input.idempotencyKey });
+        return { success: true as const };
+      }),
+      sendMeetingRequested: vi.fn(),
+      sendMeetingConfirmed: vi.fn(),
+      sendRescheduleProposed: vi.fn(),
+    };
+
+    await expect(sendConfirmationNotifications(provider, repository, booking, [token()]))
+      .resolves.toMatchObject({ emailDelivery: { status: "completed" } });
+
+    expect(inputs).toHaveLength(2);
+    expect(new Set(inputs.map(({ idempotencyKey }) => idempotencyKey)).size).toBe(2);
+    expect(inputs.find(({ recipient }) => recipient === "owner@example.test")?.idempotencyKey)
+      .not.toBe(inputs.find(({ recipient }) => recipient === booking.identity.email)?.idempotencyKey);
+  });
+
+  it("replays both sends after partial delivery while retaining independent recipient keys", async () => {
+    process.env.CONTACT_TO_EMAIL = "owner@example.test";
+    const repository = new MockBookingRepository();
+    const booking = createBookingRecord(createBookingRequest(), { id: "meet-partial" });
+    await repository.create(booking);
+    const attempts = new Map<string, number>();
+    const provider: EmailProvider = {
+      send: vi.fn(async (_template, input) => {
+        const count = (attempts.get(input.recipient) ?? 0) + 1;
+        attempts.set(input.recipient, count);
+        return input.recipient === "owner@example.test" && count === 1
+          ? { success: false as const, error: EMAIL_PROVIDER_ERROR_CODES.EMAIL_PROVIDER_ERROR }
+          : { success: true as const };
+      }),
+      sendMeetingRequested: vi.fn(),
+      sendMeetingConfirmed: vi.fn(),
+      sendRescheduleProposed: vi.fn(),
+    };
+
+    await sendConfirmationNotifications(provider, repository, booking, [token()]);
+    await sendConfirmationNotifications(provider, repository, booking, [token()]);
+
+    expect(attempts.get(booking.identity.email)).toBe(2);
+    expect(attempts.get("owner@example.test")).toBe(2);
   });
 });

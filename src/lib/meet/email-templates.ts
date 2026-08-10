@@ -16,7 +16,7 @@ export interface ComposedMeetingEmail { subject: string; html: string; text: str
 type Copy = {
   actions: string; brand: string; cancelled: string; confirmed: string; declined: string;
   expired: string; footer: string; meeting: string; proposal: string; received: string;
-  requested: string; visitorDetails: string; email: string; phone: string; reason: string;
+  requested: string; visitorDetails: string; name: string; email: string; phone: string; reason: string;
   message: string; unavailable: string; timezone: string; date: string; time: string;
 };
 
@@ -25,14 +25,14 @@ const COPY: Record<"en" | "es", Copy> = {
     actions: "Actions", brand: "NOIR", cancelled: "Meeting cancelled", confirmed: "Your meeting is confirmed",
     declined: "Meeting request update", expired: "Meeting proposal expired", footer: "Nahuel Noir Portfolio",
     meeting: "Meeting details", proposal: "A new meeting time was proposed", received: "We received your meeting request",
-    requested: "New meeting request", visitorDetails: "Visitor details", email: "Email", phone: "Phone",
+    requested: "New meeting request", visitorDetails: "Visitor details", name: "Name", email: "Email", phone: "Phone",
     reason: "Reason", message: "Message", unavailable: "Not provided", timezone: "Timezone", date: "Date", time: "Time",
   },
   es: {
     actions: "Acciones", brand: "NOIR", cancelled: "Reunión cancelada", confirmed: "Tu reunión está confirmada",
     declined: "Actualización de solicitud de reunión", expired: "La propuesta de reunión venció", footer: "Nahuel Noir Portfolio",
     meeting: "Detalles de la reunión", proposal: "Se propuso un nuevo horario", received: "Recibimos tu solicitud de reunión",
-    requested: "Nueva solicitud de reunión", visitorDetails: "Datos del visitante", email: "Correo", phone: "Teléfono",
+    requested: "Nueva solicitud de reunión", visitorDetails: "Datos del visitante", name: "Nombre", email: "Correo", phone: "Teléfono",
     reason: "Motivo", message: "Mensaje", unavailable: "No proporcionado", timezone: "Zona horaria", date: "Fecha", time: "Hora",
   },
 };
@@ -89,13 +89,14 @@ export function composeMeetingEmail(input: ComposeMeetingEmailInput): ComposedMe
   const meeting = meetingValues(input.booking);
   const links = input.actionLinks ?? [];
   const audience = input.audience ?? (input.template === "MEETING_REQUESTED" ? "owner" : "visitor");
+  const note = input.note?.trim() ? input.note : undefined;
   const meetingRows: [string, string][] = [[copy.date, meeting.date], [copy.time, meeting.time], [copy.timezone, meeting.timezone]];
-  const visitorRows: [string, string][] = [[copy.email, input.booking.identity.email], [copy.phone, input.booking.identity.phone], [copy.reason, valueOr(resolveReasonLabel(input.booking, locale), copy.unavailable)], [copy.message, valueOr(input.booking.identity.message, copy.unavailable)]];
+  const visitorRows: [string, string][] = [[copy.name, input.booking.identity.name], [copy.email, input.booking.identity.email], [copy.phone, input.booking.identity.phone], [copy.reason, valueOr(resolveReasonLabel(input.booking, locale), copy.unavailable)], [copy.message, valueOr(input.booking.identity.message, copy.unavailable)]];
   const ownerBlock = audience === "owner" ? `<tr><td style="padding:28px 32px 0"><h2 style="color:#171717;font-family:Arial,sans-serif;font-size:16px;line-height:22px;margin:0 0 8px">${escapeHtml(copy.visitorDetails)}</h2><table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">${rowsHtml(visitorRows)}</table></td></tr>` : "";
-  const noteBlock = input.note ? `<tr><td style="padding:20px 32px 0;color:#525252;font-family:Arial,sans-serif;font-size:14px;line-height:21px">${escapeHtml(input.note)}</td></tr>` : "";
+  const noteBlock = note ? `<tr><td style="padding:20px 32px 0;color:#525252;font-family:Arial,sans-serif;font-size:14px;line-height:21px">${escapeHtml(note)}</td></tr>` : "";
   const html = `<!doctype html><html lang="${locale}"><body style="margin:0;padding:0;background:#f5f5f5"><table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#f5f5f5"><tr><td align="center" style="padding:28px 12px"><table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background:#ffffff;border:1px solid #e5e5e5"><tr><td style="background:#171717;padding:22px 32px"><span style="color:#ffffff;font-family:Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:2px">${escapeHtml(copy.brand)}</span></td></tr><tr><td style="padding:32px 32px 0"><h1 style="color:#171717;font-family:Arial,sans-serif;font-size:24px;line-height:32px;margin:0 0 12px">${escapeHtml(subject)}</h1><p style="color:#404040;font-family:Arial,sans-serif;font-size:16px;line-height:24px;margin:0">${escapeHtml(intro)}</p></td></tr><tr><td style="padding:28px 32px 0"><h2 style="color:#171717;font-family:Arial,sans-serif;font-size:16px;line-height:22px;margin:0 0 8px">${escapeHtml(copy.meeting)}</h2><table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">${rowsHtml(meetingRows)}</table></td></tr>${ownerBlock}${noteBlock}${actionHtml(links, copy)}<tr><td style="padding:28px 32px 32px;color:#737373;font-family:Arial,sans-serif;font-size:12px;line-height:18px">${escapeHtml(copy.footer)}</td></tr></table></td></tr></table></body></html>`;
   const visitorText = audience === "owner" ? `\n\n${copy.visitorDetails}:\n${visitorRows.map(([label, value]) => `${label}: ${value}`).join("\n")}` : "";
   const actionText = links.length ? `\n\n${copy.actions}:\n${links.map((link) => `- ${link.label}: ${link.url}`).join("\n")}` : "";
-  const text = `${subject}\n\n${intro}\n\n${copy.meeting}:\n${meetingRows.map(([label, value]) => `${label}: ${value}`).join("\n")}${visitorText}${input.note ? `\n\n${input.note}` : ""}${actionText}\n\n${copy.footer}`;
+  const text = `${subject}\n\n${intro}\n\n${copy.meeting}:\n${meetingRows.map(([label, value]) => `${label}: ${value}`).join("\n")}${visitorText}${note ? `\n\n${note}` : ""}${actionText}\n\n${copy.footer}`;
   return { subject, html, text };
 }

@@ -1,0 +1,109 @@
+import { timingSafeEqual } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+
+import {
+  exchangeCodeForRefreshToken,
+  validatePrimaryCalendarAccess,
+} from "@/lib/server/google-oauth";
+
+export const dynamic = "force-dynamic";
+
+const GOOGLE_OAUTH_STATE_COOKIE = "google_oauth_state";
+
+function isValidState(receivedState: string | null, expectedState: string | undefined): boolean {
+  if (!receivedState || !expectedState) return false;
+
+  const received = Buffer.from(receivedState);
+  const expected = Buffer.from(expectedState);
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
+
+function jsonAndClearStateCookie(body: unknown, init: ResponseInit): NextResponse {
+  const response = NextResponse.json(body, init);
+  response.cookies.set({
+    name: GOOGLE_OAUTH_STATE_COOKIE,
+    value: "",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
+  return response;
+}
+
+function maskToken(token: string | null): string | null {
+  if (!token) return null;
+  if (token.length <= 12) return "***";
+  return `${token.slice(0, 6)}…${token.slice(-4)}`;
+}
+
+/** Exchanges the OAuth code, validates Calendar access, and consumes state once. */
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const state = url.searchParams.get("state");
+  const stateCookie = request.cookies.get(GOOGLE_OAUTH_STATE_COOKIE)?.value;
+
+  if (!isValidState(state, stateCookie)) {
+    return jsonAndClearStateCookie({ success: false, error: "FORBIDDEN" }, { status: 403 });
+  }
+
+  const providerError = url.searchParams.get("error");
+  const code = url.searchParams.get("code");
+
+  if (providerError) {
+    return jsonAndClearStateCookie(
+      { success: false, error: "OAUTH_PROVIDER_ERROR", providerError },
+      { status: 502 },
+    );
+  }
+
+  if (!code) {
+    return jsonAndClearStateCookie(
+      { success: false, error: "OAUTH_CODE_MISSING" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const tokens = await exchangeCodeForRefreshToken(code);
+
+    if (!tokens.refresh_token) {
+      return jsonAndClearStateCookie(
+        {
+          success: false,
+          error: "NO_REFRESH_TOKEN",
+          message:
+            "Google did not return a refresh token. Revoke access in the Google account permissions page and retry authorization.",
+        },
+        { status: 502 },
+      );
+    }
+
+    let calendar: { calendarId: string; ok: boolean } = { calendarId: "primary", ok: false };
+    try {
+      calendar = await validatePrimaryCalendarAccess(tokens.refresh_token);
+    } catch {
+      calendar = { calendarId: "primary", ok: false };
+    }
+
+    return jsonAndClearStateCookie(
+      {
+        success: true,
+        message:
+          "Copy GOOGLE_REFRESH_TOKEN into Vercel secrets now. This response is shown only once.",
+        refreshToken: tokens.refresh_token,
+        refreshTokenMasked: maskToken(tokens.refresh_token),
+        accessTokenMasked: maskToken(tokens.access_token),
+        calendarId: calendar.calendarId,
+        calendarAccess: calendar.ok ? "verified" : "unverified",
+      },
+      { status: 200 },
+    );
+  } catch {
+    return jsonAndClearStateCookie(
+      { success: false, error: "OAUTH_EXCHANGE_FAILED" },
+      { status: 502 },
+    );
+  }
+}

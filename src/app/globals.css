@@ -3,6 +3,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Responsive sticky-header offset used for scroll-margin-top and
+     scroll-padding-top. Mobile: ~72px; tablet/desktop: ~88px. */
+  --scroll-header-offset: 72px;
   --background: oklch(0.995 0 0);
   --foreground: oklch(0.1 0 0);
   --body-foreground: oklch(0.32 0 0);
@@ -13,10 +16,21 @@
   --border-strong: oklch(0.82 0 0);
   --primary: oklch(0.1 0 0);
   --primary-foreground: oklch(0.995 0 0);
+  --success: oklch(0.36 0.1 150);
+  --success-surface: oklch(0.94 0.04 150);
+  --warning: oklch(0.4 0.1 80);
+  --warning-surface: oklch(0.95 0.04 80);
+  --danger: oklch(0.42 0.16 25);
+  --danger-surface: oklch(0.94 0.045 25);
   --glass-background: oklab(1 0 0 / 0.7);
   --glass-border: oklab(0 0 0 / 0.1);
   --shadow-pill: 0 10px 40px -12px rgb(0 0 0 / 0.18),
     0 2px 8px -2px rgb(0 0 0 / 0.06);
+  --duration-press: 140ms;
+  --duration-interactive: 240ms;
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --space-section-heading-end: 4rem;
+  --space-section-heading-gap: 1.75rem;
 }
 
 .dark {
@@ -30,6 +44,12 @@
   --border-strong: oklch(0.36 0 0);
   --primary: oklch(0.96 0 0);
   --primary-foreground: oklch(0.12 0 0);
+  --success: oklch(0.82 0.1 150);
+  --success-surface: oklch(0.22 0.04 150);
+  --warning: oklch(0.85 0.1 80);
+  --warning-surface: oklch(0.23 0.04 80);
+  --danger: oklch(0.78 0.14 25);
+  --danger-surface: oklch(0.23 0.045 25);
   --glass-background: oklab(0 0 0 / 0.55);
   --glass-border: oklab(1 0 0 / 0.12);
   --shadow-pill: 0 18px 50px -16px rgb(0 0 0 / 0.7),
@@ -47,8 +67,15 @@
   --color-border-strong: var(--border-strong);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-editorial: var(--font-newsreader);
   --shadow-pill: var(--shadow-pill);
 }
 
@@ -61,7 +88,122 @@ body {
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 88px;
+  scroll-padding-top: var(--scroll-header-offset);
+}
+
+@keyframes sticky-header-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sticky-header {
+  animation: sticky-header-enter 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.theme-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  visibility: hidden;
+  clip-path: circle(0 at var(--theme-origin-x) var(--theme-origin-y));
+}
+
+.theme-transition-overlay[data-theme-target="light"] {
+  background: oklch(0.995 0 0);
+}
+
+.theme-transition-overlay[data-theme-target="dark"] {
+  background: oklch(0.12 0 0);
+}
+
+.theme-transition-overlay[data-theme-transition="expanding"] {
+  visibility: visible;
+  clip-path: circle(var(--theme-reveal-radius) at var(--theme-origin-x) var(--theme-origin-y));
+  transition: clip-path 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: clip-path;
+}
+
+.theme-transition-content {
+  position: relative;
+}
+
+.theme-transition-content > :where(section, main):not(.theme-transition-hero) {
+  position: relative;
+  z-index: 2;
+}
+
+.theme-transition-hero > section > .relative.mx-auto {
+  position: relative;
+  z-index: 2;
+}
+
+.theme-transition-content[data-theme-foreground="true"] :where(
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  a,
+  span,
+  svg,
+  [data-action-icon]
+) {
+  transition-property: color, background-color, border-color, fill, stroke;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-emphasized);
+}
+
+.theme-transition-content[data-theme-busy="true"] {
+  pointer-events: none;
+}
+
+.theme-transition-content[data-theme-foreground="true"] :where(input, textarea, select) {
+  transition: color 220ms var(--ease-emphasized), border-color 220ms var(--ease-emphasized);
+}
+
+.theme-transition-content[data-theme-foreground="true"] canvas {
+  transition: color 220ms var(--ease-emphasized);
+}
+
+.language-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--background);
+  clip-path: polygon(0 0, 0 0, 0 0, 0 0);
+  pointer-events: none;
+  visibility: hidden;
+  will-change: clip-path;
+}
+
+.language-transition-overlay[data-language-transition="covering"] {
+  visibility: visible;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  transition: clip-path 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.language-transition-overlay[data-language-transition="revealing"] {
+  visibility: visible;
+  clip-path: polygon(100% 100%, 100% 100%, 100% 100%, 98% 98%);
+  transition: clip-path 400ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Tablet/desktop: header is taller (~88px) */
+@media (min-width: 48rem) {
+  :root {
+    --scroll-header-offset: 88px;
+  }
 }
 
 ::selection {
@@ -70,6 +212,31 @@ html {
 
 @utility mono {
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+@utility editorial {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+@utility status-success {
+  border: 1px solid color-mix(in oklab, var(--success) 30%, var(--border));
+  background: var(--success-surface);
+  color: var(--success);
+}
+
+@utility status-warning {
+  border: 1px solid color-mix(in oklab, var(--warning) 30%, var(--border));
+  background: var(--warning-surface);
+  color: var(--warning);
+}
+
+@utility status-danger {
+  border: 1px solid color-mix(in oklab, var(--danger) 30%, var(--border));
+  background: var(--danger-surface);
+  color: var(--danger);
 }
 
 @utility glass {
@@ -84,6 +251,248 @@ html {
 
 @utility hairline-b {
   border-bottom: 1px solid var(--border);
+}
+
+.button-feedback {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: var(--duration-interactive);
+  transition-timing-function: var(--ease-emphasized);
+}
+
+.button-feedback:active {
+  transform: scale(0.97);
+  transition-duration: var(--duration-press);
+}
+
+.button-icon-feedback:active {
+  transform: scale(0.95);
+}
+
+:where(button:enabled),
+:where(a[data-action]) {
+  cursor: pointer;
+}
+
+:where(button:disabled),
+:where([data-action][aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+.action-control > [data-action-label],
+.action-control > [data-action-icon] {
+  position: relative;
+  z-index: 1;
+}
+
+.action-control > [data-action-icon] {
+  display: inline-flex;
+}
+
+.resume-action [data-action-icon] {
+  margin-inline-start: 0.375rem;
+}
+
+.button-outlined::before,
+.button-ghost::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.nav-section-link {
+  position: relative;
+  color: var(--muted-foreground);
+}
+
+.nav-section-link::after {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.35rem;
+  left: 0.75rem;
+  height: 1px;
+  content: "";
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 180ms var(--ease-emphasized);
+}
+
+.nav-section-link[data-nav-active="true"],
+.nav-section-link:focus-visible {
+  color: var(--foreground);
+}
+
+.nav-section-link[data-nav-active="true"]::after,
+.nav-section-link:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+.drawer-scrim {
+  --drawer-transition-duration: 760ms;
+  background: color-mix(in oklab, var(--background) 80%, transparent);
+  backdrop-filter: blur(18px);
+  opacity: 0;
+  transition: opacity var(--drawer-transition-duration) var(--ease-emphasized);
+}
+
+.drawer-panel {
+  opacity: 1;
+  transform: translateX(100%);
+  transition: transform var(--drawer-transition-duration) var(--ease-emphasized);
+  will-change: opacity, transform;
+}
+
+.drawer-item {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 480ms var(--ease-emphasized), transform 480ms var(--ease-emphasized);
+}
+
+.drawer-scrim[data-drawer-phase="open"] {
+  opacity: 1;
+}
+
+.drawer-scrim[data-drawer-phase="open"] .drawer-panel,
+.drawer-scrim[data-drawer-phase="open"] .drawer-item {
+  opacity: 1;
+  transform: translate(0);
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] .drawer-panel {
+  opacity: 1;
+  transform: translateX(100%);
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] .drawer-item {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] nav .drawer-item:nth-child(1) {
+  transition-delay: 180ms;
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] nav .drawer-item:nth-child(2) {
+  transition-delay: 135ms;
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] nav .drawer-item:nth-child(3) {
+  transition-delay: 90ms;
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] nav .drawer-item:nth-child(4) {
+  transition-delay: 45ms;
+}
+
+.drawer-scrim[data-drawer-phase="exiting"] nav .drawer-item:nth-child(5) {
+  transition-delay: 0ms;
+}
+
+.button-outlined::before {
+  inset: 0;
+  z-index: 0;
+  background: var(--foreground);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--duration-interactive) var(--ease-emphasized);
+}
+
+.button-ghost::after {
+  right: 0.75rem;
+  bottom: 0.35rem;
+  left: 0.75rem;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--duration-interactive) var(--ease-emphasized);
+}
+
+.section-heading-rhythm {
+  gap: var(--space-section-heading-gap);
+  margin-bottom: var(--space-section-heading-end);
+}
+
+@media (min-width: 64rem) {
+  .section-heading-rhythm {
+    --space-section-heading-end: 5rem;
+    --space-section-heading-gap: 3rem;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button-primary:hover {
+    background: color-mix(in oklab, var(--primary) 88%, var(--primary-foreground));
+    transform: translateY(-1px);
+  }
+
+  .button-danger:hover {
+    background: color-mix(in oklab, var(--danger) 88%, var(--primary-foreground));
+    transform: translateY(-1px);
+  }
+
+  .button-inverse:hover {
+    background: color-mix(in oklab, var(--background) 88%, var(--foreground));
+    transform: translateY(-1px);
+  }
+
+  .button-outlined:hover {
+    color: var(--background);
+  }
+
+  .button-outlined:hover [data-action-icon] img {
+    filter: invert(1);
+  }
+
+  :where(.dark, .dark *) .button-outlined:hover [data-action-icon] img {
+    filter: invert(0);
+  }
+
+  .button-outlined:hover::before,
+  .button-ghost:hover::after {
+    transform: scaleX(1);
+  }
+
+  .button-ghost:hover,
+  .button-nav:hover,
+  .button-language:hover,
+  .button-icon:hover {
+    background: color-mix(in oklab, var(--foreground) 5%, transparent);
+    color: var(--foreground);
+  }
+
+  .nav-section-link:hover {
+    color: var(--foreground);
+  }
+
+  .nav-section-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+
+  .button-primary .action-icon-slot,
+  .button-inverse .action-icon-slot,
+  .button-primary > :is(img, svg)[aria-hidden="true"],
+  .button-inverse > :is(img, svg)[aria-hidden="true"] {
+    transition: transform var(--duration-interactive) var(--ease-emphasized);
+  }
+
+  .button-primary:hover .action-icon-slot,
+  .button-inverse:hover .action-icon-slot,
+  .button-primary:hover > :is(img, svg)[aria-hidden="true"],
+  .button-inverse:hover > :is(img, svg)[aria-hidden="true"] {
+    transform: translate(4px, -2px);
+  }
+}
+
+.button-primary:active,
+.button-inverse:active,
+.button-danger:active {
+  transform: scale(0.97);
 }
 
 @keyframes orbit-cw {
@@ -132,6 +541,16 @@ html {
   transform-origin: center center;
 }
 
+/* Pause orbit animations when the about section is outside the viewport.
+   IntersectionObserver sets data-orbit-visible="false" on the wrapper div,
+   which pauses all child animations without per-scroll React state updates. */
+.about-orbit[data-orbit-visible="false"] .orbit-ring-outer,
+.about-orbit[data-orbit-visible="false"] .orbit-ring-inner,
+.about-orbit[data-orbit-visible="false"] .orbit-icon-cw,
+.about-orbit[data-orbit-visible="false"] .orbit-icon-ccw {
+  animation-play-state: paused;
+}
+
 /* container-type:size enables cqmin units in child transforms */
 .orbit-ring {
   container-type: size;
@@ -147,6 +566,42 @@ html {
   transform-origin: center center;
 }
 
+.service-outcome {
+  transition: opacity var(--duration-interactive) var(--ease-emphasized), transform var(--duration-interactive) var(--ease-emphasized);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .service-card:hover,
+  .service-card:focus-within {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+  }
+
+  .service-card {
+    transition: border-color var(--duration-interactive) var(--ease-emphasized), transform var(--duration-interactive) var(--ease-emphasized);
+  }
+
+  .service-card .service-outcome {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .service-card:hover .service-outcome,
+  .service-card:focus-within .service-outcome {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.contact-illustration-reveal {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 1500ms var(--ease-emphasized);
+}
+
+.contact-illustration-reveal[data-contact-illustration-visible="true"] {
+  clip-path: inset(0);
+}
+
 .hero-organic-mask {
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='soft'%3E%3CfeGaussianBlur stdDeviation='32'/%3E%3C/filter%3E%3C/defs%3E%3Cpath filter='url(%23soft)' fill='black' d='M78 82 C124 34 195 48 260 42 C350 35 430 70 452 142 C475 218 438 270 456 348 C476 432 388 468 306 454 C238 443 178 478 116 430 C58 386 80 314 62 244 C44 172 38 118 78 82 Z'/%3E%3C/svg%3E");
   mask-repeat: no-repeat;
@@ -157,6 +612,10 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sticky-header {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {
@@ -164,5 +623,117 @@ html {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .button-feedback,
+  .button-feedback:active,
+  .button-icon-feedback:active {
+    transform: none !important;
+  }
+
+  .button-outlined::before,
+  .button-ghost::after,
+  .button-outlined:hover::before,
+  .button-ghost:hover::after {
+    transition: none !important;
+    transform: scaleX(0) !important;
+  }
+
+  /* Prevent hover from forcing foreground-inheriting icon/text color when the fill sweep is disabled */
+  .button-outlined:hover {
+    color: var(--foreground);
+  }
+
+  .drawer-scrim,
+  .drawer-panel,
+  .drawer-item {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .drawer-scrim[data-drawer-phase="entering"],
+  .drawer-scrim[data-drawer-phase="open"] {
+    opacity: 1;
+  }
+
+  .drawer-item {
+    opacity: 1;
+  }
+
+  .about-orbit {
+    display: none !important;
+  }
+
+  .about-static {
+    display: block !important;
+  }
+
+  .contact-illustration-reveal {
+    clip-path: inset(0) !important;
+    transition: none !important;
+  }
+}
+
+/* Scoped scrollbar for modal scroll container (Task 9A.11) */
+.modal-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.modal-scroll-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modal-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+}
+
+.dark .modal-scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+}
+
+/* Minimum font-size 16px for form fields — prevents iOS zoom (Task 9A.12) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea,
+select {
+  font-size: max(1rem, 16px);
+}
+
+/* Stack technology chip — low-cost hover interaction.
+   Uses transform + border-color + restrained tonal surface only.
+   No filter/invert, no layout dimension animation.
+   Gated behind pointer:fine so touch users never see a stuck hover state. */
+@media (hover: hover) and (pointer: fine) {
+  .stack-tech-chip {
+    transition:
+      transform var(--duration-interactive) var(--ease-emphasized),
+      border-color var(--duration-interactive) var(--ease-emphasized),
+      background-color var(--duration-interactive) var(--ease-emphasized),
+      color var(--duration-interactive) var(--ease-emphasized);
+  }
+
+  .stack-tech-chip:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+    background-color: color-mix(in oklab, var(--foreground) 7%, var(--surface));
+    color: var(--foreground);
+  }
+}
+
+/* Reduced motion: remove movement, keep border/surface contrast change for state clarity */
+@media (prefers-reduced-motion: reduce) {
+  .stack-tech-chip {
+    transition: border-color var(--duration-interactive), background-color var(--duration-interactive) !important;
+  }
+
+  .stack-tech-chip:hover {
+    transform: none !important;
+    border-color: var(--border-strong);
+    background-color: color-mix(in oklab, var(--foreground) 7%, var(--surface));
   }
 }

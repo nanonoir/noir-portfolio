@@ -16,7 +16,7 @@ export function SectionHeading({
   return (
     <header
       className={[
-        "mb-12 grid gap-6 lg:grid-cols-[0.9fr_1fr] lg:items-end",
+        "section-heading-rhythm grid lg:grid-cols-[0.9fr_1fr] lg:items-end",
         className,
       ]
         .filter(Boolean)
@@ -24,16 +24,16 @@ export function SectionHeading({
     >
       <div>
         {label ? (
-          <p className="mono mb-4 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="mono mb-5 text-[11px] leading-[1.4] uppercase tracking-[0.18em] text-muted-foreground">
             {label}
           </p>
         ) : null}
-        <h2 className="text-4xl font-semibold tracking-[-0.03em] text-foreground lg:text-[60px] lg:leading-none">
+        <h2 className="text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
           {title}
         </h2>
       </div>
       {description ? (
-        <p className="max-w-xl text-base leading-7 text-body-foreground">
+        <p className="max-w-[65ch] text-base leading-7 text-body-foreground">
           {description}
         </p>
       ) : null}

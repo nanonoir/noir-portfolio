@@ -8,6 +8,7 @@ export type Dictionary = {
   meta: {
     siteName: string;
     role: string;
+    description: string;
   };
   navigation: {
     about: string;
@@ -303,6 +304,8 @@ export const dictionaries: Record<Language, Dictionary> = {
     meta: {
       siteName: "Nahuel Nicolas Noir",
       role: "Full-Stack Developer",
+      description:
+        "Portfolio de Nahuel Noir, Full-Stack Developer. Productos digitales, frontend, backend y automatizaciones construidos desde la idea hasta producción.",
     },
     navigation: {
       about: "Sobre mí",
@@ -620,6 +623,8 @@ export const dictionaries: Record<Language, Dictionary> = {
     meta: {
       siteName: "Nahuel Nicolas Noir",
       role: "Full-Stack Developer",
+      description:
+        "Portfolio of Nahuel Noir, Full-Stack Developer. Digital products, frontend, backend, and automation built from idea to production.",
     },
     navigation: {
       about: "About Me",

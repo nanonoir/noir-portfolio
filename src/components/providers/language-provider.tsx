@@ -48,8 +48,8 @@ function readPreferredLanguage(): Language {
   return detectBrowserLanguage(window.navigator.language);
 }
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
+export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE }: { children: React.ReactNode; initialLanguage?: Language }) {
+  const [language, setLanguageState] = useState<Language>(initialLanguage);
   const [transitionPhase, setTransitionPhase] = useState<LanguageTransitionPhase>("idle");
   const transitionPhaseRef = useRef<LanguageTransitionPhase>("idle");
   const pendingLanguageRef = useRef<Language | null>(null);

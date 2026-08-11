@@ -7,9 +7,9 @@ import { ServicesSection } from "@/features/portfolio/sections/services-section"
 import { StackSection } from "@/features/portfolio/sections/stack-section";
 import { PortfolioNavigation } from "@/features/portfolio/navigation/portfolio-navigation";
 
-export default function Home() {
+export default function LocaleHome() {
   return (
-    <>
+    <main>
       <PortfolioNavigation />
       <Hero />
       <ProjectsSection />
@@ -18,6 +18,6 @@ export default function Home() {
       <StackSection />
       <ContactSection />
       <PortfolioFooter />
-    </>
+    </main>
   );
 }

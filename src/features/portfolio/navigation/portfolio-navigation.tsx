@@ -1,6 +1,7 @@
 "use client";
 
 import { type MouseEvent, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { assets } from "@/data/content";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useTheme } from "@/components/providers/theme-provider";
@@ -138,11 +139,14 @@ function ThemeToggle() {
 
 function LanguageToggle() {
   const { dictionary, toggleLanguage } = useLanguage();
+  const pathname = usePathname();
+  const routeLanguage = pathname?.split("/")[1];
 
   return (
     <Button
       aria-label={dictionary.navigation.languageToggleLabel}
       className="text-muted-foreground"
+      data-language-route={routeLanguage}
       icon={<HandwrittenIcon className="size-4 opacity-70" icon="language" />}
       onClick={toggleLanguage}
       size="icon"
@@ -153,6 +157,7 @@ function LanguageToggle() {
 
 function DrawerLanguageButton({ onNavigate }: { onNavigate?: () => void }) {
   const { dictionary, language, toggleLanguage } = useLanguage();
+  const pathname = usePathname();
   const label = language === "es" ? dictionary.navigation.changeToEnglish : dictionary.navigation.changeToSpanish;
 
   return (
@@ -162,6 +167,7 @@ function DrawerLanguageButton({ onNavigate }: { onNavigate?: () => void }) {
       icon={<HandwrittenIcon className="size-5 opacity-70" icon="language" size={20} />}
       iconPosition="start"
       label={label}
+      data-language-route={pathname?.split("/")[1]}
       onClick={() => {
         toggleLanguage();
         onNavigate?.();

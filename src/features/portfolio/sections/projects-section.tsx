@@ -376,7 +376,7 @@ export function ProjectsSection() {
               >
                 <span className="mono text-xs text-muted-foreground">{String(index + 1).padStart(2, "0")}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-lg font-semibold tracking-[-0.02em] text-foreground">{project.name}</span>
+                  <h3 className="block text-lg font-semibold tracking-[-0.02em] text-foreground">{project.name}</h3>
                   <span className="mono mt-1 block text-[11px] tracking-[0.08em] text-muted-foreground uppercase">{project.tag}</span>
                 </span>
                 <span className="grid size-9 shrink-0 place-items-center rounded-full border border-border transition-transform duration-300 group-hover:border-border-strong">

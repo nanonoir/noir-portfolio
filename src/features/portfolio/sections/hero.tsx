@@ -217,8 +217,7 @@ export function Hero() {
   }
 
   return (
-    <main className="theme-transition-hero text-foreground">
-      <section className="relative overflow-hidden px-6 pt-32 pb-20 lg:pt-40 lg:pb-28" id="top">
+    <section className="theme-transition-hero relative overflow-hidden px-6 pt-32 pb-20 text-foreground lg:pt-40 lg:pb-28" id="top">
         <InteractiveWarpGrid
           spacing={56}
           radius={530}
@@ -335,7 +334,6 @@ export function Hero() {
             </div>
           </aside>
         </div>
-      </section>
-    </main>
+    </section>
   );
 }

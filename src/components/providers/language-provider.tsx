@@ -9,16 +9,16 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   DEFAULT_LANGUAGE,
   LANGUAGE_CHANGE_EVENT,
-  LANGUAGE_STORAGE_KEY,
   type Dictionary,
   type Language,
-  detectBrowserLanguage,
   getDictionary,
   isLanguage,
 } from "@/lib/i18n";
+import { LANGUAGE_COOKIE } from "@/lib/locale-routing";
 
 type LanguageContextValue = {
   language: Language;
@@ -34,25 +34,21 @@ type LanguageTransitionPhase = "idle" | "covering" | "revealing";
 const LANGUAGE_TRANSITION_DURATION_MS = 400;
 const LANGUAGE_TRANSITION_WATCHDOG_MS = LANGUAGE_TRANSITION_DURATION_MS + 75;
 
-function readPreferredLanguage(): Language {
-  if (typeof window === "undefined") {
-    return DEFAULT_LANGUAGE;
-  }
-
-  const storedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-
-  if (isLanguage(storedLanguage)) {
-    return storedLanguage;
-  }
-
-  return detectBrowserLanguage(window.navigator.language);
+function languageFromPathname(pathname: string | null): Language | null {
+  const routeLanguage = pathname?.split("/")[1] ?? null;
+  return isLanguage(routeLanguage) ? routeLanguage : null;
 }
 
 export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE }: { children: React.ReactNode; initialLanguage?: Language }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const routeLanguage = languageFromPathname(pathname);
   const [language, setLanguageState] = useState<Language>(initialLanguage);
   const [transitionPhase, setTransitionPhase] = useState<LanguageTransitionPhase>("idle");
   const transitionPhaseRef = useRef<LanguageTransitionPhase>("idle");
   const pendingLanguageRef = useRef<Language | null>(null);
+  const pendingPathnameRef = useRef<string | null>(null);
+  const navigationStartedRef = useRef(false);
   const transitionFrameRef = useRef<number | null>(null);
   const transitionWatchdogRef = useRef<number | null>(null);
 
@@ -66,29 +62,26 @@ export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE 
   const advanceTransition = useCallback(() => {
     if (transitionPhaseRef.current === "covering") {
       const nextLanguage = pendingLanguageRef.current;
-      if (!nextLanguage) {
+      const nextPathname = pendingPathnameRef.current;
+      if (!nextLanguage || !nextPathname || navigationStartedRef.current) {
         return;
       }
 
       clearTransitionWatchdog();
-      transitionPhaseRef.current = "revealing";
-      setLanguageState(nextLanguage);
-      window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
-      document.documentElement.lang = nextLanguage;
-      transitionFrameRef.current = window.requestAnimationFrame(() => {
-        transitionFrameRef.current = null;
-        setTransitionPhase("revealing");
-      });
+      navigationStartedRef.current = true;
+      router.push(`${nextPathname}${window.location.hash}`, { scroll: false });
       return;
     }
 
     if (transitionPhaseRef.current === "revealing") {
       clearTransitionWatchdog();
       pendingLanguageRef.current = null;
+      pendingPathnameRef.current = null;
+      navigationStartedRef.current = false;
       transitionPhaseRef.current = "idle";
       setTransitionPhase("idle");
     }
-  }, [clearTransitionWatchdog]);
+  }, [clearTransitionWatchdog, router]);
 
   useEffect(() => {
     if (transitionPhase === "idle") {
@@ -111,46 +104,57 @@ export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE 
   }, [clearTransitionWatchdog]);
 
   useEffect(() => {
-    const syncLanguage = (event?: Event) => {
-      if (event instanceof StorageEvent && event.key && event.key !== LANGUAGE_STORAGE_KEY) {
-        return;
-      }
-
-      const nextLanguage = readPreferredLanguage();
-
-      setLanguageState(nextLanguage);
-      document.documentElement.lang = nextLanguage;
-    };
-
-    syncLanguage();
-    window.addEventListener("storage", syncLanguage);
-    window.addEventListener(LANGUAGE_CHANGE_EVENT, syncLanguage);
-
-    return () => {
-      window.removeEventListener("storage", syncLanguage);
-      window.removeEventListener(LANGUAGE_CHANGE_EVENT, syncLanguage);
-    };
-  }, []);
-
-  const setLanguage = useCallback((nextLanguage: Language) => {
-    if (nextLanguage === language || transitionPhaseRef.current !== "idle") {
+    if (!routeLanguage) {
       return;
     }
 
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    document.documentElement.lang = routeLanguage;
+
+    if (pendingLanguageRef.current === routeLanguage && pendingPathnameRef.current === pathname) {
+      setLanguageState(routeLanguage);
+      window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        pendingLanguageRef.current = null;
+        pendingPathnameRef.current = null;
+        navigationStartedRef.current = false;
+        transitionPhaseRef.current = "idle";
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Complete the route transition immediately when reduced motion is enabled.
+        setTransitionPhase("idle");
+        return;
+      }
+
+      transitionPhaseRef.current = "revealing";
+      transitionFrameRef.current = window.requestAnimationFrame(() => {
+        transitionFrameRef.current = null;
+        setTransitionPhase("revealing");
+      });
+      return;
+    }
+
+    if (transitionPhaseRef.current === "idle") {
+      setLanguageState(routeLanguage);
+    }
+  }, [pathname, routeLanguage]);
+
+  const setLanguage = useCallback((nextLanguage: Language) => {
+    if (nextLanguage === routeLanguage || transitionPhaseRef.current !== "idle" || !pathname) {
+      return;
+    }
+
+    document.cookie = `${LANGUAGE_COOKIE}=${nextLanguage}; Path=/; Max-Age=31536000; SameSite=Lax`;
     pendingLanguageRef.current = nextLanguage;
+    pendingPathnameRef.current = pathname.replace(/^\/(?:en|es)(?=\/|$)/, `/${nextLanguage}`);
+    navigationStartedRef.current = false;
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setLanguageState(nextLanguage);
-      window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
-      document.documentElement.lang = nextLanguage;
-      pendingLanguageRef.current = null;
+      router.push(`${pendingPathnameRef.current}${window.location.hash}`, { scroll: false });
       return;
     }
 
     transitionPhaseRef.current = "covering";
     setTransitionPhase("covering");
-  }, [language]);
+  }, [pathname, routeLanguage, router]);
 
   function handleTransitionEnd(event: React.TransitionEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget || event.propertyName !== "clip-path") {

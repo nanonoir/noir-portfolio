@@ -35,6 +35,10 @@ const LANGUAGE_TRANSITION_DURATION_MS = 400;
 const LANGUAGE_TRANSITION_WATCHDOG_MS = LANGUAGE_TRANSITION_DURATION_MS + 75;
 
 function languageFromPathname(pathname: string | null): Language | null {
+  if (pathname === "/") {
+    return "es";
+  }
+
   const routeLanguage = pathname?.split("/")[1] ?? null;
   return isLanguage(routeLanguage) ? routeLanguage : null;
 }
@@ -48,6 +52,7 @@ export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE 
   const transitionPhaseRef = useRef<LanguageTransitionPhase>("idle");
   const pendingLanguageRef = useRef<Language | null>(null);
   const pendingPathnameRef = useRef<string | null>(null);
+  const pendingSearchRef = useRef("");
   const navigationStartedRef = useRef(false);
   const transitionFrameRef = useRef<number | null>(null);
   const transitionWatchdogRef = useRef<number | null>(null);
@@ -69,7 +74,7 @@ export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE 
 
       clearTransitionWatchdog();
       navigationStartedRef.current = true;
-      router.push(`${nextPathname}${window.location.hash}`, { scroll: false });
+      router.push(`${nextPathname}${pendingSearchRef.current}${window.location.hash}`, { scroll: false });
       return;
     }
 
@@ -77,6 +82,7 @@ export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE 
       clearTransitionWatchdog();
       pendingLanguageRef.current = null;
       pendingPathnameRef.current = null;
+      pendingSearchRef.current = "";
       navigationStartedRef.current = false;
       transitionPhaseRef.current = "idle";
       setTransitionPhase("idle");
@@ -117,6 +123,7 @@ export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE 
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         pendingLanguageRef.current = null;
         pendingPathnameRef.current = null;
+        pendingSearchRef.current = "";
         navigationStartedRef.current = false;
         transitionPhaseRef.current = "idle";
         // eslint-disable-next-line react-hooks/set-state-in-effect -- Complete the route transition immediately when reduced motion is enabled.
@@ -144,11 +151,12 @@ export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE 
 
     document.cookie = `${LANGUAGE_COOKIE}=${nextLanguage}; Path=/; Max-Age=31536000; SameSite=Lax`;
     pendingLanguageRef.current = nextLanguage;
-    pendingPathnameRef.current = pathname.replace(/^\/(?:en|es)(?=\/|$)/, `/${nextLanguage}`);
+    pendingPathnameRef.current = nextLanguage === "es" ? "/" : "/en";
+    pendingSearchRef.current = window.location.search;
     navigationStartedRef.current = false;
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      router.push(`${pendingPathnameRef.current}${window.location.hash}`, { scroll: false });
+      router.push(`${pendingPathnameRef.current}${pendingSearchRef.current}${window.location.hash}`, { scroll: false });
       return;
     }
 

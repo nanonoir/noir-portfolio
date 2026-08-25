@@ -32,13 +32,13 @@ export function selectRequestLanguage(cookie: string | undefined, acceptLanguage
 }
 
 export function localeUrl(locale: Language): URL {
-  return new URL(`/${locale}`, SEO_ORIGIN);
+  return new URL(locale === "es" ? "/" : "/en", SEO_ORIGIN);
 }
 
 export function languageAlternates(): Record<Language | "x-default", string> {
   return {
     en: localeUrl("en").toString(),
     es: localeUrl("es").toString(),
-    "x-default": new URL("/", SEO_ORIGIN).toString(),
+    "x-default": localeUrl("es").toString(),
   };
 }

@@ -5,7 +5,7 @@ import { mockJsonSuccess } from "./fixtures";
 test.describe("@smoke @mocked-backend public lead forms", () => {
   test("submits the contact form and preserves the generic WhatsApp link", async ({ page }) => {
     await mockJsonSuccess(page, "**/api/leads", { success: true });
-    await page.goto("/");
+    await page.goto("/en");
 
     const contact = page.locator("#contact form");
     await contact.getByLabel("Email").fill("contact@example.com");
@@ -18,7 +18,7 @@ test.describe("@smoke @mocked-backend public lead forms", () => {
 
   test("submits a service request and exposes an enriched WhatsApp link", async ({ page }) => {
     await mockJsonSuccess(page, "**/api/leads", { success: true });
-    await page.goto("/");
+    await page.goto("/en");
     await page.getByRole("button", { name: "Request" }).nth(1).click();
 
     const modal = page.getByRole("dialog", { name: "Landing / Business Website" });
@@ -43,7 +43,7 @@ test.describe("@smoke @mocked-backend public lead forms on mobile", () => {
 
   test("submits contact and service requests from their mobile form flows", async ({ page }) => {
     await mockJsonSuccess(page, "**/api/leads", { success: true });
-    await page.goto("/");
+    await page.goto("/en");
 
     const contact = page.locator("#contact form");
     await contact.getByLabel("Email").fill("contact@example.com");

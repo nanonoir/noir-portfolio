@@ -1,5 +1,5 @@
 import { PortfolioPage } from "@/components/portfolio-page";
 
-export default function LocaleHome() {
+export default function SpanishHome() {
   return <PortfolioPage />;
 }

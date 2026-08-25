@@ -1,15 +1,22 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { LANGUAGE_COOKIE, selectRequestLanguage } from "@/lib/locale-routing";
 
 export function proxy(request: NextRequest) {
-  const locale = selectRequestLanguage(
-    request.cookies.get(LANGUAGE_COOKIE)?.value,
-    request.headers.get("accept-language"),
-  );
+  const url = request.nextUrl.clone();
 
-  return NextResponse.redirect(new URL(`/${locale}`, request.url), 307);
+  if (url.pathname === "/es" || url.pathname === "/es/") {
+    url.pathname = "/";
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (url.pathname === "/en/") {
+    const destination = new URL("/en", request.url);
+    destination.search = url.search;
+    return NextResponse.redirect(destination, 301);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/"],
+  matcher: ["/es/:path*", "/en/"],
 };

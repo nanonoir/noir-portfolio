@@ -28,7 +28,7 @@ test.describe("@backend real route and Firestore emulator", () => {
   });
 
   test("submits a meeting request through the browser and persists it through the real backend", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/en");
     await page.getByRole("button", { name: "Schedule a call" }).click();
     const modal = page.getByRole("dialog", { name: "Schedule a call" });
     await modal.getByLabel("Name").fill("Backend Visitor");
@@ -63,7 +63,7 @@ test.describe("@backend real route and Firestore emulator", () => {
   });
 
   test("submits contact and service leads through the real route with only Resend mocked", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/en");
     const contact = page.locator("#contact form");
     await contact.getByLabel("Email").fill("backend-contact@example.com");
     await contact.getByLabel("Message").fill("A real route lead test.");

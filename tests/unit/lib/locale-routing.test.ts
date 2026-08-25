@@ -28,10 +28,10 @@ describe("locale routing", () => {
 
   it("builds immutable production URLs and reciprocal alternates", () => {
     expect(LANGUAGE_COOKIE).toBe("nn-lang");
-    expect(localeUrl("es").toString()).toBe(`${SEO_ORIGIN}/es`);
+    expect(localeUrl("es").toString()).toBe(`${SEO_ORIGIN}/`);
     expect(languageAlternates()).toEqual({
       en: `${SEO_ORIGIN}/en`,
-      es: `${SEO_ORIGIN}/es`,
+      es: `${SEO_ORIGIN}/`,
       "x-default": `${SEO_ORIGIN}/`,
     });
   });

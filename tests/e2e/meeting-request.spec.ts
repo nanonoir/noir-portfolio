@@ -12,7 +12,7 @@ test.describe("@smoke @mocked-backend meeting request", () => {
       success: true,
     });
 
-    await page.goto("/");
+    await page.goto("/en");
     await page.getByRole("button", { name: "Schedule a call" }).click();
 
     const modal = page.getByRole("dialog", { name: "Schedule a call" });
@@ -47,7 +47,7 @@ test.describe("@smoke @mocked-backend meeting request on mobile", () => {
       success: true,
     });
 
-    await page.goto("/");
+    await page.goto("/en");
     await page.getByRole("button", { name: "Schedule a call" }).click();
     const modal = page.getByRole("dialog", { name: "Schedule a call" });
     await modal.getByRole("button", { name: "Confirm request" }).click();
